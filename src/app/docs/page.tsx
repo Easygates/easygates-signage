@@ -144,7 +144,7 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 # SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 # SUPABASE_SECRET_KEY="sb_secret_..."   (Settings → API Keys — server-only)
 # SUPABASE_STORAGE_BUCKET="signage-media"`}</pre>
-            <p className="mt-3">Paste <code>supabase/schema.sql</code> into <b>Supabase Dashboard → SQL Editor → Run</b> (creates the 6 tables, enables Row Level Security and creates the <code>signage-media</code> bucket) <b>or</b> push the tables with <code>npx drizzle-kit push</code> (uses <code>DIRECT_URL</code> automatically via <code>drizzle.config.ts</code>; enables RLS but does not create the bucket). Then restart the app and click <b>✨ Load demo</b>.</p>
+            <p className="mt-3">Paste <code>supabase/schema.sql</code> into <b>Supabase Dashboard → SQL Editor → Run</b> (creates the 7 tables, enables Row Level Security and creates the <code>signage-media</code> bucket) <b>or</b> push the tables with <code>npx drizzle-kit push</code> (uses <code>DIRECT_URL</code> automatically via <code>drizzle.config.ts</code>; enables RLS but does not create the bucket). Then restart the app and click <b>✨ Load demo</b>.</p>
             <p className="mt-2 text-white/60">RLS with no policies keeps the tables out of Supabase&apos;s public Data API — the app connects as the table owner and is unaffected. <code>/admin?tab=database</code> warns if any table still has RLS off.</p>
           </>
         } />

@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import SceneRenderer from "@/components/SceneRenderer";
+import ScreenView from "@/components/ScreenView";
+import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, type Scene, type TemplateId } from "@/lib/signage";
+import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 
-type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "database";
+type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
+const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "database"];
+
+const sameBrand = (a: BrandSettings, b: BrandSettings) => JSON.stringify(a) === JSON.stringify(b);
 
 interface PlaylistFull {
   id: string; name: string; description?: string; loop?: boolean;
@@ -17,7 +22,7 @@ interface PlaylistFull {
 
 const emptyScene = (): Scene => ({
   id: "new", name: "Untitled scene", template: "retail-promo",
-  eyebrow: "NOVA MART · SPECIAL OFFER", headline: "BIG SUMMER DEAL.",
+  eyebrow: "{business} · SPECIAL OFFER", headline: "BIG SUMMER DEAL.",
   productName: "Sample Product", description: "Describe the offer in one readable line.",
   originalPrice: "£99", promoPrice: "£59", discountBadge: "-40%",
   ctaText: "SHOP IN STORE TODAY", tickerText: "",
@@ -43,18 +48,24 @@ export default function AdminPage() {
   const [selPlaylist, setSelPlaylist] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
+  const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
+  const [brandDraft, setBrandDraft] = useState<BrandSettings>(DEFAULT_BRAND);
+  const [brandReady, setBrandReady] = useState(true);
+  const [brandSaving, setBrandSaving] = useState(false);
+  const savedBrandRef = useRef<BrandSettings>(DEFAULT_BRAND);
   const selIdRef = useRef<string | null>(null);
   const selPlRef = useRef<string | null>(null);
   selIdRef.current = selId;
   selPlRef.current = selPlaylist;
 
   const load = useCallback(async () => {
-    const [s, p, a, d, sch] = await Promise.all([
+    const [s, p, a, d, sch, st] = await Promise.all([
       fetch("/api/scenes").then((r) => r.json()).catch(() => ({ scenes: [] })),
       fetch("/api/playlists").then((r) => r.json()).catch(() => ({ playlists: [] })),
       fetch("/api/assets").then((r) => r.json()).catch(() => ({ assets: [] })),
       fetch("/api/displays").then((r) => r.json()).catch(() => ({ displays: [] })),
       fetch("/api/schedules").then((r) => r.json()).catch(() => ({ schedules: [] })),
+      fetch("/api/settings").then((r) => r.json()).catch(() => null),
     ]);
     const dbScenes: Scene[] = s.scenes?.length ? s.scenes : DEMO_SCENES;
     setScenes(dbScenes);
@@ -62,6 +73,15 @@ export default function AdminPage() {
     setAssets(a.assets || []);
     setDisplays(d.displays || []);
     setSchedules(sch.schedules || []);
+    if (st?.brand) {
+      // keep unsaved edits on the Business tab; otherwise follow the saved settings
+      const b = normalizeBrand(st.brand);
+      const prev = savedBrandRef.current;
+      savedBrandRef.current = b;
+      setBrand(b);
+      setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
+      setBrandReady(st.ready !== false);
+    }
     if (!selIdRef.current && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
     if (!selPlRef.current && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
   }, []);
@@ -69,12 +89,29 @@ export default function AdminPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (t && ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "database"].includes(t)) {
+    if (t && TABS.includes(t)) {
       setTab(t);
     }
   }, []);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 3000); };
+
+  const saveBrand = async () => {
+    setBrandSaving(true);
+    try {
+      const r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: brandDraft }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Save failed");
+      const b = normalizeBrand(j.brand);
+      savedBrandRef.current = b;
+      setBrand(b);
+      setBrandDraft(b);
+      flash("Business settings saved — screens update within 30s");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "Save failed");
+    }
+    setBrandSaving(false);
+  };
   const set = (k: keyof Scene, v: never) => { setDraft((d) => ({ ...d, [k]: v })); setDirty(true); };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
@@ -127,9 +164,12 @@ export default function AdminPage() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0f1f]/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3 px-5 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/" className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-red-500 to-orange-400 font-black">N</Link>
+            <Link href="/" className={brand.logoUrl ? "flex h-10 items-center rounded-xl bg-white px-3" : "grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-red-500 to-orange-400 font-black"}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} className="h-6 w-auto max-w-[140px] object-contain" /> : (brand.businessName.charAt(0).toUpperCase() || "N")}
+            </Link>
             <div>
-              <div className="font-black tracking-widest">NOVASIGN CMS</div>
+              <div className="font-black uppercase tracking-widest">{brand.businessName || "NovaSign"} · signage</div>
               <div className="text-[11px] tracking-widest text-white/50">CONTENT → PLAYLISTS → DISPLAYS {dirty && <span className="ml-2 rounded bg-amber-400 px-2 py-0.5 text-black">UNSAVED</span>}</div>
             </div>
           </div>
@@ -142,8 +182,8 @@ export default function AdminPage() {
           </div>
         </div>
         <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-5 pb-3">
-          {(["scenes", "playlists", "assets", "displays", "schedules", "timeline", "database"] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`rounded-full px-5 py-2 text-sm font-black tracking-widest uppercase ${tab === t ? "bg-white text-black" : t === "database" ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>{t === "database" ? "⚡ database / supabase" : t}</button>
+          {TABS.map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-full px-5 py-2 text-sm font-black tracking-widest uppercase ${tab === t ? "bg-white text-black" : t === "database" ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>{t === "database" ? "⚡ database / supabase" : t === "business" ? "⚙ business" : t}</button>
           ))}
         </nav>
       </header>
@@ -209,6 +249,7 @@ export default function AdminPage() {
                 <Field label="CTA"><input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" /></Field>
                 <Field label="Ticker"><input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" /></Field>
               </div>
+              <p className="text-[11px] text-white/40">Tip: type <code className="text-white/70">{"{phone}"}</code> or <code className="text-white/70">{"{business}"}</code> in any text and the screen shows the details from the <button onClick={() => setTab("business")} className="underline">Business</button> tab.</p>
               <Field label="Image URL (or pick from Assets → click to copy)">
                 <div className="flex gap-2">
                   <input value={draft.imageUrl || ""} onChange={(e) => set("imageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
@@ -269,8 +310,8 @@ export default function AdminPage() {
                   <button onClick={() => setPreviewKey((k) => k + 1)} className="rounded-full bg-white/10 px-3 py-1 ring-1 ring-white/20">↻ REPLAY</button>
                 </span>
               </div>
-              <div className="sg-stage relative overflow-hidden rounded-3xl ring-1 ring-white/20 shadow-2xl">
-                <SceneRenderer scene={draft} reducedMotion={reduced} animKey={previewKey} mini />
+              <div className="sg-stage relative overflow-hidden rounded-3xl bg-black ring-1 ring-white/20 shadow-2xl">
+                <ScreenView scene={draft} brand={brand} reducedMotion={reduced} animKey={previewKey} progressKey={previewKey} preview />
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                 <Link href={`/display?playlistId=${selPlaylist || ""}`} target="_blank" className="rounded-xl bg-white/10 p-3 font-bold ring-1 ring-white/15 hover:bg-white/20">⛶ Full-screen<br />playlist</Link>
@@ -460,12 +501,29 @@ export default function AdminPage() {
               </div>
             </div>
             <div>
-              <div className="sg-stage relative overflow-hidden rounded-3xl ring-1 ring-white/20">
-                <SceneRenderer scene={draft} reducedMotion={reduced} animKey={previewKey} mini />
+              <div className="sg-stage relative overflow-hidden rounded-3xl bg-black ring-1 ring-white/20">
+                <ScreenView scene={draft} brand={brand} reducedMotion={reduced} animKey={previewKey} progressKey={previewKey} preview />
               </div>
               <button onClick={() => setPreviewKey((k) => k + 1)} className="mt-3 w-full rounded-2xl bg-white/10 py-3 text-sm font-black ring-1 ring-white/20">↻ Replay scene</button>
             </div>
           </div>
+        )}
+
+        {/* ── BUSINESS ── */}
+        {tab === "business" && (
+          <BusinessPanel
+            draft={brandDraft}
+            onChange={(k, v) => setBrandDraft((b) => ({ ...b, [k]: v }))}
+            dirty={!sameBrand(brandDraft, brand)}
+            saving={brandSaving}
+            ready={brandReady}
+            onSave={saveBrand}
+            onUndo={() => setBrandDraft(brand)}
+            scenes={scenes}
+            assets={assets}
+            onAssetsChanged={load}
+            flash={flash}
+          />
         )}
 
         {/* ── DATABASE / SUPABASE ── */}

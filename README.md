@@ -11,7 +11,7 @@ Two fictional demo campaigns, both loadable from `/admin`:
 
 ```bash
 npm install
-npx drizzle-kit push        # creates the 6 tables via DIRECT_URL or DATABASE_URL
+npx drizzle-kit push        # creates the 7 tables via DIRECT_URL or DATABASE_URL
 npm run build
 npm start                   # → http://localhost:3000
 ```
@@ -45,6 +45,16 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
+
+## Business settings (logo, phone, colours)
+
+`/admin?tab=business` holds the details every screen shares: business name, logo, phone number, brand colours and a ticker. They're saved in the `settings` table and reach the screens on their next poll (≤ 30 s).
+
+- Type `{phone}` or `{business}` in any slide text — headline, button, ticker, price-list rows — and the screen shows the saved value, so changing the number once updates every slide.
+- **Use these colours on every slide** swaps each slide's own colours for the brand colours.
+- The logo (top-left) and clock (top-right) can each be switched off.
+
+Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the screen, so the admin preview, a 1080p TV and a 4K TV show the same composition. Non-16:9 screens get thin black bars.
 
 ## Routes
 

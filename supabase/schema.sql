@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- NovaSign — Supabase SQL Schema Bootstrap (Alternative to `npx drizzle-kit push`)
 -- Paste this into Supabase Dashboard → SQL Editor → New Query → Run
--- Creates the 6 tables, enables RLS, and creates the "signage-media" bucket.
+-- Creates the 7 tables, enables RLS, and creates the "signage-media" bucket.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -100,6 +100,13 @@ CREATE TABLE IF NOT EXISTS public.schedules (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- App settings (key "brand" = business name, logo, phone, colours, ticker)
+CREATE TABLE IF NOT EXISTS public.settings (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON public.playlist_items (playlist_id, position);
 CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON public.schedules (enabled, priority DESC);
 
@@ -118,6 +125,7 @@ ALTER TABLE public.playlists      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playlist_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.displays       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schedules      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings       ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -125,7 +133,8 @@ BEGIN
      AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     REVOKE ALL ON TABLE
       public.assets, public.scenes, public.playlists,
-      public.playlist_items, public.displays, public.schedules
+      public.playlist_items, public.displays, public.schedules,
+      public.settings
     FROM anon, authenticated;
   END IF;
 END $$;

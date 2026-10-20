@@ -2,8 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import SceneRenderer from "@/components/SceneRenderer";
-import { BrandBar, Dots, ProgressBar, Ticker } from "@/components/PlayerChrome";
+import ScreenView from "@/components/ScreenView";
+import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 import { DEMO_SCENES, type Scene } from "@/lib/signage";
 import { transitionClass } from "@/lib/signage";
 
@@ -18,8 +18,7 @@ function useQuery() {
 function DisplayInner() {
   const { playlistId, displayId, pollSec } = useQuery();
   const [scenes, setScenes] = useState<Scene[]>(DEMO_SCENES);
-  const [playlistName, setPlaylistName] = useState("NOVA MART · Winter Sale Event");
-  const [mode, setMode] = useState("demo");
+  const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
   const [index, setIndex] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -45,8 +44,7 @@ function DisplayInner() {
       const r = await fetch(`/api/player?${q.toString()}`, { cache: "no-store" });
       const j = await r.json();
       if (j.scenes?.length) setScenes(j.scenes);
-      if (j.playlist?.name) setPlaylistName(j.playlist.name);
-      if (j.mode) setMode(j.mode);
+      if (j.brand) setBrand(normalizeBrand(j.brand));
     } catch {
       /* stay on demo */
     }
@@ -139,14 +137,14 @@ function DisplayInner() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-black text-white" style={{ cursor: showHelp ? "default" : "none" }}>
-      <div key={`${scene.id}-${index}`} className={`absolute inset-0 ${tClass}`}>
-        <SceneRenderer scene={scene} reducedMotion={reduced} animKey={`${scene.id}-${index}`} />
-      </div>
-
-      <BrandBar playlistName={`${playlistName} · ${mode.toUpperCase()}`} index={index} total={scenes.length} />
-      <Ticker text={scene.tickerText} color={scene.accentColor} />
-      {!paused && <ProgressBar durationSec={scene.durationSec} animKey={`${scene.id}-${index}-${paused}`} color={scene.accentColor} />}
-      <Dots total={scenes.length} index={index} color={scene.accentColor} />
+      <ScreenView
+        scene={scene}
+        brand={brand}
+        animKey={`${scene.id}-${index}`}
+        sceneClassName={tClass}
+        reducedMotion={reduced}
+        progressKey={paused ? undefined : `${scene.id}-${index}`}
+      />
 
       {paused && (
         <div className="absolute inset-0 z-40 grid place-items-center bg-black/60 backdrop-blur-sm">

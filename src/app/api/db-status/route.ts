@@ -39,7 +39,7 @@ export async function GET() {
       select c.relname, c.relrowsecurity
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r'
-        and c.relname in ('assets', 'scenes', 'playlists', 'playlist_items', 'displays', 'schedules')
+        and c.relname in ('assets', 'scenes', 'playlists', 'playlist_items', 'displays', 'schedules', 'settings')
     `);
     const rlsDisabled = rls.rows.filter((r) => !r.relrowsecurity).map((r) => r.relname);
 

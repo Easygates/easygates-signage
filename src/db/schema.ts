@@ -122,6 +122,13 @@ export const schedules = pgTable("schedules", {
   index("idx_schedules_enabled").on(t.enabled, t.priority.desc().nullsFirst()),
 ]).enableRLS();
 
+// Key/value app settings — "brand" holds the business details (see src/lib/brand.ts)
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
+
 export type SceneRow = typeof scenes.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
 export type AssetRow = typeof assets.$inferSelect;
