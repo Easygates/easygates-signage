@@ -4,16 +4,13 @@ import path from "node:path";
 import { sql } from "drizzle-orm";
 import { db, dbInfo } from "@/db";
 import { assets, displays, playlists, scenes, schedules } from "@/db/schema";
+import { supabaseStorageConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const started = Date.now();
-  const storageMode =
-    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? "supabase-storage"
-      : "local-disk";
+  const storageMode = supabaseStorageConfig() ? "supabase-storage" : "local-disk";
 
   let schemaSql = "";
   try {
@@ -37,6 +34,15 @@ export async function GET() {
       db.select({ n: sql<number>`count(*)::int` }).from(schedules),
     ]);
 
+    // Tables reachable by Supabase's Data API unless RLS is on (see supabase/schema.sql)
+    const rls = await db.execute<{ relname: string; relrowsecurity: boolean }>(sql`
+      select c.relname, c.relrowsecurity
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r'
+        and c.relname in ('assets', 'scenes', 'playlists', 'playlist_items', 'displays', 'schedules')
+    `);
+    const rlsDisabled = rls.rows.filter((r) => !r.relrowsecurity).map((r) => r.relname);
+
     return NextResponse.json({
       connected: true,
       latencyMs,
@@ -55,6 +61,7 @@ export async function GET() {
         displays: dpCount[0]?.n ?? 0,
         schedules: shCount[0]?.n ?? 0,
       },
+      rlsDisabled,
       schemaSql,
     });
   } catch (err) {

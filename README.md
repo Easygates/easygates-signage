@@ -30,13 +30,18 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 
 # Optional — route /api/upload directly to a public Supabase Storage bucket:
 SUPABASE_URL="https://[PROJECT-REF].supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+SUPABASE_SECRET_KEY="sb_secret_..."   # Settings → API Keys; server-only, never NEXT_PUBLIC_
 SUPABASE_STORAGE_BUCKET="signage-media"
 ```
 
+   A full template lives in [`.env.example`](.env.example). The legacy `SUPABASE_SERVICE_ROLE_KEY` (JWT) is still read as a fallback, but Supabase retires those keys at the end of 2026.
+
 4. **Create tables on Supabase** (pick either method):
-   - **CLI (Drizzle):** `npx drizzle-kit push`
-   - **Dashboard (No CLI needed):** paste [`supabase/schema.sql`](supabase/schema.sql) into **Supabase Dashboard → SQL Editor → Run**.
+   - **Dashboard (recommended):** paste [`supabase/schema.sql`](supabase/schema.sql) into **Supabase Dashboard → SQL Editor → Run**. It creates the tables, enables Row Level Security and creates the public `signage-media` Storage bucket. Safe to re-run.
+   - **CLI (Drizzle):** `npx drizzle-kit push` — creates the tables with RLS enabled; create the bucket yourself (Dashboard → Storage → New bucket, public).
+
+   > **Why RLS with no policies?** Supabase exposes `public` tables through its Data API to anyone holding the project's publishable/anon key. NovaSign never uses that API — it connects to Postgres directly as the table owner, which bypasses RLS — so enabling RLS without policies closes the API off (including the Fully Kiosk passwords in `displays.settings`) without affecting the app. `/admin?tab=database` warns if any table still has RLS off.
+
 5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.

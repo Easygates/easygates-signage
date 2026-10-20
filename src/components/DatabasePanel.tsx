@@ -20,6 +20,7 @@ interface DbStatus {
     displays: number;
     schedules: number;
   };
+  rlsDisabled?: string[];
   error?: string;
   schemaSql?: string;
 }
@@ -87,7 +88,7 @@ export default function DatabasePanel({
         "",
         `# Optional: Supabase Storage for media uploads (/api/upload)`,
         `SUPABASE_URL="https://${cleanRef}.supabase.co"`,
-        `SUPABASE_SERVICE_ROLE_KEY="${serviceKey.trim() || "your-service-role-key"}"`,
+        `SUPABASE_SECRET_KEY="${serviceKey.trim() || "sb_secret_..."}"`,
         `SUPABASE_STORAGE_BUCKET="${bucketName.trim() || "signage-media"}"`
       );
     }
@@ -158,6 +159,15 @@ export default function DatabasePanel({
         {status?.error && (
           <div className="mt-4 rounded-2xl bg-red-500/15 p-4 font-mono text-xs text-red-200 ring-1 ring-red-400/30">
             Connection error: {status.error}
+          </div>
+        )}
+
+        {status?.provider === "supabase" && !!status.rlsDisabled?.length && (
+          <div className="mt-4 rounded-2xl bg-amber-400/10 p-4 text-xs leading-relaxed text-amber-200 ring-1 ring-amber-300/25">
+            <strong>Row Level Security is off</strong> for{" "}
+            <code>{status.rlsDisabled.join(", ")}</code> — anyone with your project&apos;s
+            publishable key can read and edit these tables through the Supabase Data API.
+            Re-run <code>supabase/schema.sql</code> in the SQL Editor to lock them down.
           </div>
         )}
 
@@ -261,12 +271,12 @@ export default function DatabasePanel({
                 />
               </div>
               <div>
-                <label className="lbl">Service Role Secret Key</label>
+                <label className="lbl">Secret Key (Settings → API Keys)</label>
                 <input
                   type="password"
                   value={serviceKey}
                   onChange={(e) => setServiceKey(e.target.value)}
-                  placeholder="eyJhbGciOi..."
+                  placeholder="sb_secret_..."
                   className="inp font-mono"
                 />
               </div>
@@ -322,7 +332,8 @@ export default function DatabasePanel({
                 npx drizzle-kit push
               </pre>
               <em>— OR —</em> paste <code>supabase/schema.sql</code> directly into{" "}
-              <strong className="text-white">Supabase Dashboard → SQL Editor → Run</strong>:
+              <strong className="text-white">Supabase Dashboard → SQL Editor → Run</strong>{" "}
+              (also enables RLS and creates the <code>signage-media</code> Storage bucket):
               {status?.schemaSql && (
                 <button
                   onClick={async () => {

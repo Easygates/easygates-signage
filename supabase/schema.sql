@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- NovaSign — Supabase SQL Schema Bootstrap (Alternative to `npx drizzle-kit push`)
 -- Paste this into Supabase Dashboard → SQL Editor → New Query → Run
+-- Creates the 6 tables, enables RLS, and creates the "signage-media" bucket.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -101,3 +102,49 @@ CREATE TABLE IF NOT EXISTS public.schedules (
 
 CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON public.playlist_items (playlist_id, position);
 CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON public.schedules (enabled, priority DESC);
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Lock the tables away from Supabase's public Data API (REST / GraphQL).
+-- NovaSign talks to Postgres directly as the table owner, which bypasses RLS,
+-- so no policies are needed. Without this, anyone holding the project's
+-- publishable/anon key could read displays.settings (Fully Kiosk passwords)
+-- and edit every scene. Safe to re-run; the REVOKE and bucket steps are
+-- skipped on plain local PostgreSQL.
+-- ───────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.assets         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scenes         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.playlists      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.playlist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.displays       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.schedules      ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON TABLE
+      public.assets, public.scenes, public.playlists,
+      public.playlist_items, public.displays, public.schedules
+    FROM anon, authenticated;
+  END IF;
+END $$;
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Public Storage bucket for /api/upload (SUPABASE_STORAGE_BUCKET, default
+-- "signage-media"). Uploads use the server-side secret key; screens read files
+-- via the public URL, so no storage.objects policies are needed. Limits mirror
+-- the checks in src/app/api/upload/route.ts.
+-- ───────────────────────────────────────────────────────────────────────────
+
+DO $$
+BEGIN
+  IF to_regclass('storage.buckets') IS NOT NULL THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+      'signage-media', 'signage-media', true, 26214400,
+      ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm']
+    )
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;

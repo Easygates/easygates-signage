@@ -8,6 +8,8 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 
+// Every table enables RLS with no policies: the app connects as the table owner
+// (bypasses RLS), while Supabase's public Data API roles (anon/authenticated) see nothing.
 export const assets = pgTable("assets", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -18,7 +20,7 @@ export const assets = pgTable("assets", {
   width: integer("width"),
   height: integer("height"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export const scenes = pgTable("scenes", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -60,7 +62,7 @@ export const scenes = pgTable("scenes", {
   items: jsonb("items").$type<MenuItem[] | null>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export type MenuItem = {
   name: string;
@@ -77,7 +79,7 @@ export const playlists = pgTable("playlists", {
   loop: boolean("loop").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export const playlistItems = pgTable("playlist_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,7 +88,7 @@ export const playlistItems = pgTable("playlist_items", {
   position: integer("position").notNull().default(0),
   durationOverride: integer("duration_override"),
   transitionOverride: text("transition_override"),
-});
+}).enableRLS();
 
 export const displays = pgTable("displays", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -100,7 +102,7 @@ export const displays = pgTable("displays", {
   pairingCode: text("pairing_code"),
   settings: jsonb("settings").$type<Record<string, unknown> | null>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export const schedules = pgTable("schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -113,7 +115,7 @@ export const schedules = pgTable("schedules", {
   priority: integer("priority").default(0),
   enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export type SceneRow = typeof scenes.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
