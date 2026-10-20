@@ -3,14 +3,14 @@ import { db } from "@/db";
 import { playlists, playlistItems, scenes, displays, schedules } from "@/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { rowToScene } from "@/lib/server";
-import { DEMO_SCENES } from "@/lib/signage";
+import { EASYGATES_SCENES } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
 /** Resolve what a display should play right now.
  *  ?displayId= — picks the display's playlist, overridden by an active schedule
  *  ?playlistId= — plays that playlist directly (preview / pairing)
- *  Falls back to the demo campaign when DB is empty/unavailable.
+ *  Falls back to the built-in Easygates showroom playlist when DB is empty/unavailable.
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
 
     if (playlistId) {
       const p = await db.select().from(playlists).where(eq(playlists.id, playlistId)).limit(1);
-      if (!p[0]) return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "Demo", scenes: DEMO_SCENES } });
+      if (!p[0]) return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "Demo", scenes: EASYGATES_SCENES } });
       const items = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId)).orderBy(asc(playlistItems.position));
       const ids = items.map((i) => i.sceneId);
       const byId = new Map();
@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         mode: "playlist",
         playlist: { id: p[0].id, name: p[0].name, description: p[0].description, loop: p[0].loop, items },
-        scenes: resolved.length ? resolved : DEMO_SCENES,
+        scenes: resolved.length ? resolved : EASYGATES_SCENES,
         display,
         fetchedAt: new Date().toISOString(),
       });
@@ -72,7 +72,7 @@ export async function GET(req: Request) {
 
     // No playlist selected → first playlist, else demo
     const all = await db.select().from(playlists).limit(1);
-    if (!all[0]) return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
+    if (!all[0]) return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "Easygates Showroom", scenes: EASYGATES_SCENES }, scenes: EASYGATES_SCENES });
     playlistId = all[0].id;
     const p2 = await db.select().from(playlists).where(eq(playlists.id, playlistId)).limit(1);
     const items2 = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId)).orderBy(asc(playlistItems.position));
@@ -89,9 +89,9 @@ export async function GET(req: Request) {
         return { ...s, durationSec: i.durationOverride || s.durationSec, transition: (i.transitionOverride as never) || s.transition };
       })
       .filter(Boolean);
-    return NextResponse.json({ mode: "playlist", playlist: { id: p2[0].id, name: p2[0].name, description: p2[0].description, loop: p2[0].loop, items: items2 }, scenes: resolved2.length ? resolved2 : DEMO_SCENES, display, fetchedAt: new Date().toISOString() });
+    return NextResponse.json({ mode: "playlist", playlist: { id: p2[0].id, name: p2[0].name, description: p2[0].description, loop: p2[0].loop, items: items2 }, scenes: resolved2.length ? resolved2 : EASYGATES_SCENES, display, fetchedAt: new Date().toISOString() });
   } catch (e) {
     console.error("player fallback to demo:", e);
-    return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo (offline)", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
+    return NextResponse.json({ mode: "demo", playlist: { id: "demo", name: "Easygates Showroom (offline)", scenes: EASYGATES_SCENES }, scenes: EASYGATES_SCENES });
   }
 }

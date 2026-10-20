@@ -150,7 +150,7 @@ export default function DatabasePanel({
               }}
               className="rounded-full bg-white px-4 py-2 text-xs font-black text-black hover:bg-white/90"
             >
-              ✨ Seed 8 Demo Scenes
+              ✨ Seed Easygates Showroom
             </button>
           </div>
         </div>

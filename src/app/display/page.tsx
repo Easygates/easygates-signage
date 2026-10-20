@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import SceneRenderer from "@/components/SceneRenderer";
 import { BrandBar, Dots, ProgressBar, Ticker } from "@/components/PlayerChrome";
-import { DEMO_SCENES, type Scene } from "@/lib/signage";
+import { EASYGATES_SCENES, type Scene } from "@/lib/signage";
 import { transitionClass } from "@/lib/signage";
 
 function useQuery() {
@@ -17,8 +17,8 @@ function useQuery() {
 
 function DisplayInner() {
   const { playlistId, displayId, pollSec } = useQuery();
-  const [scenes, setScenes] = useState<Scene[]>(DEMO_SCENES);
-  const [playlistName, setPlaylistName] = useState("NOVA MART · Winter Sale Event");
+  const [scenes, setScenes] = useState<Scene[]>(EASYGATES_SCENES);
+  const [playlistName, setPlaylistName] = useState("Easygates Showroom");
   const [mode, setMode] = useState("demo");
   const [index, setIndex] = useState(0);
   const [exiting, setExiting] = useState(false);
@@ -133,7 +133,7 @@ function DisplayInner() {
     return () => window.removeEventListener("keydown", fn);
   }, [go]);
 
-  const scene = scenes[index] ?? DEMO_SCENES[0];
+  const scene = scenes[index] ?? EASYGATES_SCENES[0];
   const tClass = useMemo(() => transitionClass(scene.transition, exiting ? "exit" : "enter"), [scene.transition, exiting]);
   void muted;
 

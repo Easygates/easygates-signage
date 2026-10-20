@@ -17,11 +17,11 @@ interface PlaylistFull {
 
 const emptyScene = (): Scene => ({
   id: "new", name: "Untitled scene", template: "retail-promo",
-  eyebrow: "NOVA MART · SPECIAL OFFER", headline: "BIG SUMMER DEAL.",
+  eyebrow: "EASYGATES · SPECIAL OFFER", headline: "BIG SUMMER DEAL.",
   productName: "Sample Product", description: "Describe the offer in one readable line.",
   originalPrice: "£99", promoPrice: "£59", discountBadge: "-40%",
   ctaText: "SHOP IN STORE TODAY", tickerText: "",
-  imageUrl: DEMO_SCENES[0].imageUrl, imageFit: "cover", imagePosition: "center",
+  imageUrl: "/trade/gate-hero.jpg", imageFit: "cover", imagePosition: "center",
   bgFrom: "#0b1020", bgTo: "#2a3a8c", bgAngle: 135,
   accentColor: "#ff3b30", textColor: "#ffffff", mutedColor: "#c7cede", cardColor: "#141b33",
   animationPreset: "launch", durationSec: 10, transition: "fade", staggerMs: 120,
@@ -108,13 +108,13 @@ export default function AdminPage() {
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
-  const seed = async (campaign: "retail" | "trade" = "retail") => {
+  const seed = async (campaign: "retail" | "easygates" = "easygates") => {
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     load();
     flash(
-      campaign === "trade"
-        ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
+      campaign === "easygates"
+        ? `Easygates showroom loaded (${j.created ?? "?"} new scenes, 5 screens)`
         : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
     );
   };
@@ -135,7 +135,7 @@ export default function AdminPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
             <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
-            <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
+            <button onClick={() => seed("easygates")} className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏠 Easygates showroom</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             {msg && <span className="rounded-full bg-green-500/20 px-4 py-2 text-green-300 ring-1 ring-green-400/40">{msg}</span>}
@@ -505,6 +505,7 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "brand-wall": "Up to 8 brand tiles — name + short descriptor",
   "product-spec": "Up to 6 spec rows — name = label, detail = value",
   "callout-emergency": "Up to 3 job types — name + detail",
+  welcome: "Up to 3 highlight tiles — name + detail",
 };
 
 function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {

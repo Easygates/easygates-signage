@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { buildTimeline, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { buildTimeline, DEMO_SCENES, EASYGATES_SCENES, ITEM_TEMPLATES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
 // Templates that must carry a hero image
+// (retail-promo and product-grid draw a brand/model plate when there's no photo)
 const IMAGE_TEMPLATES = new Set([
-  "retail-promo",
   "food-menu",
   "product-showcase",
-  "product-grid",
   "fullscreen-campaign",
   "split-promo",
   "service-offer",
@@ -20,7 +19,7 @@ export async function GET() {
   const checks: { name: string; pass: boolean; detail?: string }[] = [];
   const ids = new Set(TEMPLATES.map((t) => t.id));
   const itemTemplates = new Set<string>(ITEM_TEMPLATES);
-  const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES];
+  const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES, ...EASYGATES_SCENES];
 
   checks.push({
     name: `template catalogue has ${TEMPLATES.length} entries with unique ids`,

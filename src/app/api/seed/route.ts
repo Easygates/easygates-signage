@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { DEMO_SCENES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { DEMO_SCENES, EASYGATES_SCENES } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-type Campaign = "retail" | "trade";
+type Campaign = "retail" | "easygates";
 
 const CAMPAIGNS = {
   retail: {
@@ -20,31 +20,31 @@ const CAMPAIGNS = {
       { name: "Café Menu Board", location: "Café counter", pairingCode: "CAFE" },
     ],
   },
-  trade: {
-    scenes: TRADE_DEMO_SCENES,
-    playlistName: "APEX · Electrical, Smart Home & Gates",
-    description: "6-scene trade campaign: gate automation, smart home, upfront prices",
+  easygates: {
+    scenes: EASYGATES_SCENES,
+    playlistName: "Easygates Showroom",
+    description: "Welcome screen + current easygates.co.uk deals: gate kits, garage door openers, Aqara smart home",
     scheduleName: "Opening hours",
     displays: [
-      { name: "01 · Showroom window", location: "Front window", pairingCode: "WIND" },
-      { name: "02 · Gate display", location: "Gate & barrier bay", pairingCode: "GATE" },
-      { name: "03 · Smart home wall", location: "Demo wall", pairingCode: "SMAR" },
-      { name: "04 · Trade counter", location: "Trade counter", pairingCode: "TRDE" },
-      { name: "05 · Workshop", location: "Workshop / loading bay", pairingCode: "WORK" },
+      { name: "01 · Showroom entrance", location: "Entrance / reception", pairingCode: "ENTR" },
+      { name: "02 · Gate automation", location: "Gate kit display", pairingCode: "GATE" },
+      { name: "03 · Garage doors", location: "Garage door display", pairingCode: "GRGE" },
+      { name: "04 · Smart home", location: "Smart home display", pairingCode: "SMRT" },
+      { name: "05 · Trade counter", location: "Trade counter", pairingCode: "TRDE" },
     ],
   },
 } satisfies Record<Campaign, { scenes: typeof DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
 
 async function campaignFrom(req: Request): Promise<Campaign> {
   const q = new URL(req.url).searchParams.get("campaign");
-  if (q === "trade" || q === "retail") return q;
+  if (q === "easygates" || q === "retail") return q;
   try {
     const body = await req.json();
-    if (body?.campaign === "trade" || body?.campaign === "retail") return body.campaign;
+    if (body?.campaign === "easygates" || body?.campaign === "retail") return body.campaign;
   } catch {
     /* no body */
   }
-  return "retail";
+  return "easygates";
 }
 
 export async function POST(req: Request) {

@@ -1,12 +1,17 @@
 "use client";
 
+import { BRAND } from "@/lib/signage";
+
 export function BrandBar({ playlistName, index, total }: { playlistName: string; index: number; total: number }) {
   return (
     <div className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex items-center justify-between px-6 py-4">
       <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white font-black text-black">N</span>
+        <span className="flex h-9 items-center rounded-xl bg-white px-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={BRAND.logo} alt="" className="h-5 w-auto" draggable={false} />
+        </span>
         <div className="leading-tight">
-          <div className="text-sm font-black tracking-[0.22em]">NOVA MART</div>
+          <div className="text-sm font-black tracking-[0.22em]">{BRAND.name.toUpperCase()}</div>
           <div className="text-[11px] font-medium tracking-widest opacity-70">{playlistName}</div>
         </div>
       </div>

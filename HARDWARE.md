@@ -62,7 +62,7 @@ NovaSign is built for this: the CMS is the only stateful thing, and every screen
         └──▶ TV 5  http://cms:3000/display?displayId=E   → "Workshop" playlist
 ```
 
-- Each screen opens **its own URL**. Create it in **Admin → Displays → + Register display**, then **COPY URL**. The **⚡ Trade demo** button pre-registers five screens for you.
+- Each screen opens **its own URL**. Create it in **Admin → Displays → + Register display**, then **COPY URL**. The **🏠 Easygates showroom** button pre-registers five screens for you.
 - The player polls `/api/player` every **30 s**, so edits made on your computer appear on the TVs within half a minute — no app, no USB stick, no reinstall.
 - It heartbeats every 20 s, which is what turns the dot green in Admin → Displays.
 - Schedules override a display's playlist by time of day and priority.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { DEMO_SCENES, EASYGATES_SCENES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
@@ -90,14 +90,14 @@ export default function Home() {
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEMPLATES.map((t, i) => {
-            const demo = [...DEMO_SCENES, ...TRADE_DEMO_SCENES].find((s) => s.template === t.id);
+            const demo = [...DEMO_SCENES, ...TRADE_DEMO_SCENES, ...EASYGATES_SCENES].find((s) => s.template === t.id);
             return (
               <Link key={t.id} href="/admin" className="group overflow-hidden rounded-3xl bg-white/[0.05] ring-1 ring-white/10 hover:ring-white/30">
                 <div className="relative h-40 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {demo?.imageUrl && <img src={demo.imageUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />}
                   <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, transparent 30%, ${demo?.bgFrom || "#000"} 100%)` }} />
-                  <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-[11px] font-black tracking-widest backdrop-blur">0{i + 1}</span>
+                  <span className="absolute left-3 top-3 rounded-lg bg-black/60 px-2.5 py-1 text-[11px] font-black tracking-widest backdrop-blur">{String(i + 1).padStart(2, "0")}</span>
                 </div>
                 <div className="p-5">
                   <div className="font-black">{t.name}</div>
@@ -136,7 +136,7 @@ export default function Home() {
       </section>
 
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-8 text-xs tracking-widest text-white/40">
-        <span>NOVASIGN · FICTIONAL DEMO BRAND “NOVA MART” · ALL PRICES FICTIONAL</span>
+        <span>NOVASIGN · RETAIL SAMPLES USE FICTIONAL BRAND “NOVA MART” · EASYGATES PRICES FROM EASYGATES.CO.UK, OCT 2026</span>
         <span className="flex gap-4"><Link href="/api/selftest" className="hover:text-white">SELF-TEST</Link><Link href="/docs" className="hover:text-white">DOCS</Link><Link href="/display" className="hover:text-white">DISPLAY</Link></span>
       </footer>
     </main>

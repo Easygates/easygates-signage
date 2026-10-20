@@ -9,6 +9,7 @@ const TEMPLATES = [
   "retail-promo", "food-menu", "product-showcase", "product-grid",
   "announcement", "fullscreen-campaign", "split-promo",
   "service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency",
+  "welcome",
 ];
 
 function buildTimeline(scene) {
@@ -31,7 +32,7 @@ function buildTimeline(scene) {
 describe("animation engine", () => {
   it("all presets and templates are defined", () => {
     assert.equal(PRESETS.length, 5);
-    assert.equal(TEMPLATES.length, 12);
+    assert.equal(TEMPLATES.length, 13);
   });
 
   it("timeline is ordered and ends with an exit inside the scene duration", () => {

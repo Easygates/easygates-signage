@@ -1,8 +1,8 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { Scene } from "@/lib/signage";
-import { ANIMATION_PRESETS } from "@/lib/signage";
+import { ANIMATION_PRESETS, BRAND } from "@/lib/signage";
 
 interface Props {
   scene: Scene;
@@ -113,6 +113,26 @@ function Cta({ scene, d }: { scene: Scene; d: ReturnType<typeof delays> }) {
   );
 }
 
+/** Stand-in for a product photo: brand + model set as type, e.g. "Chamberlain" / "ML1000EV-F" */
+function ProductPlate({ name, scene, compact = false }: { name: string; scene: Scene; compact?: boolean }) {
+  const [brand, ...rest] = name.trim().split(/\s+/);
+  const model = rest.join(" ") || brand;
+  return (
+    <div className="relative h-full w-full overflow-hidden" style={{ background: `linear-gradient(145deg, ${scene.cardColor}, ${scene.bgTo})` }}>
+      <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-30 blur-2xl" style={{ background: scene.accentColor }} />
+      <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "repeating-linear-gradient(135deg, #fff 0 2px, transparent 2px 22px)" }} />
+      {/* compact (grid card): keep clear of the tag badge in the top-left corner */}
+      <div className={`relative flex h-full flex-col ${compact ? "justify-end gap-2 p-5" : "justify-between p-[7%]"}`}>
+        <span className={`font-black uppercase ${compact ? "text-xs tracking-[0.24em]" : "text-[clamp(0.8rem,1.4vw,1.15rem)] tracking-[0.3em]"}`} style={{ color: scene.accentColor }}>
+          {rest.length ? brand : ""}
+        </span>
+        <span className={`sg-display break-words ${compact ? "text-[clamp(1.4rem,2.4vw,2.2rem)]" : "text-[clamp(2.2rem,4.8vw,4.4rem)]"}`}>{model}</span>
+        <span className={`rounded-full ${compact ? "h-1 w-14" : "h-1.5 w-24"}`} style={{ background: scene.accentColor }} />
+      </div>
+    </div>
+  );
+}
+
 function ProductImage({
   scene,
   d,
@@ -124,7 +144,16 @@ function ProductImage({
   className?: string;
   badge?: boolean;
 }) {
-  if (!scene.imageUrl) return null;
+  if (!scene.imageUrl) {
+    if (!scene.productName) return null;
+    return (
+      <div className={`sg-anim sg-scale-in relative ${className}`} style={d.style(1, 60)}>
+        <div className="aspect-[16/10] overflow-hidden rounded-[28px] shadow-[0_40px_90px_rgba(0,0,0,0.5)] ring-1 ring-white/20">
+          <ProductPlate name={scene.productName} scene={scene} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`sg-anim sg-scale-in relative ${className}`} style={d.style(1, 60)}>
       <div className={`relative overflow-hidden rounded-[28px] shadow-[0_40px_90px_rgba(0,0,0,0.5)] ring-1 ring-white/20 ${kbClass(scene.kenBurns)}`}>
@@ -148,6 +177,15 @@ function ProductImage({
       )}
     </div>
   );
+}
+
+/** "GOOD MORNING · " etc. — read once per mount, so it refreshes every time the scene comes round */
+function Greeting() {
+  const [greeting] = useState(() => {
+    const h = new Date().getHours();
+    return h < 12 ? "GOOD MORNING" : h < 17 ? "GOOD AFTERNOON" : "GOOD EVENING";
+  });
+  return <span suppressHydrationWarning>{greeting} · </span>;
 }
 
 export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: Props) {
@@ -273,7 +311,7 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
               <div key={i} className="sg-anim sg-scale-in overflow-hidden rounded-[22px] bg-white/[0.07] ring-1 ring-white/15 backdrop-blur" style={d.style(2 + i)}>
                 <div className="relative h-[22vh] overflow-hidden lg:h-[30vh]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {it.image && <img src={it.image} alt={it.name} className="h-full w-full object-cover" draggable={false} />}
+                  {it.image ? <img src={it.image} alt={it.name} className="h-full w-full object-cover" draggable={false} /> : <ProductPlate name={it.name} scene={scene} compact />}
                   {it.tag && <span className="absolute left-3 top-3 rounded-lg px-3 py-1 text-sm font-black text-white shadow-lg" style={{ background: scene.accentColor }}>{it.tag}</span>}
                 </div>
                 <div className="p-4">
@@ -441,11 +479,11 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
               {scene.subheadline && (
                 <p className="text-right text-[clamp(0.66rem,1vw,0.88rem)] leading-snug opacity-60">{scene.subheadline}</p>
               )}
-              <span className="hidden shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-black tracking-[0.18em] text-black lg:inline-block" style={{ background: scene.accentColor }}>INC. VAT</span>
+              <span className="hidden shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-black tracking-[0.18em] text-black lg:inline-block" style={{ background: scene.accentColor }}>{scene.discountBadge || "INC. VAT"}</span>
             </div>
           </div>
 
-          <div className="mt-3 grid flex-1 grid-cols-1 content-center gap-x-12 md:grid-flow-col md:grid-cols-2 md:grid-rows-4">
+          <div className="mt-3 grid flex-1 grid-cols-1 content-center gap-x-12 md:grid-flow-col md:grid-cols-2 md:grid-rows-[repeat(4,auto)]">
             {(scene.items || []).slice(0, 8).map((it, i) => (
               <div key={i} className="sg-anim sg-fade-up flex items-baseline gap-3 border-b border-white/10 py-[clamp(0.3rem,0.85vh,0.65rem)]" style={d.style(2 + i)}>
                 <div className="min-w-0 flex-1">
@@ -464,7 +502,7 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
           {scene.ctaText && (
             <div className="sg-anim sg-fade-up mb-6 mt-3 flex items-center justify-between gap-4 rounded-2xl px-5 py-3" style={{ ...d.style(10), background: `${scene.accentColor}1f`, border: `1px solid ${scene.accentColor}55` }}>
               <span className="text-[clamp(0.78rem,1.25vw,1rem)] font-black tracking-wide">{scene.ctaText}</span>
-              <span className="hidden text-[10px] font-bold tracking-[0.2em] opacity-55 lg:block">FIXED PRICE · CERTIFIED WORK</span>
+              <span className="hidden text-[10px] font-bold tracking-[0.2em] opacity-55 lg:block">{scene.description || "FIXED PRICE · CERTIFIED WORK"}</span>
             </div>
           )}
         </div>
@@ -589,6 +627,63 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
                   24/7 · 365<br />Engineers on call
                 </span>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 13 · WELCOME (showroom) ═══ */}
+      {t === "welcome" && (
+        <div className="relative z-10 h-full">
+          {scene.imageUrl && (
+            <div className="absolute inset-y-0 right-0 hidden w-[52%] overflow-hidden lg:block" style={{ maskImage: "linear-gradient(90deg, transparent 0%, black 45%)", WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 45%)" }}>
+              <div className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+              </div>
+              <div className="absolute inset-0" style={{ background: scene.bgFrom, opacity: (scene.overlayOpacity ?? 40) / 160 }} />
+            </div>
+          )}
+          <div className="relative z-10 flex h-full max-w-[1150px] flex-col justify-center gap-[clamp(0.8rem,2vh,1.4rem)] px-[6%] py-[5%]">
+            <div className="sg-anim sg-fade-down flex items-center gap-3" style={d.style(0)}>
+              <span className="inline-block h-[10px] w-[42px] rounded-full" style={{ background: scene.accentColor }} />
+              <span className="text-[clamp(0.7rem,1.4vw,1.05rem)] font-bold uppercase tracking-[0.28em]" style={{ color: scene.accentColor }}>
+                <Greeting />{scene.eyebrow}
+              </span>
+            </div>
+            <div className="sg-anim sg-scale-in w-fit rounded-[28px] bg-white px-[clamp(1.2rem,2.6vw,2.6rem)] py-[clamp(0.9rem,2vw,1.8rem)] shadow-[0_30px_80px_rgba(0,0,0,0.45)]" style={d.style(1)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={BRAND.logo} alt={BRAND.name} className="h-[clamp(2.6rem,6.5vw,6.2rem)] w-auto" draggable={false} />
+            </div>
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s * 2}ms` }} className="sg-display text-[clamp(2.2rem,4.8vw,4.4rem)]">
+                {scene.headline}
+              </span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade-up max-w-2xl text-[clamp(0.95rem,1.6vw,1.3rem)] leading-relaxed" style={{ ...d.style(3), color: scene.mutedColor }}>
+                {scene.subheadline}
+              </p>
+            )}
+            <div className="grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {(scene.items || []).slice(0, 3).map((it, i) => (
+                <div key={i} className="sg-anim sg-fade-up rounded-2xl bg-white/[0.07] px-4 py-3 ring-1 ring-white/15 backdrop-blur" style={d.style(4 + i)}>
+                  <div className="mb-2 h-[3px] w-8 rounded-full" style={{ background: scene.accentColor }} />
+                  <div className="text-[clamp(0.85rem,1.35vw,1.1rem)] font-extrabold leading-tight">{it.name}</div>
+                  {it.desc && <div className="mt-0.5 text-[clamp(0.65rem,1vw,0.85rem)] opacity-65">{it.desc}</div>}
+                </div>
+              ))}
+            </div>
+            {scene.ctaText && (
+              <div className="sg-anim sg-fade-up" style={d.style(7)}>
+                <span className="inline-flex items-center gap-3 rounded-full bg-white px-7 py-3.5 text-[clamp(0.85rem,1.5vw,1.15rem)] font-black tracking-wide text-black shadow-[0_16px_40px_rgba(0,0,0,0.35)]">
+                  <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full" style={{ background: scene.accentColor }} />
+                  {scene.ctaText}
+                </span>
+              </div>
+            )}
+            {scene.description && (
+              <p className="sg-anim sg-fade text-[clamp(0.6rem,0.9vw,0.75rem)] opacity-50" style={d.style(8)}>{scene.description}</p>
             )}
           </div>
         </div>

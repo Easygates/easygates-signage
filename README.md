@@ -2,10 +2,12 @@
 
 Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 12 art-directed templates (7 retail + 5 trade), a deterministic animation engine, playlists, schedules and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Two fictional demo campaigns, both loadable from `/admin`:
+Two campaigns, both loadable from `/admin`:
 
-- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
-- **APEX · Electrical, Smart Home & Gates** — 6 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out) plus 5 pre-registered screens.
+- **Easygates Showroom** (🏠 button, the default) — 8 scenes: a welcome screen with the Easygates logo and a time-of-day greeting, then current easygates.co.uk deals (Chamberlain ML1000EV-F hero deal, gate kit deals, sliding gate kits, Aqara smart home kits, garage door opener price list, brands we stock, shop online) plus 5 pre-registered showroom screens. Prices were taken from easygates.co.uk in October 2026 — check them against the website and edit them in `/admin` when they change.
+- **NOVA MART · Winter Sale Event** (✨ button) — 8 fictional retail scenes, kept as samples of the 7 retail templates.
+
+The fictional APEX trade scenes in `src/lib/signage.ts` remain as code-only samples of the trade templates (home page gallery + self-test).
 
 ## Quick start (Local PostgreSQL or Supabase)
 
@@ -37,7 +39,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 4. **Create tables on Supabase** (pick either method):
    - **CLI (Drizzle):** `npx drizzle-kit push`
    - **Dashboard (No CLI needed):** paste [`supabase/schema.sql`](supabase/schema.sql) into **Supabase Dashboard → SQL Editor → Run**.
-5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
+5. Start the server and load the showroom playlist via **🏠 Easygates showroom** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed'` (`campaign=easygates` is the default; `campaign=retail` loads the fictional retail samples).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 
