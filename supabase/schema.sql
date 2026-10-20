@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.scenes (
   image_fit text DEFAULT 'cover',
   image_position text DEFAULT 'center',
   video_url text,
+  bg_image_url text,
   bg_from text DEFAULT '#0b1020',
   bg_to text DEFAULT '#1e2a5a',
   bg_angle integer DEFAULT 135,
@@ -109,6 +110,13 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON public.playlist_items (playlist_id, position);
 CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON public.schedules (enabled, priority DESC);
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Add columns that didn't exist in earlier schema versions. Safe to re-run on
+-- existing projects (ADD COLUMN IF NOT EXISTS is a no-op when the column
+-- already exists).
+-- ───────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS bg_image_url text;
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Lock the tables away from Supabase's public Data API (REST / GraphQL).

@@ -50,6 +50,18 @@ export default function BusinessPanel({
     if (url) { onChange("logoUrl", url); onAssetsChanged(); flash("Logo uploaded — press Save to use it on the screens"); }
   };
 
+  const uploadBackground = async (f: File) => {
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", f);
+    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    const j = await r.json().catch(() => ({}));
+    setUploading(false);
+    if (j.error) { flash(j.error); return; }
+    const url = j.asset?.url || j.url;
+    if (url) { onChange("defaultBgImageUrl", url); onAssetsChanged(); flash("Default background uploaded — press Save to use it on the screens"); }
+  };
+
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_560px]">
       <div className="min-w-0 space-y-4">
@@ -104,6 +116,37 @@ export default function BusinessPanel({
             <Check checked={draft.logoOnWhite} onChange={(v) => onChange("logoOnWhite", v)} label="Put the logo on a white badge" hint="Keeps coloured logos readable on dark slides." />
             <Check checked={draft.showName} onChange={(v) => onChange("showName", v)} label="Show the business name next to the logo" />
           </div>
+        </Section>
+
+        <Section title="Default background image" hint={<>Slides that do not have a background image of their own show this one on every screen. Leave empty to use each slide&apos;s own background.</>}>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`flex h-16 min-w-[120px] items-center justify-center rounded-2xl px-4 ring-1 ring-white/15 bg-black/40`}>
+              {draft.defaultBgImageUrl ? (
+                <img src={draft.defaultBgImageUrl} alt="Default background" className="h-10 w-auto max-w-[260px] object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-white/50">No default background</span>
+              )}
+            </span>
+            <label className="cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-black text-black hover:bg-white/90">
+              {uploading ? "Uploading…" : "Upload background"}
+              <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBackground(f); e.target.value = ""; }} />
+            </label>
+            {draft.defaultBgImageUrl && <button onClick={() => onChange("defaultBgImageUrl", "")} className="rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold ring-1 ring-white/20">Remove</button>}
+          </div>
+          <div className="mt-3">
+            <label className="lbl">Background image address</label>
+            <input value={draft.defaultBgImageUrl} onChange={(e) => onChange("defaultBgImageUrl", e.target.value)} className="inp" placeholder="https://…" />
+          </div>
+          {images.length > 0 && (
+            <div className="mt-3">
+              <label className="lbl">Or pick from your media library</label>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {images.slice(0, 16).map((a) => (
+                  <img key={a.id} src={a.url} alt={a.name} title={a.name} onClick={() => onChange("defaultBgImageUrl", a.url)} className="h-14 w-20 shrink-0 cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" />
+                ))}
+              </div>
+            </div>
+          )}
         </Section>
 
         <Section title="Screen corners">

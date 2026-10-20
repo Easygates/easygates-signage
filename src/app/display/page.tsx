@@ -22,7 +22,10 @@ function DisplayInner() {
   const [index, setIndex] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
   const [muted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,7 +33,6 @@ function DisplayInner() {
   // reduced motion: OS preference
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
     const fn = (e: MediaQueryListEvent) => setReduced(e.matches);
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
@@ -51,15 +53,15 @@ function DisplayInner() {
   }, [playlistId, displayId]);
 
   useEffect(() => {
-    load();
-    const poll = setInterval(load, pollSec * 1000); // pick up CMS pushes
-    return () => clearInterval(poll);
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const tick = () => handles.push(setTimeout(() => void load(), 0));
+    tick();
+    const poll = setInterval(tick, pollSec * 1000); // pick up CMS pushes
+    return () => { clearInterval(poll); handles.forEach((h) => clearTimeout(h)); };
   }, [load, pollSec]);
 
   // if the CMS playlist shrinks, don't sit on an index that no longer exists
-  useEffect(() => {
-    setIndex((i) => (i < scenes.length ? i : 0));
-  }, [scenes.length]);
+  if (index >= scenes.length) setIndex(0);
 
   // heartbeat for multi-display status
   useEffect(() => {

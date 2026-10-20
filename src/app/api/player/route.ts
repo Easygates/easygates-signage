@@ -29,10 +29,9 @@ export async function GET(req: Request) {
       if (display) {
         await db.update(displays).set({ status: "online", lastSeen: new Date() } as never).where(eq(displays.id, displayId));
         playlistId = display.playlistId;
-        // schedule override: enabled schedule matching today + time window wins by priority
-        const now = new Date();
-        const day = String(now.getDay());
-        const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        // schedule override: enabled schedule matching today + time window wins by priority,
+        // evaluated in the business time zone so UK schedules stay right in summer.
+        const { day, hhmm } = scheduleNow(brand.timezone);
         const all = await db.select().from(schedules).where(and(eq(schedules.enabled, true)));
         const cands = all.filter((s) => {
           if (s.displayId && s.displayId !== displayId) return false;
@@ -48,7 +47,7 @@ export async function GET(req: Request) {
 
     if (playlistId) {
       const p = await db.select().from(playlists).where(eq(playlists.id, playlistId)).limit(1);
-      if (!p[0]) return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "Demo", scenes: DEMO_SCENES } });
+      if (!p[0]) return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
       const items = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId)).orderBy(asc(playlistItems.position));
       const ids = items.map((i) => i.sceneId);
       const byId = new Map();
@@ -97,4 +96,15 @@ export async function GET(req: Request) {
     console.error("player fallback to demo:", e);
     return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo (offline)", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
   }
+}
+
+/** Wall-clock day (0=Sun..6=Sat) and HH:MM in the business time zone. */
+function scheduleNow(timezone: string | undefined): { day: string; hhmm: string } {
+  const tz = timezone || "Europe/London";
+  // toLocaleString renders the wall clock in tz; parsing it as a local Date
+  // turns that wall clock into getDay()/getHours() in tz.
+  const local = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  const day = String(local.getDay());
+  const hhmm = `${String(local.getHours()).padStart(2, "0")}:${String(local.getMinutes()).padStart(2, "0")}`;
+  return { day, hhmm };
 }

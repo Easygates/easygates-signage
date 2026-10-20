@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
@@ -34,7 +35,12 @@ const emptyScene = (): Scene => ({
 });
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<Tab>("scenes");
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "scenes";
+    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    return TABS.find((x) => x === t) ?? "scenes";
+  });
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
@@ -47,16 +53,13 @@ export default function AdminPage() {
   const [msg, setMsg] = useState("");
   const [selPlaylist, setSelPlaylist] = useState<string | null>(null);
   const [reduced, setReduced] = useState(false);
+const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
   const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
   const [brandDraft, setBrandDraft] = useState<BrandSettings>(DEFAULT_BRAND);
   const [brandReady, setBrandReady] = useState(true);
   const [brandSaving, setBrandSaving] = useState(false);
   const savedBrandRef = useRef<BrandSettings>(DEFAULT_BRAND);
-  const selIdRef = useRef<string | null>(null);
-  const selPlRef = useRef<string | null>(null);
-  selIdRef.current = selId;
-  selPlRef.current = selPlaylist;
 
   const load = useCallback(async () => {
     const [s, p, a, d, sch, st] = await Promise.all([
@@ -82,17 +85,16 @@ export default function AdminPage() {
       setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
       setBrandReady(st.ready !== false);
     }
-    if (!selIdRef.current && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
-    if (!selPlRef.current && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
+    if (selId === null && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
+    if (selPlaylist === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // load() only touches state after awaiting, but keep it out of the effect
+  // body so the set-state-in-effect rule stays quiet.
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (t && TABS.includes(t)) {
-      setTab(t);
-    }
-  }, []);
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 3000); };
 
@@ -140,6 +142,37 @@ export default function AdminPage() {
     setSelId(null); setDraft(emptyScene()); load(); flash("Scene deleted");
   };
 
+  const flushDuration = async (id: string, value: number) => {
+    if (!value || value < 6) return;
+    await fetch("/api/playlist-items", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, durationOverride: value }),
+    });
+    load();
+  };
+
+  const saveDuration = (id: string, value: number, immediate = false) => {
+    if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
+    if (immediate) { void flushDuration(id, value); return; }
+    saveTimers.current[id] = setTimeout(() => { delete saveTimers.current[id]; void flushDuration(id, value); }, 500);
+  };
+
+  const reorderPlaylist = async (draggedId: string, targetId: string) => {
+    const order = playlist?.items.map((x) => x.id) ?? [];
+    const from = order.indexOf(draggedId);
+    const to = order.indexOf(targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = order.filter((id) => id !== draggedId);
+    next.splice(to, 0, draggedId);
+    await fetch("/api/playlist-items", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlistId: playlist!.id, order: next }),
+    });
+    load();
+  };
+
   const duplicate = async () => {
     const r = await fetch("/api/scenes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: undefined, name: `${draft.name} (copy)` }) });
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
@@ -178,6 +211,7 @@ export default function AdminPage() {
             <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
+            <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
             {msg && <span className="rounded-full bg-green-500/20 px-4 py-2 text-green-300 ring-1 ring-green-400/40">{msg}</span>}
           </div>
         </div>
@@ -191,7 +225,7 @@ export default function AdminPage() {
       <div className="mx-auto max-w-[1500px] px-5 py-6">
         {/* ── SCENES ── */}
         {tab === "scenes" && (
-          <div className="grid gap-5 lg:grid-cols-[300px_1fr_520px]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr_520px]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-black tracking-widest text-white/50">SCENES ({scenes.length})</span>
@@ -255,6 +289,42 @@ export default function AdminPage() {
                   <input value={draft.imageUrl || ""} onChange={(e) => set("imageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
                   {draft.imageUrl && <button onClick={() => set("imageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
                 </div>
+              </Field>
+              <Field label="Background image (full-bleed behind the slide)">
+                <div className="flex gap-2">
+                  <input value={draft.bgImageUrl || ""} onChange={(e) => set("bgImageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
+                  {draft.bgImageUrl && <button onClick={() => set("bgImageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+                </div>
+                {[
+                  "product-showcase",
+                  "fullscreen-campaign",
+                  "split-promo",
+                  "callout-emergency",
+                ].includes(draft.template) && (
+                  <p className="mt-1 text-[11px] text-white/40">
+                    On this template the background image replaces the main photo.
+                  </p>
+                )}
+              </Field>
+              <Field label="Video URL (muted, looping hero background)">
+                <div className="flex gap-2">
+                  <input value={draft.videoUrl || ""} onChange={(e) => set("videoUrl", e.target.value as never)} className="inp" placeholder="https://…" />
+                  {draft.videoUrl && <button onClick={() => set("videoUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+                </div>
+              </Field>
+              <Field label="Darken background">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={draft.overlayOpacity ?? 45}
+                    onChange={(e) => set("overlayOpacity", Number(e.target.value) as never)}
+                    className="w-full accent-red-500"
+                  />
+                  <span className="text-xs font-mono text-white/50">{draft.overlayOpacity ?? 45}%</span>
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">Darkens the background image so slide text stays readable.</p>
               </Field>
               <div className="grid grid-cols-4 gap-3">
                 <Color label="Background from" v={draft.bgFrom} onChange={(v) => set("bgFrom", v as never)} />
@@ -329,13 +399,24 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+              {assets.length > 0 && (
+                <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+                  <div className="mb-2 text-[11px] font-black tracking-widest text-white/50">QUICK-SET BACKGROUND FROM LIBRARY</div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {assets.slice(0, 12).map((a) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={a.id} src={a.url} alt="" onClick={() => set("bgImageUrl", a.url as never)} className="h-14 w-20 cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* ── PLAYLISTS ── */}
         {tab === "playlists" && (
-          <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_1fr]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-black tracking-widest text-white/50">PLAYLISTS</span>
@@ -372,11 +453,17 @@ export default function AdminPage() {
                           <div className="truncate text-sm font-black">{s.name}</div>
                           <div className="text-xs text-white/50">{s.template} · {s._durationOverride || s.durationSec}s · {s._transitionOverride || s.transition}</div>
                         </div>
-                        <input type="number" min={6} max={30} value={s._durationOverride || s.durationSec} title="Duration override"
-                          onChange={async (e) => { await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s._itemId, durationOverride: Number(e.target.value) }) }); load(); }}
+                        <input type="number" min={6} max={30} defaultValue={s._durationOverride || s.durationSec} title="Duration override"
+                          onChange={(e) => saveDuration(s._itemId!, Number(e.target.value))}
+                          onBlur={(e) => saveDuration(s._itemId!, Number(e.target.value), true)}
                           className="w-16 rounded-lg bg-black/40 px-2 py-1.5 text-center text-sm font-bold ring-1 ring-white/15" />
-                        <button onClick={async () => { const order = playlist.items.map((x) => x.id); const pos = order.indexOf(s._itemId!); if (pos > 0) { [order[pos - 1], order[pos]] = [order[pos], order[pos - 1]]; await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlistId: playlist.id, order }) }); load(); } }} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black">↑</button>
-                        <button onClick={async () => { const order = playlist.items.map((x) => x.id); const pos = order.indexOf(s._itemId!); if (pos < order.length - 1) { [order[pos + 1], order[pos]] = [order[pos], order[pos + 1]]; await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlistId: playlist.id, order }) }); load(); } }} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black">↓</button>
+                        <div draggable={true}
+                          onDragStart={(e) => { e.dataTransfer.setData("text/plain", s._itemId!); e.dataTransfer.effectAllowed = "move"; }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={async (e) => { const id = e.dataTransfer.getData("text/plain"); if (id && id !== s._itemId) await reorderPlaylist(id, s._itemId!); }}
+                          className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black text-[14px] cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                          ⠇
+                        </div>
                         <button onClick={async () => { await fetch(`/api/playlist-items?id=${s._itemId}`, { method: "DELETE" }); load(); }} className="rounded-lg bg-white/10 px-2.5 py-1.5 text-red-300">✕</button>
                       </div>
                     ))}
@@ -445,7 +532,7 @@ export default function AdminPage() {
         {tab === "schedules" && (
           <div className="rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-black">Campaign schedules <span className="text-sm font-normal text-white/50">— time windows override a display&apos;s default playlist</span></h3>
+              <h3 className="font-black">Campaign schedules <span className="text-sm font-normal text-white/50">— time windows override a display&apos;s default playlist; if schedules overlap, the higher number wins</span></h3>
               <button onClick={async () => { if (!playlists[0]) { flash("Create a playlist first"); return; } await fetch("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `Schedule ${schedules.length + 1}`, playlistId: playlists[0].id }) }); load(); }} className="rounded-full bg-white px-4 py-2 text-xs font-black text-black">+ New schedule</button>
             </div>
             <div className="mt-4 space-y-2">
@@ -463,7 +550,33 @@ export default function AdminPage() {
                   <input type="time" value={s.startTime} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, startTime: e.target.value }) }); load(); }} className="rounded-lg bg-black/40 px-2 py-1.5 text-sm ring-1 ring-white/15" />
                   <span className="text-white/40">→</span>
                   <input type="time" value={s.endTime} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, endTime: e.target.value }) }); load(); }} className="rounded-lg bg-black/40 px-2 py-1.5 text-sm ring-1 ring-white/15" />
-                  <span className="text-xs text-white/40">prio</span>
+                  <div className="flex items-center gap-1">
+                    {["M", "T", "W", "T", "F", "S", "S"].map((label, i) => {
+                      const value = i === 6 ? 0 : i + 1;
+                      const active = s.days.split(",").includes(String(value));
+                      return (
+                        <button
+                          key={label}
+                          onClick={async () => {
+                            const cur = s.days.split(",").map((d) => Number(d));
+                            const next = cur.includes(value)
+                              ? cur.filter((d) => d !== value)
+                              : [...cur, value];
+                            await fetch("/api/schedules", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: s.id, days: next.join(",") }),
+                            });
+                            load();
+                          }}
+                          className={`rounded px-2 py-1 text-[10px] font-black ${active ? "bg-white text-black" : "bg-white/10 text-white/50 ring-1 ring-white/20 hover:bg-white/20"}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[11px] text-white/40" title="If schedules overlap, higher number wins">priority</span>
                   <input type="number" value={s.priority} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, priority: Number(e.target.value) }) }); load(); }} className="w-14 rounded-lg bg-black/40 px-2 py-1.5 text-center text-sm ring-1 ring-white/15" />
                   <button onClick={async () => { await fetch(`/api/schedules?id=${s.id}`, { method: "DELETE" }); load(); }} className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-xs text-red-300">Delete</button>
                 </div>

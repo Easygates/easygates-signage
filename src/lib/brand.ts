@@ -12,6 +12,10 @@ export interface BrandSettings {
   /** business name beside the logo (wordmark logos usually don't need it) */
   showName: boolean;
   phone: string;
+  /** Background image used by slides that don't set one of their own */
+  defaultBgImageUrl: string;
+  /** IANA time zone used to evaluate schedule windows (default Europe/London) */
+  timezone: string;
   accentColor: string;
   backgroundColor: string;
   /** use the brand colours on every slide instead of each slide's own */
@@ -29,6 +33,8 @@ export const DEFAULT_BRAND: BrandSettings = {
   logoOnWhite: true,
   showName: false,
   phone: "01234 567 890",
+  defaultBgImageUrl: "",
+  timezone: "Europe/London",
   accentColor: "#1a7bbf",
   backgroundColor: "#07131f",
   applyColors: false,
@@ -49,12 +55,23 @@ export function normalizeBrand(input: unknown): BrandSettings {
     typeof v[k] === "boolean" ? (v[k] as boolean) : (DEFAULT_BRAND[k] as boolean);
   const hex = (k: keyof BrandSettings) =>
     typeof v[k] === "string" && HEX.test(v[k] as string) ? (v[k] as string).toLowerCase() : (DEFAULT_BRAND[k] as string);
+  const tz = (k: keyof BrandSettings) => {
+    const zone = typeof v[k] === "string" ? (v[k] as string).trim() : (DEFAULT_BRAND[k] as string);
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: zone });
+      return zone;
+    } catch {
+      return (DEFAULT_BRAND[k] as string);
+    }
+  };
   return {
     businessName: str("businessName", 80),
     logoUrl: str("logoUrl", 2000),
     logoOnWhite: bool("logoOnWhite"),
     showName: bool("showName"),
     phone: str("phone", 40),
+    defaultBgImageUrl: str("defaultBgImageUrl", 2000),
+    timezone: tz("timezone"),
     accentColor: hex("accentColor"),
     backgroundColor: hex("backgroundColor"),
     applyColors: bool("applyColors"),
@@ -102,6 +119,7 @@ const TEXT_FIELDS = [
 /** The scene as the screen shows it: placeholders filled, brand colours applied if switched on. */
 export function brandScene(scene: Scene, brand: BrandSettings): Scene {
   const out: Scene = { ...scene };
+  if (!out.bgImageUrl && brand.defaultBgImageUrl) out.bgImageUrl = brand.defaultBgImageUrl;
   for (const k of TEXT_FIELDS) out[k] = fillText(scene[k], brand);
   if (scene.items) {
     out.items = scene.items.map((it: SceneItem) => ({
@@ -119,6 +137,8 @@ export function brandScene(scene: Scene, brand: BrandSettings): Scene {
     out.textColor = "#ffffff";
     out.mutedColor = mix("#ffffff", brand.accentColor, 0.18);
     out.cardColor = mix(brand.backgroundColor, "#ffffff", 0.06);
+    // Keep a background image, but tint its dark overlay with the brand colour.
+    if (scene.bgImageUrl) out.overlayColor = brand.backgroundColor;
   }
   return out;
 }

@@ -19,6 +19,7 @@ export type TemplateId =
 export const ITEM_TEMPLATES: TemplateId[] = [
   "food-menu",
   "product-grid",
+  "product-showcase",
   "service-offer",
   "price-list",
   "brand-wall",
@@ -69,6 +70,9 @@ export interface Scene {
   imageFit?: string;
   imagePosition?: string;
   videoUrl?: string;
+  bgImageUrl?: string;
+  /** Render-time only (brand mode): tints the background-image overlay instead of black. Never persisted. */
+  overlayColor?: string;
   bgFrom: string;
   bgTo: string;
   bgAngle: number;
@@ -238,7 +242,7 @@ export const DEMO_SCENES: Scene[] = [
     headline: "SMASHED. STACKED. SAUCED.",
     productName: "Menu Board",
     description: "Flame-grilled, made to order.",
-    ctaText: "MEAL DEAL · BURGER + FRIES + DRINK £9.95",
+    ctaText: "TAP TO ORDER · KIOSK 04",
     tickerText: "DOUBLE UP ANY BURGER FOR £2 — STUDENT DISCOUNT 15% AFTER 4PM —",
     imageUrl: IMG.burger,
     bgFrom: "#160903",
@@ -271,6 +275,12 @@ export const DEMO_SCENES: Scene[] = [
     headline: "TIME, UPGRADED.",
     productName: "Pulse S2 Smartwatch",
     description: "AMOLED display · 14-day battery · 5ATM waterproof. Health, notifications and music on your wrist.",
+    items: [
+      { name: "AMOLED DISPLAY" },
+      { name: "14-DAY BATTERY" },
+      { name: "5ATM WATERPROOF" },
+      { name: "BT 5.3" },
+    ],
     originalPrice: "£199",
     promoPrice: "£159",
     discountBadge: "SAVE £40",
@@ -535,6 +545,7 @@ export const TRADE_DEMO_SCENES: Scene[] = [
       { name: "Safety beam pair", desc: "Supply and fit, per gate", price: "£165" },
     ],
     ctaText: "QUOTES IN 24 HOURS · {phone}",
+    description: "FIXED PRICE · CERTIFIED WORK",
     bgFrom: "#0e1218",
     bgTo: "#1f2937",
     bgAngle: 120,
@@ -633,6 +644,7 @@ export const TRADE_DEMO_SCENES: Scene[] = [
       { name: "EV charger faults", desc: "Not charging, error lights" },
     ],
     ctaText: "{phone}",
+    description: "24/7 · 365\nEngineers on call",
     tickerText: "AVERAGE RESPONSE 60 MINUTES — NICEIC APPROVED — PART P REGISTERED —",
     imageUrl: TRADE_IMG.ev,
     bgFrom: "#170a00",
