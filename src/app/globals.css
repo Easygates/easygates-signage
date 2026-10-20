@@ -93,11 +93,20 @@ body { background: #05070f; }
   animation: sg-shimmer 3.2s linear infinite;
 }
 
+/* Theme decoration animations */
+@keyframes sg-snow-fall { from { transform: translateY(-20px) translateX(0); } to { transform: translateY(1100px) translateX(40px); } }
+@keyframes sg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+.sg-snow { animation-name: sg-snow-fall; animation-timing-function: linear; animation-iteration-count: infinite; }
+.sg-bob { animation-name: sg-bob; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+
 /* Reduced motion: show everything statically */
 .sg-reduced .sg-anim, .sg-reduced .sg-mask > span { opacity: 1 !important; animation: none !important; transform: none !important; }
 .sg-reduced .sg-kb-zoom-in img, .sg-reduced .sg-kb-zoom-out img,
 .sg-reduced .sg-kb-pan-left img, .sg-reduced .sg-kb-pan-right img { animation: none !important; }
 .sg-reduced .sg-float { animation: none !important; opacity: 1; }
+/* stop theme decorations under reduced motion */
+.sg-reduced .sg-snow, .sg-reduced .sg-bob { animation: none !important; }
 
 /* Scrollbars for admin */
 .sg-scroll::-webkit-scrollbar { width: 8px; height: 8px; }

@@ -1,11 +1,73 @@
 # NovaSign — Professional Animated Signage for the Original Steam Link
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 12 art-directed templates (7 retail + 5 trade), a deterministic animation engine, playlists, schedules and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 19 art-directed templates (12 retail/value + 7 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Two fictional demo campaigns, both loadable from `/admin`:
+Three fictional demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
 - **APEX · Electrical, Smart Home & Gates** — 6 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out) plus 5 pre-registered screens.
+- **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
+
+## Templates
+
+### Retail / value (big-box discount store look)
+
+| Template | Best for |
+|---|---|
+| Price Drop | Single-hero discount promos — huge price, struck-through was-price, flag + burst |
+| Deals Grid | Multi-item weekly offers — header banner, 6 deal tiles, ends-Sunday strip |
+| Multi-Buy | Bundle & multipack promos — large offer lockup, 3 product images in a row |
+| Clearance | End-of-line stock — red-and-yellow tag style, % off tags, stock counts |
+| Aisle Guide | Store wayfinding — department name, giant aisle circle, arrow, sub-categories |
+| Top Sellers | Bestseller charts — numbered top-5 list, rank numbers are the hero |
+| Store Services | Customer information — click & collect, returns, opening hours, services desk |
+| Retail Promotion | Hero deals & price drops (original) |
+| Food Menu Board | QSR / café menu boards (original) |
+| Product Showcase | Flagship launches (original) |
+| Multi-Product Grid | Collections & bundles (original) |
+| Announcement | Store news & events (original) |
+| Full-Screen Campaign | Brand moments (original) |
+| Split-Screen Promo | Dual-message promos (original) |
+
+### Trade (electrical / smart home / gate automation)
+
+| Template | Best for |
+|---|---|
+| Service & Installation | Gate automation & electrical services |
+| Trade Price List | Upfront job pricing |
+| Brands & Ecosystems | Smart home showrooms |
+| Product Spec Sheet | Motors, kits & panels |
+| Emergency Call-Out | 24/7 electricians & gate engineers |
+
+## Seasonal themes
+
+Any template can be dressed with a seasonal theme via the **Season / theme** picker in the scene editor:
+
+- `christmas` — falling snow + red bunting
+- `easter` — pastel eggs + flowers
+- `halloween` — pumpkins + bats
+- `spring` — blossom petals + branches
+- `summer` — sun + waves
+- `autumn` — falling leaves + acorns
+- `winter` — frost corners + soft snow
+
+Theme decorations always render; theme colours only override the slide's own palette when **"Use brand colours on every slide"** is on in `/admin?tab=business`. Decorations respect the reduced-motion toggle (`.sg-reduced`).
+
+## Demo campaigns
+
+Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**) or via the API:
+
+```bash
+curl -X POST 'http://localhost:3000/api/seed?campaign=value'
+curl -X POST 'http://localhost:3000/api/seed?campaign=retail'
+curl -X POST 'http://localhost:3000/api/seed?campaign=trade'
+```
+
+The value campaign uses fictional products, a fictional store name ("Value Store"), and `{phone}` placeholders resolved from the Business tab settings. At least 4 slides use different seasonal themes.
+
+## Images
+
+Sample imagery for the value campaign lives in `public/retail/` and `public/seasonal/`. See [`public/retail/CREDITS.md`](public/retail/CREDITS.md) for sources and photographer attribution. All images are ≤ 1920 px wide and ≤ 300 KB.
 
 ## Quick start (Local PostgreSQL or Supabase)
 

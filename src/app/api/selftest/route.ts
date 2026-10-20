@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildTimeline, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { buildTimeline, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET() {
   const checks: { name: string; pass: boolean; detail?: string }[] = [];
   const ids = new Set(TEMPLATES.map((t) => t.id));
   const itemTemplates = new Set<string>(ITEM_TEMPLATES);
-  const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES];
+  const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES, ...VALUE_DEMO_SCENES];
 
   checks.push({
     name: `template catalogue has ${TEMPLATES.length} entries with unique ids`,

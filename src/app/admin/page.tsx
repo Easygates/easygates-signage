@@ -7,7 +7,7 @@ import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import PlayerControls from "@/components/PlayerControls";
-import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, type Scene, type TemplateId } from "@/lib/signage";
+import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
@@ -31,7 +31,7 @@ const emptyScene = (): Scene => ({
   bgFrom: "#0b1020", bgTo: "#2a3a8c", bgAngle: 135,
   accentColor: "#ff3b30", textColor: "#ffffff", mutedColor: "#c7cede", cardColor: "#141b33",
   animationPreset: "launch", durationSec: 10, transition: "fade", staggerMs: 120,
-  kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null,
+  kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null, theme: "none",
 });
 
 export default function AdminPage() {
@@ -178,14 +178,16 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
-  const seed = async (campaign: "retail" | "trade" = "retail") => {
+  const seed = async (campaign: "retail" | "trade" | "value" = "retail") => {
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     load();
     flash(
       campaign === "trade"
         ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
-        : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+        : campaign === "value"
+          ? `Value demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+          : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
     );
   };
 
@@ -209,6 +211,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
             <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
             <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
+            <button onClick={() => seed("value")} className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -312,6 +315,34 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   {draft.videoUrl && <button onClick={() => set("videoUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
                 </div>
               </Field>
+              <div>
+                <label className="lbl">Season / theme</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: "none", label: "None", color: "#0f172a" },
+                    { id: "christmas", label: "Christmas", color: "#dc2626" },
+                    { id: "easter", label: "Easter", color: "#ec4899" },
+                    { id: "halloween", label: "Halloween", color: "#f97316" },
+                    { id: "spring", label: "Spring", color: "#16a34a" },
+                    { id: "summer", label: "Summer", color: "#0ea5e9" },
+                    { id: "autumn", label: "Autumn", color: "#d97706" },
+                    { id: "winter", label: "Winter", color: "#0ea5e9" },
+                  ].map((th) => {
+                    const active = draft.theme === th.id;
+                    return (
+                      <button
+                        key={th.id}
+                        onClick={() => set("theme", th.id as never)}
+                        className={`flex flex-col items-center gap-1 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                      >
+                        <div className={`h-6 w-6 rounded-full ${active ? "ring-2 ring-white" : ""}`} style={{ background: th.color }} />
+                        <span>{th.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">Theme decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).</p>
+              </div>
               <Field label="Darken background">
                 <div className="flex items-center gap-2">
                   <input
@@ -676,14 +707,23 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "brand-wall": "Up to 8 brand tiles — name + short descriptor, optional logo image (shown instead of the name)",
   "product-spec": "Up to 6 spec rows — name = label, detail = value",
   "callout-emergency": "Up to 3 job types — name + detail",
+  "deals-grid": "Up to 6 deal tiles — name / price / tag + image",
+  "clearance": "Up to 4 clearance items — name + tag (% off) + detail (stock count)",
+  "top-sellers": "Up to 5 ranked items — name / price / tag (rank number) + image",
 };
 
 function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {
   const list = items || [];
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
-  const showPrice = template === "food-menu" || template === "product-grid" || template === "price-list";
+  const showPrice =
+    template === "food-menu" ||
+    template === "product-grid" ||
+    template === "price-list" ||
+    template === "deals-grid" ||
+    template === "clearance" ||
+    template === "top-sellers";
   // only these layouts draw a picture per row
-  const showImage = template === "product-grid" || template === "brand-wall";
+  const showImage = template === "product-grid" || template === "brand-wall" || template === "deals-grid" || template === "top-sellers";
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">
