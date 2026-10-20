@@ -6,8 +6,11 @@ import {
   boolean,
   timestamp,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 
+// Every table enables RLS with no policies: the app connects as the table owner
+// (bypasses RLS), while Supabase's public Data API roles (anon/authenticated) see nothing.
 export const assets = pgTable("assets", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -17,8 +20,8 @@ export const assets = pgTable("assets", {
   sizeBytes: integer("size_bytes"),
   width: integer("width"),
   height: integer("height"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
 
 export const scenes = pgTable("scenes", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -58,9 +61,9 @@ export const scenes = pgTable("scenes", {
   layoutVariant: text("layout_variant").default("A"),
   // Structured items for menu / grid templates
   items: jsonb("items").$type<MenuItem[] | null>(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
 
 export type MenuItem = {
   name: string;
@@ -75,9 +78,9 @@ export const playlists = pgTable("playlists", {
   name: text("name").notNull(),
   description: text("description"),
   loop: boolean("loop").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
 
 export const playlistItems = pgTable("playlist_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,7 +89,9 @@ export const playlistItems = pgTable("playlist_items", {
   position: integer("position").notNull().default(0),
   durationOverride: integer("duration_override"),
   transitionOverride: text("transition_override"),
-});
+}, (t) => [
+  index("idx_playlist_items_playlist").on(t.playlistId, t.position),
+]).enableRLS();
 
 export const displays = pgTable("displays", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -96,11 +101,11 @@ export const displays = pgTable("displays", {
   resolution: text("resolution").default("1920x1080"),
   orientation: text("orientation").default("landscape"),
   status: text("status").default("offline"),
-  lastSeen: timestamp("last_seen"),
+  lastSeen: timestamp("last_seen", { withTimezone: true }),
   pairingCode: text("pairing_code"),
   settings: jsonb("settings").$type<Record<string, unknown> | null>(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
 
 export const schedules = pgTable("schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -112,8 +117,10 @@ export const schedules = pgTable("schedules", {
   endTime: text("end_time").default("21:00"),
   priority: integer("priority").default(0),
   enabled: boolean("enabled").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_schedules_enabled").on(t.enabled, t.priority.desc().nullsFirst()),
+]).enableRLS();
 
 export type SceneRow = typeof scenes.$inferSelect;
 export type PlaylistRow = typeof playlists.$inferSelect;
