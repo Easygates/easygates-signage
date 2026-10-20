@@ -9,11 +9,14 @@ import { transitionClass } from "@/lib/signage";
 
 function useQuery() {
   const sp = useSearchParams();
-  return { playlistId: sp.get("playlistId"), displayId: sp.get("displayId") };
+  // ?poll=10 → check the CMS every 10s (min 5s, max 5min). Default 30s.
+  const rawPoll = Number(sp.get("poll"));
+  const pollSec = Number.isFinite(rawPoll) && rawPoll > 0 ? Math.min(300, Math.max(5, rawPoll)) : 30;
+  return { playlistId: sp.get("playlistId"), displayId: sp.get("displayId"), pollSec };
 }
 
 function DisplayInner() {
-  const { playlistId, displayId } = useQuery();
+  const { playlistId, displayId, pollSec } = useQuery();
   const [scenes, setScenes] = useState<Scene[]>(DEMO_SCENES);
   const [playlistName, setPlaylistName] = useState("NOVA MART · Winter Sale Event");
   const [mode, setMode] = useState("demo");
@@ -51,9 +54,14 @@ function DisplayInner() {
 
   useEffect(() => {
     load();
-    const poll = setInterval(load, 30000); // pick up CMS pushes
+    const poll = setInterval(load, pollSec * 1000); // pick up CMS pushes
     return () => clearInterval(poll);
-  }, [load]);
+  }, [load, pollSec]);
+
+  // if the CMS playlist shrinks, don't sit on an index that no longer exists
+  useEffect(() => {
+    setIndex((i) => (i < scenes.length ? i : 0));
+  }, [scenes.length]);
 
   // heartbeat for multi-display status
   useEffect(() => {
@@ -154,7 +162,7 @@ function DisplayInner() {
         <div className="absolute bottom-20 left-6 z-40 max-w-sm rounded-2xl bg-black/80 p-5 text-sm leading-relaxed ring-1 ring-white/20 backdrop-blur">
           <div className="font-black tracking-widest">DISPLAY CONTROLS</div>
           <div className="mt-2 opacity-80">←/→ step scene · SPACE pause · F fullscreen · M reduced-motion ({reduced ? "ON" : "OFF"}) · H hide this panel</div>
-          <div className="mt-2 opacity-60">Auto-refresh every 30s picks up CMS pushes. Append ?displayId=… to bind a screen, ?playlistId=… to preview.</div>
+          <div className="mt-2 opacity-60">Auto-refresh every {pollSec}s picks up CMS pushes (add ?poll=10 for faster). Append ?displayId=… to bind a screen, ?playlistId=… to preview.</div>
         </div>
       )}
 

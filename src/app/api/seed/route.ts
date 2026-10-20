@@ -2,58 +2,137 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { DEMO_SCENES } from "@/lib/signage";
+import { DEMO_SCENES, TRADE_DEMO_SCENES } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  // idempotent-ish: skip scenes whose demo name already exists
+type Campaign = "retail" | "trade";
+
+const CAMPAIGNS = {
+  retail: {
+    scenes: DEMO_SCENES,
+    playlistName: "NOVA MART · Winter Sale Event",
+    description: "8-scene retail campaign covering the retail templates",
+    scheduleName: "Daytime trading",
+    displays: [
+      { name: "Entrance TV · 55in", location: "Store entrance", pairingCode: "NOVA" },
+      { name: "Café Menu Board", location: "Café counter", pairingCode: "CAFE" },
+    ],
+  },
+  trade: {
+    scenes: TRADE_DEMO_SCENES,
+    playlistName: "APEX · Electrical, Smart Home & Gates",
+    description: "6-scene trade campaign: gate automation, smart home, upfront prices",
+    scheduleName: "Opening hours",
+    displays: [
+      { name: "01 · Showroom window", location: "Front window", pairingCode: "WIND" },
+      { name: "02 · Gate display", location: "Gate & barrier bay", pairingCode: "GATE" },
+      { name: "03 · Smart home wall", location: "Demo wall", pairingCode: "SMAR" },
+      { name: "04 · Trade counter", location: "Trade counter", pairingCode: "TRDE" },
+      { name: "05 · Workshop", location: "Workshop / loading bay", pairingCode: "WORK" },
+    ],
+  },
+} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
+
+async function campaignFrom(req: Request): Promise<Campaign> {
+  const q = new URL(req.url).searchParams.get("campaign");
+  if (q === "trade" || q === "retail") return q;
+  try {
+    const body = await req.json();
+    if (body?.campaign === "trade" || body?.campaign === "retail") return body.campaign;
+  } catch {
+    /* no body */
+  }
+  return "retail";
+}
+
+export async function POST(req: Request) {
+  const campaign = await campaignFrom(req);
+  const cfg = CAMPAIGNS[campaign];
+
+  // ── scenes (idempotent by name) ──
   const existing = await db.select({ name: scenes.name }).from(scenes);
   const have = new Set(existing.map((r) => r.name));
   const created: string[] = [];
-  for (const s of DEMO_SCENES) {
+  for (const s of cfg.scenes) {
     if (have.has(s.name)) continue;
     const payload = sceneToRow(s);
     const rows = await db.insert(scenes).values({ ...payload, name: s.name, template: s.template } as never).returning();
     created.push(rows[0].id);
   }
-  // ensure playlist exists
-  let pl = await db.select().from(playlists).limit(1);
+
+  // ── playlist for this campaign ──
+  const pl = await db.select().from(playlists).where(eq(playlists.name, cfg.playlistName)).limit(1);
   let playlistId: string;
-  if (!pl[0]) {
-    const r = await db.insert(playlists).values({ name: "NOVA MART · Winter Sale Event", description: "8-scene demo covering all 7 templates", loop: true } as never).returning();
-    playlistId = r[0].id;
-  } else {
+  if (pl[0]) {
     playlistId = pl[0].id;
+  } else {
+    const r = await db.insert(playlists).values({ name: cfg.playlistName, description: cfg.description, loop: true } as never).returning();
+    playlistId = r[0].id;
   }
-  // attach any missing demo scenes in order
+
+  // ── attach missing scenes in campaign order ──
   const allScenes = await db.select().from(scenes);
-  const demoRows = DEMO_SCENES.map((d) => allScenes.find((r) => r.name === d.name)).filter(Boolean) as typeof allScenes;
+  const campaignRows = cfg.scenes
+    .map((d) => allScenes.find((r) => r.name === d.name))
+    .filter(Boolean) as typeof allScenes;
   const cur = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId));
   const haveScene = new Set(cur.map((i) => i.sceneId));
   let pos = cur.length;
-  for (const r of demoRows) {
+  for (const r of campaignRows) {
     if (haveScene.has(r.id)) continue;
     await db.insert(playlistItems).values({ playlistId, sceneId: r.id, position: pos++ } as never);
   }
-  // seed assets + a display + a schedule for multi-display demo
-  const aCount = await db.select().from(assets).limit(1);
-  if (!aCount[0]) {
-    for (const s of DEMO_SCENES.slice(0, 4)) {
-      if (s.imageUrl) await db.insert(assets).values({ name: s.productName || s.name, url: s.imageUrl, type: "image" } as never);
-    }
+
+  // ── media library (by URL, so re-running never duplicates) ──
+  const existingAssets = await db.select({ url: assets.url }).from(assets);
+  const haveAsset = new Set(existingAssets.map((a) => a.url));
+  for (const s of cfg.scenes) {
+    if (!s.imageUrl || haveAsset.has(s.imageUrl)) continue;
+    haveAsset.add(s.imageUrl);
+    await db.insert(assets).values({ name: s.productName || s.name, url: s.imageUrl, type: "image" } as never);
   }
-  const dCount = await db.select().from(displays).limit(1);
-  if (!dCount[0]) {
-    await db.insert(displays).values([
-      { name: "Entrance TV · 55in", location: "Store entrance", playlistId, resolution: "1920x1080", orientation: "landscape", status: "offline", pairingCode: "NOVA" },
-      { name: "Café Menu Board", location: "Café counter", playlistId, resolution: "1920x1080", orientation: "landscape", status: "offline", pairingCode: "CAFE" },
-    ] as never);
+
+  // ── displays (one per TV, idempotent by name) ──
+  const existingDisplays = await db.select({ name: displays.name }).from(displays);
+  const haveDisplay = new Set(existingDisplays.map((d) => d.name));
+  const newDisplays = cfg.displays.filter((d) => !haveDisplay.has(d.name));
+  if (newDisplays.length) {
+    await db.insert(displays).values(
+      newDisplays.map((d) => ({
+        ...d,
+        playlistId,
+        resolution: "1920x1080",
+        orientation: "landscape",
+        status: "offline",
+      })) as never
+    );
   }
+
+  // ── schedule demo ──
+  // Bound to one display on purpose: a display-less schedule overrides EVERY screen,
+  // which would make the second demo campaign hijack the first one's playlist.
   const sCount = await db.select().from(schedules).limit(1);
   if (!sCount[0]) {
-    await db.insert(schedules).values({ name: "Daytime trading", playlistId, days: "1,2,3,4,5,6,0", startTime: "09:00", endTime: "21:00", priority: 0, enabled: true } as never);
+    const schedDisplay = await db.select().from(displays).where(eq(displays.name, cfg.displays[0].name)).limit(1);
+    await db.insert(schedules).values({
+      name: cfg.scheduleName,
+      playlistId,
+      displayId: schedDisplay[0]?.id ?? null,
+      days: "1,2,3,4,5,6,0",
+      startTime: "08:30",
+      endTime: "18:00",
+      priority: 0,
+      enabled: true,
+    } as never);
   }
-  return NextResponse.json({ ok: true, created: created.length, playlistId });
+
+  return NextResponse.json({
+    ok: true,
+    campaign,
+    created: created.length,
+    playlistId,
+    displays: cfg.displays.length,
+  });
 }

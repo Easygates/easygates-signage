@@ -5,7 +5,11 @@ import assert from "node:assert/strict";
 // Mirror of src/lib/signage.ts timeline rules (kept dependency-free so tests
 // run without a DB or Next build).
 const PRESETS = ["launch", "smooth", "cinematic", "snap", "elegant"];
-const TEMPLATES = ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo"];
+const TEMPLATES = [
+  "retail-promo", "food-menu", "product-showcase", "product-grid",
+  "announcement", "fullscreen-campaign", "split-promo",
+  "service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency",
+];
 
 function buildTimeline(scene) {
   const stagger = scene.staggerMs || 120;
@@ -27,7 +31,7 @@ function buildTimeline(scene) {
 describe("animation engine", () => {
   it("all presets and templates are defined", () => {
     assert.equal(PRESETS.length, 5);
-    assert.equal(TEMPLATES.length, 7);
+    assert.equal(TEMPLATES.length, 12);
   });
 
   it("timeline is ordered and ends with an exit inside the scene duration", () => {

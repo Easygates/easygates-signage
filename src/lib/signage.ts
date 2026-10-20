@@ -7,7 +7,24 @@ export type TemplateId =
   | "product-grid"
   | "announcement"
   | "fullscreen-campaign"
-  | "split-promo";
+  | "split-promo"
+  // ── trade templates (electrical / smart home / gate automation) ──
+  | "service-offer"
+  | "price-list"
+  | "brand-wall"
+  | "product-spec"
+  | "callout-emergency";
+
+/** Templates that read the `items` array */
+export const ITEM_TEMPLATES: TemplateId[] = [
+  "food-menu",
+  "product-grid",
+  "service-offer",
+  "price-list",
+  "brand-wall",
+  "product-spec",
+  "callout-emergency",
+];
 
 export type AnimationPresetId =
   | "launch"
@@ -83,6 +100,12 @@ export const TEMPLATES: {
   { id: "announcement", name: "Announcement", blurb: "Oversized headline, supporting copy, ticker", bestFor: "Store news & events" },
   { id: "fullscreen-campaign", name: "Full-Screen Campaign", blurb: "Immersive layered image + display typography", bestFor: "Brand moments" },
   { id: "split-promo", name: "Split-Screen Promo", blurb: "Imagery one side, animated offer stack other side", bestFor: "Dual-message promos" },
+  // ── trade ──
+  { id: "service-offer", name: "Service & Installation", blurb: "What you fit, ticked list, from-price, call to action", bestFor: "Gate automation & electrical services" },
+  { id: "price-list", name: "Trade Price List", blurb: "Two-column rate card, dotted leaders, VAT footnote", bestFor: "Upfront job pricing" },
+  { id: "brand-wall", name: "Brands & Ecosystems", blurb: "Typographic wall of the systems you install", bestFor: "Smart home showrooms" },
+  { id: "product-spec", name: "Product Spec Sheet", blurb: "Hero product beside a label/value specification table", bestFor: "Motors, kits & panels" },
+  { id: "callout-emergency", name: "Emergency Call-Out", blurb: "Oversized phone number, response promise, fault types", bestFor: "24/7 electricians & gate engineers" },
 ];
 
 export const ANIMATION_PRESETS: Record<
@@ -415,10 +438,229 @@ export function demoPlaylist() {
   return {
     id: "demo-playlist",
     name: "NOVA MART · Winter Sale Event (Demo)",
-    description: "8-scene sample campaign covering all 7 templates",
+    description: "8-scene sample campaign covering the retail templates",
     scenes: DEMO_SCENES,
   };
 }
+
+// ─── Trade campaign: electrical · smart home · gate automation (fictional) ───
+
+const TRADE_IMG = {
+  gate: "/trade/gate-hero.jpg",
+  install: "/trade/gate-install.jpg",
+  panel: "/trade/smart-panel.jpg",
+  ev: "/trade/ev-charger.jpg",
+  board: "/trade/consumer-unit.jpg",
+};
+
+export const TRADE_DEMO_SCENES: Scene[] = [
+  {
+    id: "trade-1",
+    name: "01 · Sliding Gate Kit — Hero Deal",
+    template: "retail-promo",
+    eyebrow: "APEX · GATE AUTOMATION",
+    headline: "YOUR DRIVE. AUTOMATED.",
+    productName: "EasyGlide 400 Sliding Kit",
+    description:
+      "24V brushless motor · up to 400 kg · app + 2 remotes · 5-year warranty. Supplied and fitted by our own engineers, usually in a day.",
+    originalPrice: "£1,099",
+    promoPrice: "£849",
+    discountBadge: "SAVE £250",
+    ctaText: "FREE SITE SURVEY · BOOK THIS WEEK",
+    tickerText: "0% FINANCE ON KITS OVER £1,000 — WE SERVICE AND REPAIR ANY MAKE OF GATE —",
+    imageUrl: TRADE_IMG.gate,
+    bgFrom: "#061019",
+    bgTo: "#123250",
+    bgAngle: 135,
+    accentColor: "#f5a623",
+    textColor: "#ffffff",
+    mutedColor: "#c2d2e6",
+    cardColor: "#0e1f34",
+    animationPreset: "launch",
+    durationSec: 11,
+    transition: "slide-left",
+    staggerMs: 120,
+    kenBurns: "zoom-in",
+    overlayOpacity: 30,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-2",
+    name: "02 · Gates, Entry & Barriers — Service",
+    template: "service-offer",
+    eyebrow: "SUPPLY · INSTALL · SERVICE",
+    headline: "WE AUTOMATE THE WHOLE ENTRANCE.",
+    subheadline: "One team for gates, doors, barriers and entry — designed and installed by our own engineers.",
+    description: "Independent, insured and qualified. Any make of gate, new build or retrofit.",
+    items: [
+      { name: "Sliding gate automation", desc: "Up to 1,800 kg · rack or underground motor" },
+      { name: "Swing gates & bollards", desc: "Twin-leaf kits, 230V or 24V, safety edges" },
+      { name: "Video intercom & keypads", desc: "Wired or app-based, up to 4 handsets" },
+      { name: "Servicing & repairs", desc: "Any make · 12-month service plans" },
+    ],
+    promoPrice: "£1,450",
+    ctaText: "FREE SURVEY · 01234 567 890",
+    tickerText: "CITY & GUILDS QUALIFIED ENGINEERS — £5M PUBLIC LIABILITY —",
+    imageUrl: TRADE_IMG.install,
+    bgFrom: "#06140d",
+    bgTo: "#123a26",
+    bgAngle: 140,
+    accentColor: "#4ade80",
+    textColor: "#ffffff",
+    mutedColor: "#bfe3cc",
+    cardColor: "#0b2417",
+    animationPreset: "smooth",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 130,
+    kenBurns: "pan-left",
+    overlayOpacity: 20,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-3",
+    name: "03 · Upfront Trade Prices — Rate Card",
+    template: "price-list",
+    eyebrow: "OCTOBER RATES · NO HIDDEN EXTRAS",
+    headline: "UPFRONT PRICES.",
+    subheadline: "Every price includes parts, labour and VAT. Agreed before we start — nothing added to the invoice.",
+    items: [
+      { name: "Consumer unit upgrade", desc: "10-way RCBO board, certified", price: "£495" },
+      { name: "EV charger installed", desc: "7.4 kW, up to 6 m cable run", price: "£695", tag: "OZEV" },
+      { name: "Gate motor service", desc: "Any make, per leaf", price: "£120" },
+      { name: "Video intercom", desc: "2-button, app enabled", price: "£480" },
+      { name: "Extra double socket", desc: "Surface or flush, per point", price: "£95" },
+      { name: "Smart lighting circuit", desc: "Dimmable, per room", price: "£240" },
+      { name: "Fault find & repair", desc: "First hour, parts extra", price: "£85" },
+      { name: "Safety beam pair", desc: "Supply and fit, per gate", price: "£165" },
+    ],
+    ctaText: "QUOTES IN 24 HOURS · 01234 567 890",
+    bgFrom: "#0e1218",
+    bgTo: "#1f2937",
+    bgAngle: 120,
+    accentColor: "#facc15",
+    textColor: "#ffffff",
+    mutedColor: "#cbd5e1",
+    cardColor: "#111827",
+    animationPreset: "snap",
+    durationSec: 13,
+    transition: "fade",
+    staggerMs: 70,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-4",
+    name: "04 · Brands & Ecosystems — Wall",
+    template: "brand-wall",
+    eyebrow: "ONE INSTALLER · ONE APP",
+    headline: "WORKS WITH WHAT YOU ALREADY OWN.",
+    subheadline: "We install and programme the systems you've heard of — and keep them talking to each other.",
+    items: [
+      { name: "Control4", desc: "Whole-home control" },
+      { name: "Lutron", desc: "Lighting & blinds" },
+      { name: "Somfy", desc: "Gate & blind motors" },
+      { name: "Nice", desc: "Gate automation" },
+      { name: "FAAC", desc: "Barriers & access" },
+      { name: "Shelly", desc: "Smart relays" },
+      { name: "Philips Hue", desc: "Lighting scenes" },
+      { name: "Ring", desc: "Video doorbells" },
+    ],
+    ctaText: "SMART HOME DEMO WALL · ASK AT THE COUNTER",
+    bgFrom: "#0a0f1e",
+    bgTo: "#241b4b",
+    bgAngle: 135,
+    accentColor: "#a78bfa",
+    textColor: "#ffffff",
+    mutedColor: "#c8c2e8",
+    cardColor: "#141031",
+    animationPreset: "elegant",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 110,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-5",
+    name: "05 · Smart Panel — Spec Sheet",
+    template: "product-spec",
+    eyebrow: "SMART HOME · SHOWROOM DEMO",
+    headline: "ONE PANEL. WHOLE HOUSE.",
+    productName: 'Apex Halo 10" Control Panel',
+    description:
+      "Lighting, heating, blinds, gates and cameras from one wall panel. Works with Control4, Shelly and Hue out of the box.",
+    originalPrice: "£899",
+    promoPrice: "£749",
+    discountBadge: "SHOWROOM OFFER",
+    ctaText: "TRY IT ON THE DEMO WALL",
+    items: [
+      { name: "Display", desc: '10.1" IPS touch · 1280×800' },
+      { name: "Fits", desc: "Standard 2-gang back box" },
+      { name: "Power", desc: "PoE+ or 12V DC" },
+      { name: "Connections", desc: "Wi-Fi · Zigbee · RS-485" },
+      { name: "Integrations", desc: "Control4 · Shelly · Hue · Ring" },
+      { name: "Warranty", desc: "3 years, on-site swap" },
+    ],
+    imageUrl: TRADE_IMG.panel,
+    bgFrom: "#061218",
+    bgTo: "#0d3b46",
+    bgAngle: 150,
+    accentColor: "#22d3ee",
+    textColor: "#ffffff",
+    mutedColor: "#b6dbe2",
+    cardColor: "#082a33",
+    animationPreset: "cinematic",
+    durationSec: 12,
+    transition: "zoom",
+    staggerMs: 140,
+    kenBurns: "zoom-out",
+    overlayOpacity: 45,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-6",
+    name: "06 · 24/7 Emergency Call-Out",
+    template: "callout-emergency",
+    eyebrow: "24/7 EMERGENCY CALLOUT",
+    headline: "GATE STUCK? POWER OUT?",
+    subheadline: "Same-day engineer across the county. No call-out fee within 20 miles.",
+    items: [
+      { name: "Gates & barriers", desc: "Stuck, off-track, no power" },
+      { name: "Fuse boards & RCDs", desc: "Tripping, dead circuits" },
+      { name: "EV charger faults", desc: "Not charging, error lights" },
+    ],
+    ctaText: "0800 123 4567",
+    tickerText: "AVERAGE RESPONSE 60 MINUTES — NICEIC APPROVED — PART P REGISTERED —",
+    imageUrl: TRADE_IMG.ev,
+    bgFrom: "#170a00",
+    bgTo: "#3b1400",
+    bgAngle: 130,
+    accentColor: "#ff7a00",
+    textColor: "#ffffff",
+    mutedColor: "#f3d3b5",
+    cardColor: "#2a1200",
+    animationPreset: "launch",
+    durationSec: 12,
+    transition: "wipe",
+    staggerMs: 120,
+    kenBurns: "pan-right",
+    overlayOpacity: 60,
+    layoutVariant: "A",
+  },
+];
+
+export function tradeDemoPlaylist() {
+  return {
+    id: "trade-demo-playlist",
+    name: "APEX · Electrical, Smart Home & Gates (Demo)",
+    description: "6-scene trade campaign: gate automation, smart home, electrical rates",
+    scenes: TRADE_DEMO_SCENES,
+  };
+}
+
 
 // Steam Link hardware profile (researched, documented in /docs)
 export const STEAM_LINK_PROFILE = {
