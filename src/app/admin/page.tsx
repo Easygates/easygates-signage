@@ -560,7 +560,7 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "product-grid": "Name / price / tag + image — product cards",
   "service-offer": "Up to 4 ticked bullets — name + detail (price is ignored)",
   "price-list": "Up to 8 rate rows — name / detail / price, tag optional",
-  "brand-wall": "Up to 8 brand tiles — name + short descriptor",
+  "brand-wall": "Up to 8 brand tiles — name + short descriptor, optional logo image (shown instead of the name)",
   "product-spec": "Up to 6 spec rows — name = label, detail = value",
   "callout-emergency": "Up to 3 job types — name + detail",
 };
@@ -569,6 +569,8 @@ function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["
   const list = items || [];
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
   const showPrice = template === "food-menu" || template === "product-grid" || template === "price-list";
+  // only these layouts draw a picture per row
+  const showImage = template === "product-grid" || template === "brand-wall";
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -589,9 +591,9 @@ function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["
               {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
               <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
             </div>
-            <div className="grid grid-cols-[1fr_150px] gap-1.5">
+            <div className={`grid gap-1.5 ${showImage ? "grid-cols-[1fr_150px]" : "grid-cols-1"}`}>
               <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 text-xs" placeholder="Detail / spec value" />
-              <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs" placeholder="img URL" />
+              {showImage && <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs" placeholder={template === "brand-wall" ? "logo image URL" : "img URL"} />}
             </div>
           </div>
         ))}
