@@ -1,0 +1,174 @@
+"use client";
+
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import SceneRenderer from "@/components/SceneRenderer";
+import { BrandBar, Dots, ProgressBar, Ticker } from "@/components/PlayerChrome";
+import { DEMO_SCENES, type Scene } from "@/lib/signage";
+import { transitionClass } from "@/lib/signage";
+
+function useQuery() {
+  const sp = useSearchParams();
+  return { playlistId: sp.get("playlistId"), displayId: sp.get("displayId") };
+}
+
+function DisplayInner() {
+  const { playlistId, displayId } = useQuery();
+  const [scenes, setScenes] = useState<Scene[]>(DEMO_SCENES);
+  const [playlistName, setPlaylistName] = useState("NOVA MART · Winter Sale Event");
+  const [mode, setMode] = useState("demo");
+  const [index, setIndex] = useState(0);
+  const [exiting, setExiting] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const [muted] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // reduced motion: OS preference
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const fn = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const q = new URLSearchParams();
+      if (playlistId) q.set("playlistId", playlistId);
+      if (displayId) q.set("displayId", displayId);
+      const r = await fetch(`/api/player?${q.toString()}`, { cache: "no-store" });
+      const j = await r.json();
+      if (j.scenes?.length) setScenes(j.scenes);
+      if (j.playlist?.name) setPlaylistName(j.playlist.name);
+      if (j.mode) setMode(j.mode);
+    } catch {
+      /* stay on demo */
+    }
+  }, [playlistId, displayId]);
+
+  useEffect(() => {
+    load();
+    const poll = setInterval(load, 30000); // pick up CMS pushes
+    return () => clearInterval(poll);
+  }, [load]);
+
+  // heartbeat for multi-display status
+  useEffect(() => {
+    if (!displayId) return;
+    const beat = () => fetch(`/api/displays/${displayId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ heartbeat: true }) }).catch(() => {});
+    beat();
+    const i = setInterval(beat, 20000);
+    return () => clearInterval(i);
+  }, [displayId]);
+
+  // preload next image (memory-light: only next 1)
+  useEffect(() => {
+    const next = scenes[(index + 1) % scenes.length]?.imageUrl;
+    if (next) {
+      const im = new Image();
+      im.src = next;
+    }
+    (scenes[index]?.items || []).slice(0, 4).forEach((it) => {
+      if (it.image) {
+        const im = new Image();
+        im.src = it.image;
+      }
+    });
+  }, [index, scenes]);
+
+  const go = useCallback(
+    (dir: 1 | -1) => {
+      if (reduced) {
+        setIndex((i) => (i + dir + scenes.length) % scenes.length);
+        return;
+      }
+      setExiting(true);
+      setTimeout(() => {
+        setIndex((i) => (i + dir + scenes.length) % scenes.length);
+        setExiting(false);
+      }, 480);
+    },
+    [scenes.length, reduced]
+  );
+
+  // auto-advance
+  useEffect(() => {
+    if (paused || scenes.length < 2) return;
+    const cur = scenes[index];
+    const ms = (cur.durationSec || 10) * 1000;
+    timer.current = setTimeout(() => go(1), ms);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [index, paused, scenes, go]);
+
+  // keyboard: arrows navigate, space pause, F fullscreen, M reduced, H help
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
+      if (e.key === " ") {
+        e.preventDefault();
+        setPaused((p) => !p);
+      }
+      if (e.key.toLowerCase() === "f") {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        else document.documentElement.requestFullscreen().catch(() => {});
+      }
+      if (e.key.toLowerCase() === "m") setReduced((r) => !r);
+      if (e.key.toLowerCase() === "h") setShowHelp((s) => !s);
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [go]);
+
+  const scene = scenes[index] ?? DEMO_SCENES[0];
+  const tClass = useMemo(() => transitionClass(scene.transition, exiting ? "exit" : "enter"), [scene.transition, exiting]);
+  void muted;
+
+  return (
+    <main className="relative h-screen w-screen overflow-hidden bg-black text-white" style={{ cursor: showHelp ? "default" : "none" }}>
+      <div key={`${scene.id}-${index}`} className={`absolute inset-0 ${tClass}`}>
+        <SceneRenderer scene={scene} reducedMotion={reduced} animKey={`${scene.id}-${index}`} />
+      </div>
+
+      <BrandBar playlistName={`${playlistName} · ${mode.toUpperCase()}`} index={index} total={scenes.length} />
+      <Ticker text={scene.tickerText} color={scene.accentColor} />
+      {!paused && <ProgressBar durationSec={scene.durationSec} animKey={`${scene.id}-${index}-${paused}`} color={scene.accentColor} />}
+      <Dots total={scenes.length} index={index} color={scene.accentColor} />
+
+      {paused && (
+        <div className="absolute inset-0 z-40 grid place-items-center bg-black/60 backdrop-blur-sm">
+          <div className="rounded-3xl bg-white p-10 text-center text-black">
+            <div className="text-5xl">⏸</div>
+            <div className="mt-3 text-2xl font-black">PAUSED</div>
+            <div className="mt-1 text-sm opacity-60">Press SPACE to resume · ←/→ to step · F fullscreen</div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && !paused && (
+        <div className="absolute bottom-20 left-6 z-40 max-w-sm rounded-2xl bg-black/80 p-5 text-sm leading-relaxed ring-1 ring-white/20 backdrop-blur">
+          <div className="font-black tracking-widest">DISPLAY CONTROLS</div>
+          <div className="mt-2 opacity-80">←/→ step scene · SPACE pause · F fullscreen · M reduced-motion ({reduced ? "ON" : "OFF"}) · H hide this panel</div>
+          <div className="mt-2 opacity-60">Auto-refresh every 30s picks up CMS pushes. Append ?displayId=… to bind a screen, ?playlistId=… to preview.</div>
+        </div>
+      )}
+
+      <button onClick={() => setShowHelp((s) => !s)} className="absolute left-4 top-16 z-40 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold tracking-widest opacity-0 ring-1 ring-white/20 transition hover:opacity-100" style={{ cursor: "pointer" }}>
+        ?
+      </button>
+    </main>
+  );
+}
+
+export default function DisplayPage() {
+  return (
+    <Suspense fallback={<main className="grid h-screen place-items-center bg-black text-white">Loading display…</main>}>
+      <DisplayInner />
+    </Suspense>
+  );
+}

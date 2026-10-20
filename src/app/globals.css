@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* ── Signage animation engine ───────────────────────────── */
+:root {
+  --sg-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --sg-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --sg-ease-spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+
+html, body { height: 100%; }
+body { background: #05070f; }
+
+/* Base staged element: hidden until its animation runs */
+.sg-anim { opacity: 0; animation-fill-mode: both; animation-timing-function: var(--sg-ease); }
+.sg-play .sg-anim { animation-play-state: running; }
+
+/* Entrance effects */
+@keyframes sg-fade-up { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sg-fade-down { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sg-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sg-slide-l { from { opacity: 0; transform: translateX(70px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes sg-slide-r { from { opacity: 0; transform: translateX(-70px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes sg-scale-in { from { opacity: 0; transform: scale(0.86); } to { opacity: 1; transform: scale(1); } }
+@keyframes sg-pop { 0% { opacity: 0; transform: scale(0.4) rotate(-10deg); } 60% { opacity: 1; transform: scale(1.12) rotate(3deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes sg-mask { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sg-wipe-x { from { opacity: 0; transform: scaleX(0); transform-origin: left; } to { opacity: 1; transform: scaleX(1); transform-origin: left; } }
+@keyframes sg-price { 0% { opacity: 0; transform: translateY(18px) scale(0.92); } 55% { opacity: 1; transform: translateY(-3px) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes sg-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sg-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes sg-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes sg-spin-slow { to { transform: rotate(360deg); } }
+@keyframes sg-pan-bg { 0% { background-position: 0% 40%; } 50% { background-position: 100% 60%; } 100% { background-position: 0% 40%; } }
+@keyframes sg-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes sg-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sg-blob { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(30px,-24px) scale(1.08); } 66% { transform: translate(-24px,18px) scale(0.94); } }
+@keyframes sg-ring { 0% { transform: scale(0.9); opacity: 0.7; } 100% { transform: scale(1.5); opacity: 0; } }
+
+.sg-fade-up { animation-name: sg-fade-up; }
+.sg-fade-down { animation-name: sg-fade-down; }
+.sg-fade { animation-name: sg-fade; }
+.sg-slide-l { animation-name: sg-slide-l; }
+.sg-slide-r { animation-name: sg-slide-r; }
+.sg-scale-in { animation-name: sg-scale-in; }
+.sg-pop { animation-name: sg-pop; animation-timing-function: var(--sg-ease-spring); }
+.sg-price { animation-name: sg-price; }
+.sg-float { animation-name: sg-float; animation-duration: 5s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; opacity: 1; }
+
+/* Masked line reveal wrapper */
+.sg-mask { overflow: hidden; display: block; }
+.sg-mask > span { display: block; animation: sg-mask 0.9s var(--sg-ease) both; }
+
+/* Ken Burns image treatments (GPU-cheap: single layer transform) */
+@keyframes sg-kb-in { from { transform: scale(1.18); } to { transform: scale(1.02); } }
+@keyframes sg-kb-out { from { transform: scale(1.02); } to { transform: scale(1.2); } }
+@keyframes sg-kb-panl { from { transform: scale(1.12) translateX(3%); } to { transform: scale(1.12) translateX(-3%); } }
+@keyframes sg-kb-panr { from { transform: scale(1.12) translateX(-3%); } to { transform: scale(1.12) translateX(3%); } }
+.sg-kb-zoom-in img { animation: sg-kb-in 9s ease-out both; }
+.sg-kb-zoom-out img { animation: sg-kb-out 9s ease-out both; }
+.sg-kb-pan-left img { animation: sg-kb-panl 10s ease-in-out both; }
+.sg-kb-pan-right img { animation: sg-kb-panr 10s ease-in-out both; }
+
+/* Scene transition wrappers */
+.sg-scene { position: absolute; inset: 0; }
+@keyframes sg-t-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sg-t-fade-out { to { opacity: 0; } }
+@keyframes sg-t-left-in { from { opacity: 0; transform: translateX(90px); } to { opacity: 1; transform: none; } }
+@keyframes sg-t-left-out { to { opacity: 0; transform: translateX(-90px); } }
+@keyframes sg-t-right-in { from { opacity: 0; transform: translateX(-90px); } to { opacity: 1; transform: none; } }
+@keyframes sg-t-right-out { to { opacity: 0; transform: translateX(90px); } }
+@keyframes sg-t-zoom-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }
+@keyframes sg-t-zoom-out { to { opacity: 0; transform: scale(1.08); } }
+@keyframes sg-t-wipe-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes sg-t-wipe-out { to { clip-path: inset(0 0 0 100%); } }
+.sg-t-enter-fade { animation: sg-t-fade-in 0.6s ease both; }
+.sg-t-exit-fade { animation: sg-t-fade-out 0.55s ease both; }
+.sg-t-enter-left { animation: sg-t-left-in 0.65s var(--sg-ease) both; }
+.sg-t-exit-left { animation: sg-t-left-out 0.55s var(--sg-ease) both; }
+.sg-t-enter-right { animation: sg-t-right-in 0.65s var(--sg-ease) both; }
+.sg-t-exit-right { animation: sg-t-right-out 0.55s var(--sg-ease) both; }
+.sg-t-enter-zoom { animation: sg-t-zoom-in 0.7s var(--sg-ease) both; }
+.sg-t-exit-zoom { animation: sg-t-zoom-out 0.55s var(--sg-ease) both; }
+.sg-t-enter-wipe { animation: sg-t-wipe-in 0.7s var(--sg-ease) both; }
+.sg-t-exit-wipe { animation: sg-t-wipe-out 0.55s var(--sg-ease) both; }
+.sg-t-enter-cut, .sg-t-exit-cut { animation: none; }
+
+/* Display typography helpers */
+.sg-display { font-weight: 900; letter-spacing: -0.03em; line-height: 0.95; text-wrap: balance; }
+.sg-outline { -webkit-text-stroke: 2px currentColor; -webkit-text-fill-color: transparent; }
+.sg-shimmer-text {
+  background: linear-gradient(110deg, currentColor 30%, #fff 50%, currentColor 70%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  animation: sg-shimmer 3.2s linear infinite;
+}
+
+/* Reduced motion: show everything statically */
+.sg-reduced .sg-anim, .sg-reduced .sg-mask > span { opacity: 1 !important; animation: none !important; transform: none !important; }
+.sg-reduced .sg-kb-zoom-in img, .sg-reduced .sg-kb-zoom-out img,
+.sg-reduced .sg-kb-pan-left img, .sg-reduced .sg-kb-pan-right img { animation: none !important; }
+.sg-reduced .sg-float { animation: none !important; opacity: 1; }
+
+/* Scrollbars for admin */
+.sg-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.sg-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+
+/* Admin preview scaling keeps display composition intact */
+.sg-stage { aspect-ratio: 16 / 9; }
