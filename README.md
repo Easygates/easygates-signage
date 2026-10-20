@@ -1,8 +1,11 @@
 # NovaSign — Professional Animated Signage for the Original Steam Link
 
-Broadcast-grade retail signage player + CMS. 7 art-directed templates, a deterministic animation engine, playlists, schedules and multi-display control — designed around the real constraints of the 2015 Valve Steam Link.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 12 art-directed templates (7 retail + 5 trade), a deterministic animation engine, playlists, schedules and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Fictional demo brand: **NOVA MART · Winter Sale Event** (8 scenes, all prices fictional).
+Two fictional demo campaigns, both loadable from `/admin`:
+
+- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
+- **APEX · Electrical, Smart Home & Gates** — 6 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out) plus 5 pre-registered screens.
 
 ## Quick start (Local PostgreSQL or Supabase)
 
@@ -34,7 +37,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 4. **Create tables on Supabase** (pick either method):
    - **CLI (Drizzle):** `npx drizzle-kit push`
    - **Dashboard (No CLI needed):** paste [`supabase/schema.sql`](supabase/schema.sql) into **Supabase Dashboard → SQL Editor → Run**.
-5. Start the server and seed the 8 demo scenes via **✨ Load demo** in `/admin` (or `curl -X POST http://localhost:3000/api/seed`).
+5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 
@@ -43,13 +46,14 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 | Route | Purpose |
 |---|---|
 | `/` | Product overview |
-| `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`) |
+| `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`) |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline |
 | `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
 | `/docs` | Hardware research + Supabase & Steam Link deploy guide |
 | `/api/db-status` | Live DB health, latency, pooler mode & table row counts |
 | `/api/selftest` | Automated checks (JSON) |
-| `/api/player?displayId=…` | What a screen should play right now |
+| `/api/player?displayId=…` | What a screen should play right now (`&poll=` is a player-side refresh hint) |
+| `/api/displays/:id/control` | Proxy to Fully Kiosk Remote Admin — reload / wake / restart / screenshot (POST action, GET screenshot) |
 
 ## Tests & validation
 
@@ -58,6 +62,10 @@ node --test "tests/*.mjs"
 curl -s localhost:3000/api/selftest | jq .
 npx next typegen && npm exec tsc -- --noEmit && npm run build
 ```
+
+## Choosing player hardware
+
+The Steam Link is a 2015 device and is no longer a sensible target. See **[HARDWARE.md](HARDWARE.md)** for the 2026 recommendation (Raspberry Pi kiosk, Android box + Fully Kiosk, HDMI splitter for identical content), UK pricing, and a one-command Pi installer in [`deploy/pi-kiosk.sh`](deploy/pi-kiosk.sh).
 
 ## Steam Link reality (researched)
 

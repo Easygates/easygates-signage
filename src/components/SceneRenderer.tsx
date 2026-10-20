@@ -375,6 +375,225 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
         </div>
       )}
 
+      {/* ═══ 8 · SERVICE & INSTALLATION (trade) ═══ */}
+      {t === "service-offer" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1650px] grid-cols-1 items-center gap-7 px-[5%] py-[3%] lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-4">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[clamp(2.2rem,5vw,4.5rem)]">
+                {scene.headline}
+              </span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade-up max-w-xl text-[clamp(0.9rem,1.55vw,1.2rem)] leading-relaxed" style={{ ...d.style(2), color: scene.mutedColor }}>
+                {scene.subheadline}
+              </p>
+            )}
+            <ul className="space-y-2.5 pt-1">
+              {(scene.items || []).slice(0, 4).map((it, i) => (
+                <li key={i} className="sg-anim sg-slide-r flex items-start gap-3" style={d.style(2 + i)}>
+                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-black text-black" style={{ background: scene.accentColor }}>✓</span>
+                  <div className="min-w-0">
+                    <div className="text-[clamp(0.92rem,1.55vw,1.25rem)] font-extrabold leading-tight">{it.name}</div>
+                    {it.desc && <div className="text-[clamp(0.68rem,1.05vw,0.88rem)] opacity-65">{it.desc}</div>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3 pt-1">
+              {scene.promoPrice && (
+                <div className="sg-anim sg-price flex items-end gap-2" style={d.style(6)}>
+                  <span className="pb-1.5 text-[10px] font-black tracking-[0.22em] opacity-65">FROM</span>
+                  <span className="sg-display text-[clamp(1.9rem,3.8vw,3.2rem)]" style={{ color: scene.accentColor }}>{scene.promoPrice}</span>
+                </div>
+              )}
+              {scene.ctaText && (
+                <div className="sg-anim sg-fade-up" style={d.style(7)}>
+                  <span className="inline-flex items-center gap-2.5 rounded-full bg-white px-6 py-3 text-[clamp(0.78rem,1.3vw,1rem)] font-black tracking-wide text-black shadow-xl">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: scene.accentColor }} />
+                    {scene.ctaText}
+                  </span>
+                </div>
+              )}
+            </div>
+            {scene.description && (
+              <p className="sg-anim sg-fade text-[clamp(0.68rem,1vw,0.82rem)] opacity-55" style={d.style(8)}>{scene.description}</p>
+            )}
+          </div>
+          <ProductImage scene={scene} d={d} className="mx-auto w-full max-w-[600px]" badge={false} />
+        </div>
+      )}
+
+      {/* ═══ 9 · TRADE PRICE LIST ═══ */}
+      {t === "price-list" && (
+        <div className="relative z-10 mx-auto flex h-full max-w-[1700px] flex-col px-[5%] py-[3%]">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0">
+              <Eyebrow scene={scene} d={d} />
+              <div className="sg-mask mt-2">
+                <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[clamp(1.8rem,3.9vw,3.3rem)]">
+                  {scene.headline}
+                </span>
+              </div>
+            </div>
+            <div className="sg-anim sg-fade-down flex max-w-lg items-center gap-3" style={d.style(1)}>
+              {scene.subheadline && (
+                <p className="text-right text-[clamp(0.66rem,1vw,0.88rem)] leading-snug opacity-60">{scene.subheadline}</p>
+              )}
+              <span className="hidden shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-black tracking-[0.18em] text-black lg:inline-block" style={{ background: scene.accentColor }}>INC. VAT</span>
+            </div>
+          </div>
+
+          <div className="mt-3 grid flex-1 grid-cols-1 content-center gap-x-12 md:grid-flow-col md:grid-cols-2 md:grid-rows-4">
+            {(scene.items || []).slice(0, 8).map((it, i) => (
+              <div key={i} className="sg-anim sg-fade-up flex items-baseline gap-3 border-b border-white/10 py-[clamp(0.3rem,0.85vh,0.65rem)]" style={d.style(2 + i)}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[clamp(0.88rem,1.45vw,1.18rem)] font-extrabold">{it.name}</span>
+                    {it.tag && <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black text-black" style={{ background: scene.accentColor }}>{it.tag}</span>}
+                  </div>
+                  {it.desc && <div className="truncate text-[clamp(0.62rem,0.92vw,0.78rem)] opacity-50">{it.desc}</div>}
+                </div>
+                <span className="mx-1 hidden flex-1 border-b border-dotted border-white/25 sm:block" />
+                <span className="shrink-0 text-[clamp(1rem,1.85vw,1.55rem)] font-black" style={{ color: scene.accentColor }}>{it.price}</span>
+              </div>
+            ))}
+          </div>
+
+          {scene.ctaText && (
+            <div className="sg-anim sg-fade-up mb-6 mt-3 flex items-center justify-between gap-4 rounded-2xl px-5 py-3" style={{ ...d.style(10), background: `${scene.accentColor}1f`, border: `1px solid ${scene.accentColor}55` }}>
+              <span className="text-[clamp(0.78rem,1.25vw,1rem)] font-black tracking-wide">{scene.ctaText}</span>
+              <span className="hidden text-[10px] font-bold tracking-[0.2em] opacity-55 lg:block">FIXED PRICE · CERTIFIED WORK</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 10 · BRANDS & ECOSYSTEMS ═══ */}
+      {t === "brand-wall" && (
+        <div className="relative z-10 mx-auto flex h-full max-w-[1650px] flex-col justify-center px-[5%] py-[3%]">
+          <div className="text-center">
+            <div className="sg-anim sg-fade-down text-[clamp(0.68rem,1.25vw,0.95rem)] font-bold tracking-[0.32em]" style={{ ...d.style(0), color: scene.accentColor }}>
+              {scene.eyebrow}
+            </div>
+            <div className="sg-mask mt-2">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[clamp(1.9rem,4.4vw,3.9rem)]">
+                {scene.headline}
+              </span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade mx-auto mt-2 max-w-3xl text-[clamp(0.8rem,1.35vw,1.05rem)] opacity-65" style={d.style(2)}>{scene.subheadline}</p>
+            )}
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(scene.items || []).slice(0, 8).map((it, i) => (
+              <div key={i} className="sg-anim sg-scale-in relative overflow-hidden rounded-2xl bg-white/[0.06] px-4 py-5 text-center ring-1 ring-white/15" style={d.style(2 + i)}>
+                <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: scene.accentColor, opacity: 0.85 }} />
+                <div className="sg-display text-[clamp(1rem,1.9vw,1.6rem)] leading-tight">{it.name}</div>
+                {it.desc && <div className="mt-1 text-[clamp(0.58rem,0.9vw,0.76rem)] uppercase tracking-[0.14em] opacity-55">{it.desc}</div>}
+              </div>
+            ))}
+          </div>
+          {scene.ctaText && (
+            <div className="sg-anim sg-fade-up mt-5 text-center" style={d.style(11)}>
+              <span className="inline-block rounded-full border px-6 py-2.5 text-[clamp(0.66rem,1.15vw,0.9rem)] font-black tracking-[0.18em]" style={{ borderColor: `${scene.accentColor}99`, color: scene.accentColor }}>
+                {scene.ctaText}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 11 · PRODUCT SPEC SHEET ═══ */}
+      {t === "product-spec" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1650px] grid-cols-1 items-center gap-7 px-[5%] py-[3%] lg:grid-cols-[0.92fr_1.08fr]">
+          <ProductImage scene={scene} d={d} className="mx-auto w-full max-w-[540px]" badge={false} />
+          <div className="space-y-3.5">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[clamp(1.9rem,4.2vw,3.8rem)]">
+                {scene.headline}
+              </span>
+            </div>
+            <div className="sg-anim sg-fade-up flex flex-wrap items-center gap-x-4 gap-y-2" style={d.style(2)}>
+              <span className="text-[clamp(0.95rem,1.65vw,1.3rem)] font-extrabold opacity-90">{scene.productName}</span>
+              {scene.originalPrice && <span className="text-base font-bold line-through opacity-50">{scene.originalPrice}</span>}
+              {scene.promoPrice && <span className="rounded-lg px-3 py-1 text-xl font-black text-black" style={{ background: scene.accentColor }}>{scene.promoPrice}</span>}
+              {scene.discountBadge && (
+                <span className="sg-anim sg-pop rounded-full border px-3 py-1 text-[10px] font-black tracking-[0.18em]" style={{ ...d.style(4), borderColor: `${scene.accentColor}88`, color: scene.accentColor }}>
+                  {scene.discountBadge}
+                </span>
+              )}
+            </div>
+            <div className="sg-anim sg-fade-up divide-y divide-white/10 rounded-2xl bg-black/25 px-4 ring-1 ring-white/10" style={d.style(3)}>
+              {(scene.items || []).slice(0, 6).map((it, i) => (
+                <div key={i} className="grid grid-cols-[34%_1fr] items-baseline gap-3 py-[clamp(0.28rem,0.8vh,0.55rem)]">
+                  <span className="text-[clamp(0.58rem,0.9vw,0.76rem)] font-black uppercase tracking-[0.16em] opacity-50">{it.name}</span>
+                  <span className="text-[clamp(0.78rem,1.25vw,1rem)] font-bold">{it.desc}</span>
+                </div>
+              ))}
+            </div>
+            {scene.description && (
+              <p className="sg-anim sg-fade text-[clamp(0.7rem,1.1vw,0.9rem)] leading-relaxed opacity-60" style={d.style(5)}>{scene.description}</p>
+            )}
+            {scene.ctaText && (
+              <div className="sg-anim sg-fade-up" style={d.style(6)}>
+                <span className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-[clamp(0.76rem,1.25vw,0.95rem)] font-black tracking-wide text-black" style={{ background: scene.accentColor }}>{scene.ctaText}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 12 · EMERGENCY CALL-OUT ═══ */}
+      {t === "callout-emergency" && (
+        <div className="relative z-10 h-full">
+          {scene.imageUrl && (
+            <div className="absolute inset-y-0 right-0 hidden w-[46%] lg:block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={scene.imageUrl} alt="" className="h-full w-full object-cover opacity-40" draggable={false} />
+              <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${scene.bgFrom} 0%, ${scene.bgFrom}cc 38%, transparent 100%)` }} />
+            </div>
+          )}
+          <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-center px-[6%] py-[3%]">
+            <div className="sg-anim sg-fade-down flex items-center gap-3" style={d.style(0)}>
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inset-0 rounded-full" style={{ background: scene.accentColor, animation: "sg-ring 1.8s ease-out infinite" }} />
+                <span className="relative inline-flex h-3 w-3 rounded-full" style={{ background: scene.accentColor }} />
+              </span>
+              <span className="text-[clamp(0.68rem,1.3vw,1rem)] font-black tracking-[0.3em]" style={{ color: scene.accentColor }}>{scene.eyebrow}</span>
+            </div>
+            <div className="sg-mask mt-3 max-w-5xl">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[clamp(2.4rem,6.2vw,5.8rem)]">
+                {scene.headline}
+              </span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade-up mt-3 max-w-2xl text-[clamp(0.9rem,1.6vw,1.25rem)]" style={{ ...d.style(2), color: scene.mutedColor }}>{scene.subheadline}</p>
+            )}
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {(scene.items || []).slice(0, 3).map((it, i) => (
+                <div key={i} className="sg-anim sg-slide-r rounded-xl bg-white/[0.07] px-4 py-2.5 ring-1 ring-white/15" style={d.style(3 + i)}>
+                  <div className="text-[clamp(0.76rem,1.25vw,0.98rem)] font-extrabold">{it.name}</div>
+                  {it.desc && <div className="text-[clamp(0.6rem,0.9vw,0.78rem)] opacity-60">{it.desc}</div>}
+                </div>
+              ))}
+            </div>
+            {scene.ctaText && (
+              <div className="sg-anim sg-price mt-6 flex flex-wrap items-center gap-4" style={d.style(7)}>
+                <span className="sg-display flex items-center gap-4 rounded-2xl px-7 py-3.5 text-[clamp(1.6rem,3.8vw,3.1rem)] text-black shadow-[0_20px_60px_rgba(0,0,0,0.5)]" style={{ background: scene.accentColor }}>
+                  <span className="text-[0.55em]">☎</span>{scene.ctaText}
+                </span>
+                <span className="text-[clamp(0.58rem,0.95vw,0.76rem)] font-black uppercase leading-tight tracking-[0.18em] opacity-65">
+                  24/7 · 365<br />Engineers on call
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />
     </div>

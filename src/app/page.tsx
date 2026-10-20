@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DEMO_SCENES, TEMPLATES, STEAM_LINK_PROFILE } from "@/lib/signage";
+import { DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default function Home() {
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-400 text-xl font-black text-white shadow-lg">N</span>
           <div>
             <div className="font-black tracking-[0.2em]">NOVASIGN</div>
-            <div className="text-[11px] tracking-widest text-white/50">RETAIL SIGNAGE · STEAM LINK EDITION</div>
+            <div className="text-[11px] tracking-widest text-white/50">ELECTRICAL · SMART HOME · GATE AUTOMATION</div>
           </div>
         </div>
         <nav className="flex items-center gap-2 text-sm font-bold">
@@ -83,11 +83,14 @@ export default function Home() {
 
       {/* templates */}
       <section className="mx-auto max-w-7xl px-6 py-14">
-        <h2 className="text-3xl font-black tracking-tight">Seven coordinated templates.</h2>
-        <p className="mt-2 text-white/60">Not one slideshow theme — seven art-directed layouts, each with its own staged timeline.</p>
+        <h2 className="text-3xl font-black tracking-tight">{TEMPLATES.length} coordinated templates.</h2>
+        <p className="mt-2 max-w-3xl text-white/60">
+          Not one slideshow theme — {TEMPLATES.length} art-directed layouts, each with its own staged timeline. Built for shops and
+          showrooms, then extended for the trade: service lists, rate cards, brand walls, spec sheets and emergency call-outs.
+        </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEMPLATES.map((t, i) => {
-            const demo = DEMO_SCENES.find((s) => s.template === t.id);
+            const demo = [...DEMO_SCENES, ...TRADE_DEMO_SCENES].find((s) => s.template === t.id);
             return (
               <Link key={t.id} href="/admin" className="group overflow-hidden rounded-3xl bg-white/[0.05] ring-1 ring-white/10 hover:ring-white/30">
                 <div className="relative h-40 overflow-hidden">
@@ -104,11 +107,11 @@ export default function Home() {
               </Link>
             );
           })}
-          <div className="rounded-3xl bg-gradient-to-br from-red-500 to-orange-500 p-6">
-            <div className="text-sm font-bold tracking-widest opacity-80">STEAM LINK REALITY CHECK</div>
-            <div className="mt-2 text-xl font-black leading-snug">{STEAM_LINK_PROFILE.soc.split("—")[0]}</div>
-            <div className="mt-2 text-sm opacity-85">{STEAM_LINK_PROFILE.ram} · {STEAM_LINK_PROFILE.gpu}. CMS runs on your PC; the Link just renders one lightweight scene at a time.</div>
-            <Link href="/docs" className="mt-4 inline-block rounded-xl bg-black/70 px-5 py-2.5 text-sm font-black">READ DEPLOY GUIDE →</Link>
+          <div className="rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6">
+            <div className="text-sm font-bold tracking-widest opacity-80">PLAYER HARDWARE</div>
+            <div className="mt-2 text-xl font-black leading-snug">One small PC or Raspberry Pi per TV.</div>
+            <div className="mt-2 text-sm opacity-90">The CMS runs on your computer; each screen opens its own kiosk URL and picks up edits within 30 seconds. The Steam Link is a dead end — see the hardware guide.</div>
+            <Link href="/docs" className="mt-4 inline-block rounded-xl bg-black/70 px-5 py-2.5 text-sm font-black">READ THE GUIDE →</Link>
           </div>
         </div>
       </section>

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import SceneRenderer from "@/components/SceneRenderer";
 import DatabasePanel from "@/components/DatabasePanel";
-import { ANIMATION_PRESETS, DEMO_SCENES, TEMPLATES, TRANSITIONS, buildTimeline, type Scene, type TemplateId } from "@/lib/signage";
+import PlayerControls from "@/components/PlayerControls";
+import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, type Scene, type TemplateId } from "@/lib/signage";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "database";
 
@@ -32,7 +33,7 @@ export default function AdminPage() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
-  const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string }[]>([]);
+  const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Scene>(emptyScene());
@@ -107,8 +108,15 @@ export default function AdminPage() {
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
-  const seed = async () => {
-    await fetch("/api/seed", { method: "POST" }); load(); flash("Demo campaign loaded (8 scenes, playlist, 2 displays)");
+  const seed = async (campaign: "retail" | "trade" = "retail") => {
+    const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
+    const j = await r.json().catch(() => ({}));
+    load();
+    flash(
+      campaign === "trade"
+        ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
+        : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+    );
   };
 
   const timeline = useMemo(() => buildTimeline(draft), [draft]);
@@ -126,7 +134,8 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-            <button onClick={seed} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Load demo</button>
+            <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
+            <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             {msg && <span className="rounded-full bg-green-500/20 px-4 py-2 text-green-300 ring-1 ring-green-400/40">{msg}</span>}
@@ -243,8 +252,12 @@ export default function AdminPage() {
                   <Field label="Image position"><input value={draft.imagePosition || "center"} onChange={(e) => set("imagePosition", e.target.value as never)} className="inp" placeholder="center / top / 30% 60%" /></Field>
                 </div>
               </div>
-              {(draft.template === "food-menu" || draft.template === "product-grid") && (
-                <ItemsEditor items={(draft.items as Scene["items"]) || []} onChange={(v) => set("items", v as never)} />
+              {ITEM_TEMPLATES.includes(draft.template) && (
+                <ItemsEditor
+                  items={(draft.items as Scene["items"]) || []}
+                  template={draft.template}
+                  onChange={(v) => set("items", v as never)}
+                />
               )}
             </div>
 
@@ -369,6 +382,7 @@ export default function AdminPage() {
                       <button onClick={async () => { await navigator.clipboard.writeText(`${location.origin}/display?displayId=${x.id}`); flash("Screen URL copied"); }} className="rounded-xl bg-white/10 px-4 py-2.5 ring-1 ring-white/20">COPY URL</button>
                       <button onClick={async () => { if (!confirm("Remove display?")) return; await fetch(`/api/displays/${x.id}`, { method: "DELETE" }); load(); }} className="rounded-xl bg-white/10 px-4 py-2.5 text-red-300 ring-1 ring-white/20">✕</button>
                     </div>
+                    <PlayerControls displayId={x.id} fullyUrl={x.fullyUrl} hasFully={x.hasFully} onSaved={load} flash={flash} />
                     <div className="mt-2 text-[11px] text-white/40">Serving: {pl?.name || "—"} · Last seen: {x.lastSeen ? new Date(x.lastSeen).toLocaleString() : "never"}</div>
                   </div>
                 );
@@ -377,10 +391,10 @@ export default function AdminPage() {
             </div>
             <div className="h-fit rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
               <h3 className="font-black">Add a screen</h3>
-              <p className="mt-1 text-sm text-white/50">Each TV gets its own URL. Different screens can play different playlists — the Steam Link just opens its URL fullscreen.</p>
+              <p className="mt-1 text-sm text-white/50">Each TV gets its own URL, opened fullscreen by a player device (Fully Kiosk on an Android box, or a PC/Pi in kiosk mode).</p>
               <button onClick={async () => { const r = await fetch("/api/displays", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `Screen ${displays.length + 1}`, playlistId: selPlaylist }) }); await r.json(); load(); flash("Screen added — open its URL on the player device"); }} className="mt-4 w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black">+ Register display</button>
               <div className="mt-4 rounded-2xl bg-black/30 p-4 text-xs leading-relaxed text-white/60">
-                <span className="font-black text-white/80">ON THE PLAYER DEVICE:</span><br />1. Connect to the same Wi-Fi/LAN.<br />2. Open the screen URL in fullscreen (F11 / kiosk).<br />3. It heartbeats every 20s and polls content every 30s — no reinstall needed.
+                <span className="font-black text-white/80">FULLY KIOSK (RECOMMENDED):</span><br />1. Install Fully Kiosk Browser, buy the PLUS licence.<br />2. Start URL = this screen&apos;s URL · Launch on Boot · Keep Screen On.<br />3. Settings → Remote Administration: enable, set a password, allow local network.<br />4. Paste the player&apos;s <code>http://IP:2323</code> into <b>Player device</b> above to reload / wake / screenshot it from here.<br /><br />It heartbeats every 20 s and polls content every 30 s — no reinstall needed.
               </div>
             </div>
           </div>
@@ -483,26 +497,47 @@ function Color({ label, v, onChange }: { label: string; v: string; onChange: (v:
   );
 }
 
-function ItemsEditor({ items, onChange }: { items: NonNullable<Scene["items"]>; onChange: (v: NonNullable<Scene["items"]>) => void }) {
+const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
+  "food-menu": "Name / price / tag — the menu list",
+  "product-grid": "Name / price / tag + image — product cards",
+  "service-offer": "Up to 4 ticked bullets — name + detail (price is ignored)",
+  "price-list": "Up to 8 rate rows — name / detail / price, tag optional",
+  "brand-wall": "Up to 8 brand tiles — name + short descriptor",
+  "product-spec": "Up to 6 spec rows — name = label, detail = value",
+  "callout-emergency": "Up to 3 job types — name + detail",
+};
+
+function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {
   const list = items || [];
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
+  const showPrice = template === "food-menu" || template === "product-grid" || template === "price-list";
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-black tracking-widest text-white/50">MENU / GRID ITEMS ({list.length})</span>
-        <button onClick={() => onChange([...list, { name: "New item", price: "£9.99", desc: "", tag: "" }])} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ Add</button>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-xs font-black tracking-widest text-white/50">ROWS ({list.length})</span>
+        <button onClick={() => onChange([...list, { name: "New row", price: "£9.99", desc: "", tag: "" }])} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ Add</button>
       </div>
+      <p className="mb-2 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
       <div className="space-y-2">
         {list.map((it, i) => (
-          <div key={i} className="grid grid-cols-[1fr_90px_90px_90px_28px] gap-2">
-            <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name" />
-            <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
-            <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
-            <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs" placeholder="img URL" />
-            <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
+          <div key={i} className="space-y-1.5 rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/10">
+            <div className="grid grid-cols-[1fr_84px_96px_26px] gap-1.5">
+              <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
+              {showPrice ? (
+                <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
+              ) : (
+                <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
+              )}
+              {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
+              <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
+            </div>
+            <div className="grid grid-cols-[1fr_150px] gap-1.5">
+              <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 text-xs" placeholder="Detail / spec value" />
+              <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs" placeholder="img URL" />
+            </div>
           </div>
         ))}
-        {list.length === 0 && <p className="text-xs text-white/40">Add rows — food-menu shows name/price/desc/tag, grid shows image cards.</p>}
+        {list.length === 0 && <p className="text-xs text-white/40">No rows yet — add some above.</p>}
       </div>
     </div>
   );
