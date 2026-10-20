@@ -326,7 +326,7 @@ export default function DatabasePanel({
               <code>drizzle.config.ts</code>.
             </li>
             <li>
-              <strong className="text-white">Create the 6 tables</strong> either from your
+              <strong className="text-white">Create the 7 tables</strong> either from your
               terminal:
               <pre className="mt-1.5 rounded-xl bg-black/50 p-3 font-mono text-xs text-amber-300 ring-1 ring-white/10">
                 npx drizzle-kit push

@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/db";
 import { assets } from "@/db/schema";
-import { supabaseAuthHeaders, supabaseStorageConfig } from "@/lib/supabase";
+import { secretKeyProblem, supabaseAuthHeaders, supabaseStorageConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +40,10 @@ export async function POST(req: Request) {
 
   if (storage) {
     const { url: supabaseUrl, key, bucket } = storage;
+    const keyProblem = secretKeyProblem(key);
+    if (keyProblem) {
+      return NextResponse.json({ error: keyProblem }, { status: 500 });
+    }
     // Upload directly to Supabase Storage public bucket
     const uploadRes = await fetch(
       `${supabaseUrl}/storage/v1/object/${bucket}/${safe}`,
@@ -55,9 +59,22 @@ export async function POST(req: Request) {
     );
     if (!uploadRes.ok) {
       const detail = await uploadRes.text().catch(() => "upload-failed");
+      let message = "";
+      try {
+        message = String(JSON.parse(detail).message || "");
+      } catch {
+        message = detail.slice(0, 200);
+      }
+      const hint = /bucket not found/i.test(message)
+        ? ` — create public bucket "${bucket}" (run supabase/schema.sql)`
+        : /row-level security/i.test(message)
+          ? " — SUPABASE_SECRET_KEY must be the secret key (sb_secret_…), not the publishable/anon key"
+          : /authorization|invalid|signature|jwt/i.test(message)
+            ? " — Supabase didn't accept SUPABASE_SECRET_KEY; copy it again from Project Settings → API Keys"
+            : "";
       return NextResponse.json(
         {
-          error: `Supabase Storage error (${uploadRes.status}): ensure public bucket "${bucket}" exists`,
+          error: `Supabase Storage error (${uploadRes.status}): ${message || "upload failed"}${hint}`,
           detail,
         },
         { status: 502 }

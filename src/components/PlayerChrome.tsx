@@ -1,34 +1,43 @@
 "use client";
 
-export function BrandBar({ playlistName, index, total }: { playlistName: string; index: number; total: number }) {
+import { useEffect, useState } from "react";
+import type { BrandSettings } from "@/lib/brand";
+
+/** Top corners of every screen: business logo (or name) left, optional clock right. */
+export function BrandBar({ brand }: { brand: BrandSettings }) {
+  if (!brand.showBrandBar && !brand.showClock) return null;
+  const name = brand.businessName;
+  const showName = Boolean(name) && (brand.showName || !brand.logoUrl);
   return (
-    <div className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex items-center justify-between px-6 py-4">
-      <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white font-black text-black">N</span>
-        <div className="leading-tight">
-          <div className="text-sm font-black tracking-[0.22em]">NOVA MART</div>
-          <div className="text-[11px] font-medium tracking-widest opacity-70">{playlistName}</div>
+    <div className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex items-start justify-between px-8 pt-7">
+      {brand.showBrandBar ? (
+        <div className="flex items-center gap-4">
+          {brand.logoUrl ? (
+            <span className={`flex h-16 items-center ${brand.logoOnWhite ? "rounded-2xl bg-white px-5 shadow-[0_12px_32px_rgba(0,0,0,0.35)]" : ""}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brand.logoUrl} alt={name} className="h-10 w-auto max-w-[360px] object-contain" draggable={false} />
+            </span>
+          ) : (
+            name && <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-2xl font-black text-black">{name.charAt(0).toUpperCase()}</span>
+          )}
+          {showName && <span className="text-[22px] font-black uppercase tracking-[0.2em] drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">{name}</span>}
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <LiveClock />
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold tracking-widest ring-1 ring-white/20 backdrop-blur">
-          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-        </span>
-      </div>
+      ) : (
+        <span />
+      )}
+      {brand.showClock && <LiveClock />}
     </div>
   );
 }
 
 export function LiveClock() {
   return (
-    <span className="rounded-full bg-black/40 px-4 py-1.5 font-mono text-sm font-bold tracking-widest ring-1 ring-white/15 backdrop-blur" suppressHydrationWarning>
+    <span className="rounded-full bg-black/45 px-5 py-2 font-mono text-[20px] font-bold tracking-widest ring-1 ring-white/15 backdrop-blur" suppressHydrationWarning>
       <ClockInner />
     </span>
   );
 }
 
-import { useEffect, useState } from "react";
 function ClockInner() {
   const [t, setT] = useState("--:--");
   useEffect(() => {
@@ -61,16 +70,6 @@ export function Ticker({ text, color }: { text?: string; color: string }) {
         <span className="pr-8">{line}</span>
         <span className="pr-8" style={{ color }}>{line}</span>
       </div>
-    </div>
-  );
-}
-
-export function Dots({ total, index, color }: { total: number; index: number; color: string }) {
-  return (
-    <div className="absolute bottom-12 right-6 z-30 flex gap-2">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === index ? 28 : 8, background: i === index ? color : "#ffffff44" }} />
-      ))}
     </div>
   );
 }
