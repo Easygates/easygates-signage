@@ -483,9 +483,17 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
           </div>
           <div className="mt-5 grid grid-cols-4 gap-3">
             {(scene.items || []).slice(0, 8).map((it, i) => (
-              <div key={i} className="sg-anim sg-scale-in relative overflow-hidden rounded-2xl bg-white/[0.06] px-4 py-5 text-center ring-1 ring-white/15" style={d.style(2 + i)}>
+              <div key={i} className="sg-anim sg-scale-in relative flex flex-col justify-center overflow-hidden rounded-2xl bg-white/[0.06] px-4 py-5 text-center ring-1 ring-white/15" style={d.style(2 + i)}>
                 <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: scene.accentColor, opacity: 0.85 }} />
-                <div className="sg-display text-[26px] leading-tight">{it.name}</div>
+                {it.image ? (
+                  // logo on a white plate so dark and coloured logos both read
+                  <div className="flex h-[88px] items-center justify-center rounded-xl bg-white px-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={it.image} alt={it.name} className="max-h-[60px] max-w-full object-contain" draggable={false} />
+                  </div>
+                ) : (
+                  <div className="sg-display text-[26px] leading-tight">{it.name}</div>
+                )}
                 {it.desc && <div className="mt-1 text-[12px] uppercase tracking-[0.14em] opacity-55">{it.desc}</div>}
               </div>
             ))}
