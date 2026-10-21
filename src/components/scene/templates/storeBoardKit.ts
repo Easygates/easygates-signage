@@ -100,6 +100,42 @@ export function fitText(o: FitOpts): Fit {
   return { px: o.minPx, lines: countLines(text, o.minPx, o.boxW, o), fits: false };
 }
 
+// ───────────────────────── safe input ─────────────────────────
+
+export interface CleanItem {
+  name: string;
+  price?: string;
+  desc?: string;
+  tag?: string;
+  image?: string;
+}
+
+function text(v: unknown): string {
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  return "";
+}
+
+/**
+ * Items come from stored JSON, so anything can be in there (numbers, nulls, a missing list).
+ * Returns tidy items with every field a trimmed string; empty optional fields are left out.
+ */
+export function cleanItems(raw: unknown): CleanItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CleanItem[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const r = it as Record<string, unknown>;
+    const item: CleanItem = { name: text(r.name) };
+    for (const k of ["price", "desc", "tag", "image"] as const) {
+      const v = text(r[k]);
+      if (v) item[k] = v;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 // ───────────────────────── small text helpers ─────────────────────────
 
 /** Split a details field into separate short lines: newline, or " · " / " • " / " | " separators. */

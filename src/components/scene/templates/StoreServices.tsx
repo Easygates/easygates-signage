@@ -1,7 +1,7 @@
 import type { TemplateProps } from "../parts";
 import type { SceneItem } from "@/lib/signage";
 import { A, AREA_H, BOTTOM, Banner, INK, Icon, TOP, bannerMetrics, clamp, palette, type Pal } from "./storeBoardParts";
-import { countLines, fitText, gridRows, gridSpans, serviceIcon, splitLines } from "./storeBoardKit";
+import { countLines, fitText, gridRows, gridSpans, serviceIcon, splitLines, cleanItems } from "./storeBoardKit";
 
 /**
  * Template "store-services" — an information board: up to six service cards, each with its own icon.
@@ -252,7 +252,7 @@ function Card({ p, pal, d, delay, tileH }: { p: Plan; pal: Pal; d: TemplateProps
 
 export default function StoreServicesTemplate({ scene, d }: TemplateProps) {
   const pal = palette(scene);
-  const items = (scene.items || []).filter((it) => it && ((it.name || "").trim() || (it.desc || "").trim())).slice(0, 6);
+  const items = cleanItems(scene.items).filter((it) => it.name || it.desc).slice(0, 6);
   const n = items.length;
   const rows = gridRows(n);
 

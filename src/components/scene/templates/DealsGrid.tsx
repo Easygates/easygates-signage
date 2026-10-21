@@ -1,7 +1,7 @@
 import type { TemplateProps } from "../parts";
 import type { SceneItem } from "@/lib/signage";
 import { A, AREA_H, BOTTOM, Banner, INK, Pic, PriceFlag, SLATE, TOP, TagFlag, bannerMetrics, clamp, palette, priceFlagHeight, priceFlagWidth, type Pal } from "./storeBoardParts";
-import { countLines, fitText, gridRows, gridSpans, textWidth } from "./storeBoardKit";
+import { countLines, fitText, gridRows, gridSpans, textWidth, cleanItems } from "./storeBoardKit";
 
 /**
  * Template "deals-grid" — header banner, up to six deal tiles with price flags, info strip.
@@ -390,7 +390,7 @@ function Tile({ p, pal, d, delay, tileH }: { p: Plan; pal: Pal; d: TemplateProps
 
 export default function DealsGridTemplate({ scene, d }: TemplateProps) {
   const pal = palette(scene);
-  const items = (scene.items || []).filter((it) => it && ((it.name || "").trim() || (it.price || "").trim())).slice(0, 6);
+  const items = cleanItems(scene.items).filter((it) => it.name || it.price).slice(0, 6);
   const n = items.length;
   const rows = gridRows(n);
 

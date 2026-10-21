@@ -6,6 +6,7 @@ import {
   aisleLabelLayout,
   aisleText,
   arrowDirection,
+  cleanItems,
   countLines,
   fitText,
   gridRows,
@@ -203,5 +204,21 @@ describe("text fitting", () => {
     // "£12.99" at 100px: Inter Black is roughly 3.3em wide with tight tracking; never estimate under that
     assert.ok(textWidth("£12.99", 100, { ls: -0.04 }) >= 330);
     assert.ok(textWidth("WWW", 100) > textWidth("iii", 100) * 2);
+  });
+});
+
+describe("cleanItems", () => {
+  it("copes with a missing or odd list", () => {
+    for (const v of [undefined, null, "x", 5, {}, { 0: { name: "a" } }]) assert.deepEqual(cleanItems(v), []);
+  });
+  it("trims strings, turns numbers into text and drops empty optional fields", () => {
+    assert.deepEqual(cleanItems([{ name: "  Cereal ", price: 3.49, desc: "", tag: null, image: " /a.jpg " }]), [{ name: "Cereal", price: "3.49", image: "/a.jpg" }]);
+  });
+  it("skips things that are not items but keeps the order of the rest", () => {
+    const out = cleanItems([null, "x", { name: "A" }, 7, { name: "B", price: "£1" }]);
+    assert.deepEqual(out, [{ name: "A" }, { name: "B", price: "£1" }]);
+  });
+  it("never throws on odd values", () => {
+    assert.deepEqual(cleanItems([{ name: { a: 1 }, price: [], desc: NaN, tag: Infinity }]), [{ name: "" }]);
   });
 });

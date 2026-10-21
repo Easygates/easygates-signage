@@ -1,6 +1,6 @@
 import type { TemplateProps } from "../parts";
 import { A, BigArrow, CtaPill, INK, Icon, SLATE, clamp, palette } from "./storeBoardParts";
-import { aisleLabelLayout, aisleText, arrowDirection, countLines, fitText } from "./storeBoardKit";
+import { aisleLabelLayout, aisleText, arrowDirection, countLines, fitText, cleanItems } from "./storeBoardKit";
 
 /**
  * Template "aisle-guide" — store wayfinding: a giant aisle circle and arrow on the left,
@@ -39,7 +39,7 @@ export default function AisleGuideTemplate({ scene, d }: TemplateProps) {
   const eyebrow = (scene.eyebrow || "").trim();
   const sub = (scene.subheadline || "").trim();
   const cta = (scene.ctaText || "").trim();
-  const items = (scene.items || []).filter((it) => it && (it.name || "").trim()).slice(0, 6);
+  const items = cleanItems(scene.items).filter((it) => it.name).slice(0, 6);
   const n = items.length;
 
   // circle label

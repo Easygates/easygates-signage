@@ -1,7 +1,7 @@
 import type { TemplateProps } from "../parts";
 import type { SceneItem } from "@/lib/signage";
 import { A, AREA_H, BOTTOM, Banner, INK, Icon, Pic, PriceFlag, SLATE, TOP, TagFlag, bannerMetrics, clamp, palette, priceFlagHeight, priceFlagWidth } from "./storeBoardParts";
-import { fitText, isRankTag, rankTone, textWidth } from "./storeBoardKit";
+import { fitText, isRankTag, rankTone, textWidth, cleanItems } from "./storeBoardKit";
 
 /**
  * Template "top-sellers" — a chart of up to 5 best sellers. The rank numerals are the stars.
@@ -50,8 +50,8 @@ function Row({
   const innerW = 1824 - 2 * BORDER;
   const gap = 22;
 
-  const slabW = Math.round(rowH * 1.2);
-  const numeral = Math.round(rowH * 0.86);
+  const slabW = Math.min(Math.round(rowH * 1.2), 270);
+  const numeral = Math.min(Math.round(rowH * 0.86), 230);
   const tagPx = rowH >= 130 ? 32 : 28;
   const tagW = tag ? Math.min(300, Math.round(textWidth(tag, tagPx, { upper: true }) + tagPx + 8)) : 0;
 
@@ -165,7 +165,7 @@ function Row({
 
 export default function TopSellersTemplate({ scene, d }: TemplateProps) {
   const pal = palette(scene);
-  const items = (scene.items || []).filter((it) => it && ((it.name || "").trim() || (it.price || "").trim())).slice(0, 5);
+  const items = cleanItems(scene.items).filter((it) => it.name || it.price).slice(0, 5);
   const n = items.length;
 
   const head = bannerMetrics(scene, LEAD_W);
