@@ -421,7 +421,8 @@ export function bannerMetrics(scene: Scene, leadW = 0): BannerMetrics {
   const subFit = fitText({ text: sub, boxW: 1808 - (cta ? ctaW + 32 : 0), maxPx: 30, minPx: 26, maxLines: 3, upper: true, ls: 0.02, lineHeight: 1.12 });
 
   const eyebrowH = eyebrowLines ? eyebrowLines * 22 * 1.15 + 10 + 4 : 0;
-  const bannerH = 10 + eyebrowH + (headline ? head.lines * head.px * 0.98 : 0) + 12 + 6;
+  const hasBand = Boolean(headline || eyebrow);
+  const bannerH = hasBand ? 10 + eyebrowH + (headline ? head.lines * head.px * 0.98 : 0) + 12 + 6 : 0;
   const ctaH = ctaLines ? ctaLines * CTA_PX * 1.1 + 22 : 0;
   const subH = sub ? subFit.lines * subFit.px * 1.12 : 0;
   const stripH = sub || cta ? Math.max(ctaH, subH) + 14 + 6 : 0;
@@ -482,75 +483,79 @@ export function Banner({
   const cta = (scene.ctaText || "").trim();
   const m = bannerMetrics(scene, lead ? leadW : 0);
 
+  const hasBand = Boolean(headline || eyebrow);
+
   return (
     <div style={{ flex: "none" }}>
-      <div
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          background: bg,
-          color: fg,
-          padding: "10px 56px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 28,
-          borderBottom: `6px solid ${pal.navy}`,
-        }}
-      >
+      {hasBand && (
         <div
-          aria-hidden="true"
           style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: 620,
-            background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.12) 0 28px, transparent 28px 56px)",
-            WebkitMaskImage: "linear-gradient(90deg, transparent, #000 70%)",
-            maskImage: "linear-gradient(90deg, transparent, #000 70%)",
+            position: "relative",
+            overflow: "hidden",
+            background: bg,
+            color: fg,
+            padding: "10px 56px 12px",
+            display: "flex",
+            alignItems: "center",
+            gap: 28,
+            borderBottom: `6px solid ${pal.navy}`,
           }}
-        />
-        {lead && (
-          <A d={d} i={0} cls="sg-pop" className="relative" style={{ width: leadW, flex: "none" }}>
-            {lead}
-          </A>
-        )}
-        <div className="relative flex min-w-0 flex-1 flex-col items-start" style={{ gap: 4 }}>
-          {eyebrow && (
-            <A
-              d={d}
-              i={0}
-              cls="sg-fade-down"
-              style={{
-                background: chipBg,
-                color: chipFg,
-                fontSize: 22,
-                fontWeight: 800,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                lineHeight: 1.15,
-                padding: "5px 16px",
-                borderRadius: 8,
-                overflowWrap: "anywhere",
-              }}
-            >
-              {eyebrow}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 620,
+              background: "repeating-linear-gradient(115deg, rgba(255,255,255,0.12) 0 28px, transparent 28px 56px)",
+              WebkitMaskImage: "linear-gradient(90deg, transparent, #000 70%)",
+              maskImage: "linear-gradient(90deg, transparent, #000 70%)",
+            }}
+          />
+          {lead && (
+            <A d={d} i={0} cls="sg-pop" className="relative" style={{ width: leadW, flex: "none" }}>
+              {lead}
             </A>
           )}
-          {headline && (
-            <A
-              d={d}
-              i={1}
-              cls="sg-fade-up"
-              tag="h1"
-              className="sg-display"
-              style={{ margin: 0, fontSize: m.headPx, lineHeight: 0.98, letterSpacing: "-0.02em", textTransform: "uppercase", overflowWrap: "anywhere" }}
-            >
-              {headline}
-            </A>
-          )}
+          <div className="relative flex min-w-0 flex-1 flex-col items-start" style={{ gap: 4 }}>
+            {eyebrow && (
+              <A
+                d={d}
+                i={0}
+                cls="sg-fade-down"
+                style={{
+                  background: chipBg,
+                  color: chipFg,
+                  fontSize: 22,
+                  fontWeight: 800,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  lineHeight: 1.15,
+                  padding: "5px 16px",
+                  borderRadius: 8,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {eyebrow}
+              </A>
+            )}
+            {headline && (
+              <A
+                d={d}
+                i={1}
+                cls="sg-fade-up"
+                tag="h1"
+                className="sg-display"
+                style={{ margin: 0, fontSize: m.headPx, lineHeight: 0.98, letterSpacing: "-0.02em", textTransform: "uppercase", overflowWrap: "anywhere" }}
+              >
+                {headline}
+              </A>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {(sub || cta) && (
         <div
           style={{
