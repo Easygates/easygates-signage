@@ -491,3 +491,71 @@ synthetic `drop` of a 1×1 PNG wrote the file and returned a library URL.
 | `next build` | ✅ |
 | `node --test tests/*.mjs` | **131 pass** (was 117; +14 in `tests/media-picker.test.mjs`) ✅ |
 | Browser (prod build, 1680×1050) | row picker 512×276 with 29 tiles; picking writes the URL, marks the draft UNSAVED and closes the panel; broken URL shows the error state; drop-to-upload works ✅ |
+
+## 15. Editor follow-ups: one field table, focal point, search & upload — arena/989b2b84 (2026-10-22)
+
+Three follow-ups to §14, all in the scene editor.
+
+### 6 — One source of truth for "which fields does this template draw"
+`src/lib/templateFields.ts` is now the single table (`TEMPLATE_FIELDS`) describing,
+per template: the slide fields it draws, the row columns it draws, and whether it
+draws the slide image as `hero`, `logo` or not at all (`none`). Everything that
+used to hard-code this now reads it:
+
+| Was | Now |
+|---|---|
+| `HIGHLIGHT_TEMPLATES` (hand-written, included `splash`, which has no such field) | `templateUses(id, "highlightColor")` |
+| `IMAGE_UNUSED_TEMPLATES` (hand-written) | `templateImageMode(id) === "none"` |
+| `IMAGE_TEMPLATES` + `showPrice` chain in the row editor | `templateRows(id)` |
+| `draft.template === "splash" \|\| …` logo check | `templateImageMode(id) === "logo"` |
+
+**Editor behaviour**
+- Fields the template doesn't draw are **hidden**, with a counter
+  (“8 fields hidden — this template doesn't draw them.”) and a **Show unused
+  fields** toggle that reveals them dimmed and labelled *“· not used by this
+  template”*, so nothing is unreachable.
+- When the slide image isn't drawn, the field is replaced by a note explaining
+  where the pictures come from instead (rows / background).
+- The row editor now shows exactly the columns the renderer reads (plus a
+  “Columns: name · price · tag…” line), and hides the rest.
+
+**Bug this exposed:** `splash` renders its contact cards from `items[]` but was
+missing from `ITEM_TEMPLATES` — the CMS never offered the rows, so those cards
+could not be edited. Added. `splash` also gained its row/field entry.
+
+**Guarded by** `tests/template-fields.test.mjs`: the table must cover exactly the
+catalogue, agree with `ITEM_TEMPLATES`, and match the `FIELDS` / `Not used:`
+comment at the top of each template file (so the table and the renderers can't
+drift silently).
+
+### 7 — Image position & fit instead of a free-text CSS box
+`Image position` expected CSS (`center`, `30% 60%`) in a plain text input.
+Replaced with `FocalPicker`:
+
+- 3×3 focal pad (`role="radiogroup"`, arrow-key/`aria-checked` friendly) writing
+  standard `object-position` values; existing `top`, `50% 50%` values map back
+  onto the right square, custom values stay editable under **Custom value**.
+- **Fill area / Show whole** buttons writing `imageFit`. `imageFit` existed in
+  the schema and was round-tripped through the API, but **no renderer read it** —
+  so it was a dead field. `HeroMedia`, `ProductImage` and the canvas
+  `Background` now honour `contain` vs `cover`.
+- **Reset** returns to centre + fill.
+
+### 8 — Search and upload where you need them
+- **Media picker search**: filters by asset name or URL, shows “N of M”, has an
+  empty state, and clears with one click. Each picker instance keeps its own query.
+- **Upload from anywhere**: `+ Upload` inside every picker, and **drop a file
+  onto an image/video field** to upload-and-use it. One shared helper
+  (`uploadToLibrary`) handles the error text and refreshes the library.
+- **Scene list search**: name, template id, product name or headline; the counter
+  switches to “SCENES (1 / 8)” and there is a no-match state.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint src tests` | 0 errors, 0 warnings ✅ |
+| `next build` | ✅ |
+| `node --test tests/*.mjs` | **145 pass** (was 131; +14 in `tests/template-fields.test.mjs` + rewritten editor checks) ✅ |
+| Browser (prod build) | product-grid → “8 fields hidden”, no image field, 5 row pictures in preview; splash → rows editor + 3 contact cards; focal pad 9 cells, click top-right writes the value; scene search “street” → “SCENES (1 / 8)”; picker search “bread” → “1 of 28”; broken URL → “Can't load this image”; upload via picker → file written + field set + picker closed ✅ |

@@ -59,7 +59,7 @@ function Background({ scene }: { scene: Scene }) {
           className="absolute inset-0"
           style={{
             backgroundImage: `url("${cssUrl(scene.bgImageUrl!)}")`,
-            backgroundSize: "cover",
+            backgroundSize: scene.imageFit === "contain" ? "contain" : "cover",
             backgroundPosition: scene.imagePosition || "center",
             backgroundRepeat: "no-repeat",
           }}

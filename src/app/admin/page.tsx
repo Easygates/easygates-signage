@@ -10,6 +10,7 @@ import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
+import { SCENE_TEXT_FIELDS, templateImageMode, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
 const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "database"];
@@ -176,6 +177,7 @@ export default function AdminPage() {
   const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
+  const [sceneQuery, setSceneQuery] = useState("");
   const [draft, setDraft] = useState<Scene>(emptyScene());
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -198,6 +200,9 @@ export default function AdminPage() {
   const [catPick, setCatPick] = useState<{ forId: string | null; cat: string }>({ forId: null, cat: "all" });
   const tplCat = catPick.forId === selId && catPick.cat ? catPick.cat : templateCategory(draft.template) === "other" ? "all" : templateCategory(draft.template);
   const [reduced, setReduced] = useState(false);
+  // Fields the chosen template doesn't draw are hidden by default (see lib/templateFields);
+  // this lets the editor reveal them anyway, e.g. while re-purposing a scene.
+  const [showAllFields, setShowAllFields] = useState(false);
 const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
   const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
@@ -294,12 +299,53 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
-  // These templates draw the slide image as a logo/sticker, so the picker should
-  // show whole images instead of cropping them to a rectangle.
-  const imageIsLogo = draft.template === "splash" || draft.template === "trustpilot-review";
-  // Templates whose renderer never draws the slide-level image (they show the
-  // per-row pictures instead) — typing an address there silently does nothing.
-  const imageUnused = IMAGE_UNUSED_TEMPLATES.includes(draft.template);
+  // How this template draws the slide image, how it draws its rows and which
+  // slide fields it reads — all from src/lib/templateFields.ts, the single table
+  // shared with the row editor and the tests.
+  const imageMode = templateImageMode(draft.template);
+  // Logo templates draw the image whole, so the picker should not crop it.
+  const imageIsLogo = imageMode === "logo";
+  // "none" = the renderer never draws the slide-level image (rows carry the pictures).
+  const imageUnused = imageMode === "none";
+  const rowFields = templateRows(draft.template);
+  const tplUses = (f: SceneTextField) => templateUses(draft.template, f);
+  const fieldVisible = (f: SceneTextField) => showAllFields || tplUses(f);
+  const hiddenFieldCount = SCENE_TEXT_FIELDS.filter((f) => !tplUses(f)).length;
+  /** One labelled editor field, hidden (or dimmed) when the template ignores it. */
+  const sceneField = (key: SceneTextField, label: string, node: React.ReactNode) =>
+    fieldVisible(key) ? (
+      <div key={key} className={tplUses(key) ? undefined : "opacity-60"}>
+        <label className="lbl">
+          {label}
+          {!tplUses(key) && <span className="ml-1 font-normal normal-case tracking-normal text-amber-300/80">· not used by this template</span>}
+        </label>
+        {node}
+      </div>
+    ) : null;
+
+  /**
+   * Upload one file to the media library and return its URL. Used by the field
+   * drop targets and by the asset pickers, so "add a picture" works from
+   * anywhere in the editor instead of only from the Assets tab.
+   */
+  const uploadToLibrary = async (file: File): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await fetch("/api/upload", { method: "POST", body: fd }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok || j.error) {
+      flash(j.error || `Upload failed${r ? ` (${r.status})` : ""}`);
+      return null;
+    }
+    const url: string = j.asset?.url || j.url || "";
+    if (!url) {
+      flash("Upload failed — the server returned no file address");
+      return null;
+    }
+    flash("Uploaded to the media library");
+    void load();
+    return url;
+  };
 
   const save = async () => {
     setSaving(true);
@@ -377,6 +423,11 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
 
   const timeline = useMemo(() => buildTimeline(draft), [draft]);
+  // Scene list filter: name, template id, product name and headline all match.
+  const sceneFilter = sceneQuery.trim().toLowerCase();
+  const shownScenes = sceneFilter
+    ? scenes.filter((s) => [s.name, s.template, s.productName, s.headline].some((v) => (v || "").toLowerCase().includes(sceneFilter)))
+    : scenes;
   const playlist = playlists.find((p) => p.id === selPlaylist);
 
   return (
@@ -417,11 +468,23 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr_520px]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-black tracking-widest text-white/50">SCENES ({scenes.length})</span>
+                <span className="text-xs font-black tracking-widest text-white/50">
+                  SCENES ({shownScenes.length}{shownScenes.length !== scenes.length ? ` / ${scenes.length}` : ""})
+                </span>
                 <button onClick={() => { setSelId("new"); adoptDraft(emptyScene()); }} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ New</button>
               </div>
+              <div className="mb-2">
+                <input
+                  type="search"
+                  value={sceneQuery}
+                  onChange={(e) => setSceneQuery(e.target.value)}
+                  placeholder="Search scenes by name, template, product…"
+                  aria-label="Search scenes"
+                  className="inp !py-1.5 text-xs"
+                />
+              </div>
               <div className="sg-scroll max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-                {scenes.map((s) => (
+                {shownScenes.map((s) => (
                   <button key={s.id} onClick={() => { setSelId(s.id); adoptDraft(s); setDirty(false); setPreviewKey((k) => k + 1); }}
                     className={`w-full rounded-2xl p-3 text-left ring-1 ${selId === s.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
                     <div className="flex items-center justify-between gap-2">
@@ -431,6 +494,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                     <div className={`mt-0.5 truncate text-xs ${selId === s.id ? "text-black/60" : "text-white/50"}`}>{s.productName || s.headline} · {s.promoPrice || ""}</div>
                   </button>
                 ))}
+                {shownScenes.length === 0 && (
+                  <p className="px-1 py-3 text-xs text-white/40">No scenes match “{sceneQuery}”.</p>
+                )}
               </div>
             </div>
 
@@ -462,43 +528,75 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   ))}
                 </div>
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2 ring-1 ring-white/10">
+                <span className="text-[11px] text-white/50">
+                  {hiddenFieldCount === 0
+                    ? "Every field below is drawn by this template."
+                    : `${hiddenFieldCount} field${hiddenFieldCount === 1 ? "" : "s"} hidden — this template doesn't draw ${hiddenFieldCount === 1 ? "it" : "them"}.`}
+                </span>
+                {hiddenFieldCount > 0 && (
+                  <button
+                    onClick={() => setShowAllFields((v) => !v)}
+                    aria-pressed={showAllFields}
+                    className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black ring-1 ring-white/15 hover:bg-white/20"
+                  >
+                    {showAllFields ? "Hide unused fields" : "Show unused fields"}
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Eyebrow / kicker"><input value={draft.eyebrow || ""} onChange={(e) => set("eyebrow", e.target.value as never)} className="inp" /></Field>
+                {sceneField("eyebrow", "Eyebrow / kicker", <input value={draft.eyebrow || ""} onChange={(e) => set("eyebrow", e.target.value as never)} className="inp" />)}
                 <Field label="Headline"><input value={draft.headline || ""} onChange={(e) => set("headline", e.target.value as never)} className="inp" /></Field>
-                <Field label="Product name"><input value={draft.productName || ""} onChange={(e) => set("productName", e.target.value as never)} className="inp" /></Field>
-                <Field label="Subheadline"><input value={draft.subheadline || ""} onChange={(e) => set("subheadline", e.target.value as never)} className="inp" /></Field>
+                {sceneField("productName", "Product name", <input value={draft.productName || ""} onChange={(e) => set("productName", e.target.value as never)} className="inp" />)}
+                {sceneField("subheadline", "Subheadline", <input value={draft.subheadline || ""} onChange={(e) => set("subheadline", e.target.value as never)} className="inp" />)}
               </div>
-              <Field label="Description"><textarea value={draft.description || ""} onChange={(e) => set("description", e.target.value as never)} rows={2} className="inp" /></Field>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Was price"><input value={draft.originalPrice || ""} onChange={(e) => set("originalPrice", e.target.value as never)} className="inp" /></Field>
-                <Field label="Promo price"><input value={draft.promoPrice || ""} onChange={(e) => set("promoPrice", e.target.value as never)} className="inp" /></Field>
-                <Field label="Badge"><input value={draft.discountBadge || ""} onChange={(e) => set("discountBadge", e.target.value as never)} className="inp" /></Field>
-              </div>
+              {fieldVisible("description") && (
+                <Field label="Description"><textarea value={draft.description || ""} onChange={(e) => set("description", e.target.value as never)} rows={2} className="inp" /></Field>
+              )}
+              {(["originalPrice", "promoPrice", "discountBadge"] as SceneTextField[]).some(fieldVisible) && (
+                <div className="grid grid-cols-3 gap-3">
+                  {sceneField("originalPrice", "Was price", <input value={draft.originalPrice || ""} onChange={(e) => set("originalPrice", e.target.value as never)} className="inp" />)}
+                  {sceneField("promoPrice", "Promo price", <input value={draft.promoPrice || ""} onChange={(e) => set("promoPrice", e.target.value as never)} className="inp" />)}
+                  {sceneField("discountBadge", "Badge", <input value={draft.discountBadge || ""} onChange={(e) => set("discountBadge", e.target.value as never)} className="inp" />)}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                <Field label="CTA"><input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" /></Field>
+                {sceneField("ctaText", "CTA", <input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" />)}
                 <Field label="Ticker"><input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" /></Field>
               </div>
               <p className="text-[11px] text-white/40">Tip: type <code className="text-white/70">{"{phone}"}</code> or <code className="text-white/70">{"{business}"}</code> in any text and the screen shows the details from the <button onClick={() => setTab("business")} className="underline">Business</button> tab.</p>
-              <MediaField
-                label={imageIsLogo ? "Logo image URL (overrides the Business logo)" : "Image URL"}
-                value={draft.imageUrl || ""}
-                onChange={(v) => set("imageUrl", v as never)}
-                assets={allAssets}
-                fit={imageIsLogo ? "contain" : "cover"}
-                hint={
-                  <>
-                    <p className="mt-1 text-[11px] text-white/40">Type or paste an address, or press “Library” to pick a picture from your media library.</p>
-                    {imageUnused && (
-                      <p className="mt-1 text-[11px] text-amber-300/90">This template doesn&apos;t draw the slide image — add pictures to the rows below, or use the background image.</p>
-                    )}
-                  </>
-                }
-              />
+              {imageUnused && !showAllFields ? (
+                <p className="rounded-xl bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200/90 ring-1 ring-amber-300/25">
+                  This template doesn&apos;t draw a slide image —{" "}
+                  {rowFields.includes("image") ? "set a picture on each row below" : "it has no picture area"}, or add a background image.
+                  {" "}<button onClick={() => setShowAllFields(true)} className="underline">Show the field anyway</button>
+                </p>
+              ) : (
+                <div className={imageUnused ? "opacity-60" : undefined}>
+                  <MediaField
+                    label={imageIsLogo ? "Logo image URL (overrides the Business logo)" : "Image URL"}
+                    value={draft.imageUrl || ""}
+                    onChange={(v) => set("imageUrl", v as never)}
+                    assets={allAssets}
+                    onUpload={uploadToLibrary}
+                    fit={imageIsLogo ? "contain" : "cover"}
+                    hint={
+                      <>
+                        <p className="mt-1 text-[11px] text-white/40">Type or paste an address, press “Library” to pick one, or drop a file here to upload it.</p>
+                        {imageUnused && (
+                          <p className="mt-1 text-[11px] text-amber-300/90">This template doesn&apos;t draw the slide image.</p>
+                        )}
+                      </>
+                    }
+                  />
+                </div>
+              )}
               <MediaField
                 label="Background image (full-bleed behind the slide)"
                 value={draft.bgImageUrl || ""}
                 onChange={(v) => set("bgImageUrl", v as never)}
                 assets={allAssets}
+                onUpload={uploadToLibrary}
                 hint={[
                   "product-showcase",
                   "fullscreen-campaign",
@@ -510,14 +608,19 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   </p>
                 ) : undefined}
               />
-              <MediaField
-                label="Video URL (muted, looping hero background)"
-                value={draft.videoUrl || ""}
-                onChange={(v) => set("videoUrl", v as never)}
-                assets={allAssets}
-                media="video"
-                placeholder="https://…/clip.mp4"
-              />
+              {fieldVisible("videoUrl") && (
+                <div className={tplUses("videoUrl") ? undefined : "opacity-60"}>
+                  <MediaField
+                    label="Video URL (muted, looping hero background)"
+                    value={draft.videoUrl || ""}
+                    onChange={(v) => set("videoUrl", v as never)}
+                    assets={allAssets}
+                    onUpload={uploadToLibrary}
+                    media="video"
+                    placeholder="https://…/clip.mp4"
+                  />
+                </div>
+              )}
               <div>
                 <label className="lbl">Season / theme</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -566,7 +669,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <Color label="Accent" v={draft.accentColor} onChange={(v) => set("accentColor", v as never)} />
                 <Color label="Text" v={draft.textColor} onChange={(v) => set("textColor", v as never)} />
               </div>
-              {HIGHLIGHT_TEMPLATES.includes(draft.template) && (
+              {fieldVisible("highlightColor") && (
                 <div className="flex items-end gap-3">
                   <div className="w-1/4 min-w-[120px]">
                     <Color label="Highlight (yellow)" v={draft.highlightColor || "#ffd60a"} onChange={(v) => set("highlightColor", v as never)} />
@@ -603,7 +706,12 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                       {(["zoom-in", "zoom-out", "pan-left", "pan-right", "static"] as const).map((k) => <option key={k} value={k}>{k}</option>)}
                     </select>
                   </div>
-                  <Field label="Image position"><input value={draft.imagePosition || "center"} onChange={(e) => set("imagePosition", e.target.value as never)} className="inp" placeholder="center / top / 30% 60%" /></Field>
+                  <FocalPicker
+                    value={draft.imagePosition || "center"}
+                    onChange={(v) => set("imagePosition", v as never)}
+                    fit={draft.imageFit || "cover"}
+                    onFit={(v) => set("imageFit", v as never)}
+                  />
                 </div>
               </div>
               {draft.template === "aisle-guide" && (
@@ -621,6 +729,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   items={(draft.items as Scene["items"]) || []}
                   template={draft.template}
                   assets={allAssets}
+                  onUpload={uploadToLibrary}
                   onChange={(v) => set("items", v as never)}
                 />
               )}
@@ -896,10 +1005,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label className="lbl">{label}</label>{children}</div>;
 }
 
-// Templates that never render scene.imageUrl (see SceneRenderer / templates/*).
-const IMAGE_UNUSED_TEMPLATES: TemplateId[] = ["product-grid", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "price-list", "brand-wall", "team-intro"];
-
-const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "splash"];
 
 type Asset = { id: string; name: string; url: string; type: string; source?: string };
 
@@ -946,6 +1051,7 @@ function LibraryPicker({
   onClose,
   media = "image",
   fit = "cover",
+  onUpload,
 }: {
   title: string;
   assets: Asset[];
@@ -954,26 +1060,67 @@ function LibraryPicker({
   onClose?: () => void;
   media?: "image" | "video";
   fit?: "cover" | "contain";
+  /** Optional: upload a new file and return its URL (then it is picked). */
+  onUpload?: (file: File) => Promise<string | null>;
 }) {
-  const items = assets.filter((a) => (media === "video" ? a.type === "video" : a.type !== "video"));
+  const [query, setQuery] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const q = query.trim().toLowerCase();
+  const all = assets.filter((a) => (media === "video" ? a.type === "video" : a.type !== "video"));
+  const items = q ? all.filter((a) => a.name.toLowerCase().includes(q) || a.url.toLowerCase().includes(q)) : all;
   const noun = media === "video" ? "video" : "image";
+  const upload = async (file: File) => {
+    if (!onUpload || uploading) return;
+    setUploading(true);
+    const url = await onUpload(file);
+    setUploading(false);
+    if (url) onPick(url);
+  };
   return (
     <div className="mt-2 w-full rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10" role="group" aria-label={title}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-black tracking-widest text-white/50">{title}</span>
         <span className="flex items-center gap-2">
-          <span className="font-mono text-[11px] text-white/40">
-            {items.length} {noun}{items.length === 1 ? "" : "s"}
+          <span className="font-mono text-[11px] text-white/40" aria-live="polite">
+            {q ? `${items.length} of ${all.length}` : all.length} {noun}{all.length === 1 ? "" : "s"}
           </span>
+          {onUpload && (
+            <label className={`cursor-pointer rounded-lg px-2 py-0.5 text-[11px] font-black ring-1 ${uploading ? "bg-white/10 text-white/40 ring-white/10" : "bg-white text-black ring-white hover:bg-white/90"}`}>
+              {uploading ? "Uploading…" : "+ Upload"}
+              <input
+                type="file"
+                className="hidden"
+                accept={media === "video" ? "video/mp4,video/webm" : "image/*"}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }}
+              />
+            </label>
+          )}
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Close the media library" className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black text-white/70 ring-1 ring-white/15 hover:bg-white/20">✕</button>
           )}
         </span>
       </div>
-      {items.length === 0 ? (
+      {all.length > 0 && (
+        <div className="mb-2 flex gap-1.5">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${noun}s by name…`}
+            aria-label={`Search the media library`}
+            className="inp !py-1.5 text-xs"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear the search" className="shrink-0 rounded-lg bg-white/10 px-2.5 text-xs font-black ring-1 ring-white/15 hover:bg-white/20">✕</button>
+          )}
+        </div>
+      )}
+      {all.length === 0 ? (
         <p className="text-xs text-white/50">
-          No {noun}s in the library yet — upload one in the <span className="font-bold text-white/70">Assets</span> tab and it shows up here.
+          No {noun}s in the library yet — {onUpload ? "use “+ Upload” above" : "upload one in the Assets tab"} and it shows up here.
         </p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-white/50">Nothing matches “{query}”.</p>
       ) : (
         <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-4">
           {items.map((a) => {
@@ -1000,6 +1147,121 @@ function LibraryPicker({
   );
 }
 
+/** The nine standard focal points, in the order the 3×3 pad shows them. */
+const FOCAL_POINTS: { value: string; label: string }[] = [
+  { value: "left top", label: "Top left" },
+  { value: "center top", label: "Top centre" },
+  { value: "right top", label: "Top right" },
+  { value: "left center", label: "Middle left" },
+  { value: "center", label: "Centre" },
+  { value: "right center", label: "Middle right" },
+  { value: "left bottom", label: "Bottom left" },
+  { value: "center bottom", label: "Bottom centre" },
+  { value: "right bottom", label: "Bottom right" },
+];
+
+/**
+ * Read a CSS object-position value back into one of FOCAL_POINTS, so a slide that
+ * stores "top" or "50% 50%" still highlights the right square. Custom values like
+ * "30% 60%" return null — they stay editable in the advanced box.
+ */
+function focalPoint(raw: string): string | null {
+  const tokens = (raw || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const word = (t: string) =>
+    ({ left: "left", right: "right", center: "center", centre: "center", "0%": "left", "50%": "center", "100%": "right" })[t];
+  const vert = (t: string) => ({ top: "top", bottom: "bottom", center: "center", centre: "center", "0%": "top", "50%": "center", "100%": "bottom" })[t];
+  if (tokens.length === 0) return "center";
+  if (tokens.length === 1) {
+    const v = vert(tokens[0]);
+    if (tokens[0] === "center" || tokens[0] === "centre" || tokens[0] === "50%") return "center";
+    if (v === "top" || v === "bottom") return `center ${v}`;
+    const h = word(tokens[0]);
+    return h === "left" || h === "right" ? `${h} center` : null;
+  }
+  const a = tokens[0];
+  const b = tokens[1];
+  const aVert = vert(a) && !word(a);
+  const x = aVert ? word(b) : word(a);
+  const y = aVert ? vert(a) : vert(b);
+  if (!x || !y) return null;
+  const xv = x === "center" ? "center" : x;
+  const yv = y === "center" ? "center" : y;
+  return xv === "center" && yv === "center" ? "center" : `${xv} ${yv}`;
+}
+
+/**
+ * Focal point + fit for the slide photo (and the background image — both use
+ * `imagePosition`). Replaces the old free-text box that expected CSS syntax like
+ * "30% 60%" and gave no hint what the valid values were.
+ */
+function FocalPicker({ value, onChange, fit, onFit }: { value: string; onChange: (v: string) => void; fit: string; onFit: (v: string) => void }) {
+  const [advanced, setAdvanced] = useState(false);
+  const active = focalPoint(value);
+  return (
+    <div>
+      <label className="lbl">Image position &amp; fit</label>
+      <div className="flex items-start gap-3">
+        <div className="grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-black/40 p-1.5 ring-1 ring-white/10" role="radiogroup" aria-label="Image focal point">
+          {FOCAL_POINTS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              role="radio"
+              aria-checked={active === p.value}
+              aria-label={p.label}
+              title={p.label}
+              onClick={() => onChange(p.value)}
+              className={`grid h-6 w-6 place-items-center rounded-md ring-1 transition ${active === p.value ? "bg-white ring-white" : "bg-white/10 ring-white/15 hover:bg-white/25"}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${active === p.value ? "bg-black" : "bg-white/50"}`} />
+            </button>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => onFit("cover")}
+              aria-pressed={fit !== "contain"}
+              title="Fill the area — the picture is cropped at the edges"
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-black ring-1 ${fit !== "contain" ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+            >
+              Fill area
+            </button>
+            <button
+              type="button"
+              onClick={() => onFit("contain")}
+              aria-pressed={fit === "contain"}
+              title="Show the whole picture — nothing is cropped"
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-black ring-1 ${fit === "contain" ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+            >
+              Show whole
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => { onChange("center"); onFit("cover"); }} className="text-[11px] text-white/40 underline hover:text-white/70">
+              Reset
+            </button>
+            <button type="button" onClick={() => setAdvanced((a) => !a)} aria-expanded={advanced} className="text-[11px] text-white/40 underline hover:text-white/70">
+              {advanced ? "Hide custom value" : "Custom value"}
+            </button>
+          </div>
+          {advanced && (
+            <input
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="inp !py-1.5 text-xs"
+              placeholder="center · top · 30% 60%"
+              aria-label="Custom image position (CSS object-position)"
+            />
+          )}
+        </div>
+      </div>
+      <p className="mt-1 text-[11px] text-white/40">Which part of the photo stays in view. Applies to the slide photo and the background image.</p>
+    </div>
+  );
+}
+
 /**
  * Address field for an image/video with a library button, a live preview and a
  * clear button. Used for the slide image, the background image and the video.
@@ -1013,6 +1275,7 @@ function MediaField({
   fit = "cover",
   placeholder = "https://… or /retail/apples.jpg",
   hint,
+  onUpload,
 }: {
   label: string;
   value: string;
@@ -1022,13 +1285,29 @@ function MediaField({
   fit?: "cover" | "contain";
   placeholder?: string;
   hint?: React.ReactNode;
+  /** Optional: drop a file on the field to upload it and use the result. */
+  onUpload?: (file: File) => Promise<string | null>;
 }) {
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const broken = value !== "" && failed === value;
   const isVideo = media === "video";
+  const drop = async (file: File | undefined) => {
+    if (!file || !onUpload || uploading) return;
+    setUploading(true);
+    const url = await onUpload(file);
+    setUploading(false);
+    if (url) onChange(url);
+  };
   return (
-    <div>
+    <div
+      onDragOver={onUpload ? (e) => { e.preventDefault(); setDragging(true); } : undefined}
+      onDragLeave={onUpload ? () => setDragging(false) : undefined}
+      onDrop={onUpload ? (e) => { e.preventDefault(); setDragging(false); void drop(e.dataTransfer.files?.[0]); } : undefined}
+      className={dragging ? "rounded-xl ring-2 ring-white/70" : undefined}
+    >
       <label className="lbl">{label}</label>
       <div className="flex gap-2">
         <input value={value} onChange={(e) => onChange(e.target.value)} className="inp" placeholder={placeholder} />
@@ -1039,7 +1318,7 @@ function MediaField({
           title="Browse the media library"
           className={`shrink-0 rounded-xl px-3 text-xs font-bold ring-1 ${open ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
         >
-          <BrowseIcon /> Library
+          {uploading ? "Uploading…" : <><BrowseIcon /> Library</>}
         </button>
         {value && (
           <button type="button" onClick={() => onChange("")} title="Clear this field" aria-label="Clear" className="shrink-0 rounded-xl bg-white/10 px-3 text-xs font-bold ring-1 ring-white/15 hover:bg-white/20">✕</button>
@@ -1063,6 +1342,7 @@ function MediaField({
         </div>
       )}
       {hint}
+      {dragging && <p className="mt-1 text-[11px] font-bold text-white/80">Drop to upload and use this file…</p>}
       {open && (
         <LibraryPicker
           title={`${label.toUpperCase()} — MEDIA LIBRARY`}
@@ -1070,6 +1350,7 @@ function MediaField({
           current={value}
           media={media}
           fit={fit}
+          onUpload={onUpload}
           onClose={() => setOpen(false)}
           onPick={(url) => { onChange(url); setOpen(false); }}
         />
@@ -1111,23 +1392,17 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "trustpilot-review": "Top reviews — name = reviewer, detail = review text, tag = stars (★★★★★). The rating number goes in the slide's Headline",
 };
 
-// Templates whose renderer draws a picture per row (see SceneRenderer): product
-// cards, brand logos, deal tiles, ranked thumbnails, clearance items, multi-buy
-// products, team avatars and Trustpilot reviewer photos.
-const IMAGE_TEMPLATES: TemplateId[] = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy", "team-intro", "trustpilot-review"];
-
-function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
+function ItemsEditor({ items, template, assets, onChange, onUpload }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void; onUpload?: (file: File) => Promise<string | null> }) {
   const list = items || [];
   const [pickIndex, setPickIndex] = useState<number | null>(null);
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
-  const showPrice =
-    template === "food-menu" ||
-    template === "product-grid" ||
-    template === "price-list" ||
-    template === "deals-grid" ||
-    template === "clearance" ||
-    template === "top-sellers";
-  const showImage = IMAGE_TEMPLATES.includes(template);
+  // Which columns this template draws comes from lib/templateFields, so adding a
+  // template can no longer leave the editor showing the wrong inputs.
+  const rows = templateRows(template);
+  const showPrice = rows.includes("price");
+  const showTag = rows.includes("tag");
+  const showDesc = rows.includes("desc");
+  const showImage = rows.includes("image");
   const isLogo = template === "brand-wall";
   const imagePlaceholder = isLogo ? "Logo image URL" : template === "team-intro" ? "Photo URL (optional)" : template === "trustpilot-review" ? "Reviewer photo URL" : "Image URL";
   return (
@@ -1136,7 +1411,8 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
         <span className="text-xs font-black tracking-widest text-white/50">ROWS ({list.length})</span>
         <button onClick={() => onChange([...list, { name: "New row", price: "£9.99", desc: "", tag: "" }])} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ Add</button>
       </div>
-      <p className="mb-2 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
+      <p className="mb-1 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
+      <p className="mb-2 text-[10px] uppercase tracking-widest text-white/25">Columns: {rows.length ? rows.join(" · ") : "none"}</p>
       <div className="space-y-2">
         {list.map((it, i) => {
           const picking = pickIndex === i;
@@ -1146,14 +1422,18 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
                 <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
                 {showPrice ? (
                   <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
-                ) : (
+                ) : showTag ? (
                   <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
+                ) : (
+                  <span />
                 )}
-                {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
+                {showPrice && showTag && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
                 <button onClick={() => { onChange(list.filter((_, j) => j !== i)); setPickIndex(null); }} title="Remove this row" aria-label={`Remove row ${i + 1}`} className="rounded-lg bg-white/10 text-red-300">✕</button>
               </div>
               <div className="flex items-center gap-1.5">
-                <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 min-w-0 flex-1 text-xs" placeholder="Detail / spec value" />
+                {showDesc && (
+                  <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 min-w-0 flex-1 text-xs" placeholder="Detail / spec value" />
+                )}
                 {showImage && (
                   <button
                     type="button"
@@ -1198,6 +1478,7 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
                   assets={assets}
                   current={it.image || ""}
                   fit={isLogo ? "contain" : "cover"}
+                  onUpload={onUpload}
                   onClose={() => setPickIndex(null)}
                   onPick={(url) => { edit(i, "image", url); setPickIndex(null); }}
                 />

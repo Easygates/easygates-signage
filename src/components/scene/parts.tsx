@@ -62,12 +62,14 @@ export function HeroMedia({
 }) {
   const src = imageOnly ? undefined : scene.videoUrl;
   const alt = scene.productName || scene.headline || "promotion";
+  // "contain" = show the whole picture (nothing cropped); anything else fills the box.
+  const fit = scene.imageFit === "contain" ? "contain" : "cover";
   if (src) {
     return (
       <video
         src={src}
         aria-label={alt}
-        className={`h-full w-full object-cover ${className}`}
+        className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"} ${className}`}
         style={{ objectPosition: scene.imagePosition || "center" }}
         autoPlay
         muted
@@ -82,7 +84,7 @@ export function HeroMedia({
       <img
         src={scene.imageUrl}
         alt={alt}
-        className={`h-full w-full object-cover ${className}`}
+        className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"} ${className}`}
         style={{ objectPosition: scene.imagePosition || "center" }}
         draggable={false}
       />
@@ -165,7 +167,7 @@ export function ProductImage({
         <img
           src={scene.imageUrl}
           alt={scene.productName || scene.headline || "promotion"}
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${scene.imageFit === "contain" ? "object-contain" : "object-cover"}`}
           style={{ objectPosition: scene.imagePosition || "center" }}
           draggable={false}
         />

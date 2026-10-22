@@ -13,6 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const admin = readFileSync(join(root, "src/app/admin/page.tsx"), "utf8");
 const css = readFileSync(join(root, "src/app/globals.css"), "utf8");
 const renderer = readFileSync(join(root, "src/components/SceneRenderer.tsx"), "utf8");
+const pickerStart = 0;
 
 const picker = admin.slice(admin.indexOf("function LibraryPicker("), admin.indexOf("function MediaField("));
 const itemsEditor = admin.slice(admin.indexOf("function ItemsEditor("), admin.indexOf("function AssetsPanel("));
@@ -71,18 +72,18 @@ describe("scene editor: image URL fields", () => {
   });
 
   it("shows the image field for every template that draws a row picture", () => {
-    // templates whose renderer reads it.image
-    const perRowImages = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy", "team-intro", "trustpilot-review"];
-    const list = admin.slice(admin.indexOf("const IMAGE_TEMPLATES"), admin.indexOf("function ItemsEditor("));
-    for (const t of perRowImages) {
-      assert.ok(list.includes(`"${t}"`), `IMAGE_TEMPLATES is missing ${t} — its editor hides the image field`);
-      assert.ok(renderer.includes("it.image"), "renderer should still draw row images");
-    }
+    // the per-template answer now lives in src/lib/templateFields.ts and is
+    // verified there; the editor must simply ask it
+    assert.ok(admin.includes("rows.includes(\"image\")"), "the row image field must be gated by the template table");
+    assert.ok(renderer.includes("it.image"), "renderer should still draw row images");
   });
 
   it("keeps the logo templates in contain mode so logos aren't cropped", () => {
-    assert.ok(admin.includes('template === "brand-wall"'), "brand-wall logos should not be cropped");
-    assert.ok(admin.includes('draft.template === "splash"'), "splash uses the slide image as a logo");
+    assert.ok(admin.includes('imageMode === "logo"'), "the editor must read the image mode from the template table");
+    assert.ok(admin.includes('imageIsLogo ? "contain" : "cover"'), "logo templates should preview whole, not cropped");
+    assert.ok(admin.includes('template === "brand-wall"'), "brand-wall row logos should not be cropped");
+    // the answer lives in one place now (tests/template-fields.test.mjs checks the table itself)
+    assert.ok(!/draft\.template === "splash"/.test(admin), "splash's logo mode must come from the table, not a hand-written check");
   });
 });
 
@@ -109,11 +110,73 @@ describe("assets: upload picker", () => {
 });
 
 describe("scene editor: image URL actually affects the slide", () => {
-  it("flags templates that ignore the slide image", () => {
-    assert.ok(admin.includes("IMAGE_UNUSED_TEMPLATES"), "templates that ignore scene.imageUrl should be named");
-    assert.ok(admin.includes("doesn&apos;t draw the slide image"), "the editor should explain why a typed image URL shows nothing");
-    for (const t of ["product-grid", "deals-grid", "brand-wall"]) {
-      assert.ok(admin.includes(`"${t}"`), `IMAGE_UNUSED_TEMPLATES is missing ${t}`);
-    }
+  it("explains itself when the template ignores the slide image", () => {
+    assert.ok(admin.includes("templateImageMode"), "the editor must ask the template table how the image is drawn");
+    assert.ok(admin.includes("doesn&apos;t draw a slide image"), "the editor should explain why a typed image URL shows nothing");
+    assert.ok(admin.includes("set a picture on each row below"), "…and point at the rows that do carry pictures");
+    assert.ok(admin.includes("Show the field anyway"), "the hidden field must still be reachable");
+  });
+});
+
+describe("scene editor: only the fields the template draws", () => {
+  it("hides unused fields by default and can reveal them", () => {
+    assert.ok(admin.includes("SCENE_TEXT_FIELDS.filter((f) => !tplUses(f))"), "hidden-field count must come from the table");
+    assert.ok(admin.includes("fieldVisible"), "fields must be gated by the template table");
+    assert.ok(admin.includes("Show unused fields"), "the user needs a way to reveal the hidden fields");
+    assert.ok(admin.includes("not used by this template"), "revealed fields should say they are unused");
+    // the old hand-written lists must be gone — they were the source of drift
+    assert.ok(!admin.includes("HIGHLIGHT_TEMPLATES"), "HIGHLIGHT_TEMPLATES should come from the table now");
+    assert.ok(!admin.includes("IMAGE_UNUSED_TEMPLATES]"), "IMAGE_UNUSED_TEMPLATES should come from the table now");
+  });
+
+  it("drives the row editor from the same table", () => {
+    assert.ok(admin.includes("const rows = templateRows(template)"), "row columns must come from the table");
+    assert.ok(admin.includes('rows.includes("price")'), "price column gate missing");
+    assert.ok(admin.includes('rows.includes("tag")'), "tag column gate missing");
+    assert.ok(admin.includes('rows.includes("desc")'), "detail column gate missing");
+    assert.ok(admin.includes('rows.includes("image")'), "image column gate missing");
+    assert.ok(!admin.includes("IMAGE_TEMPLATES"), "the local IMAGE_TEMPLATES list should be gone");
+  });
+});
+
+describe("scene editor: image position & fit", () => {
+  it("offers a 3×3 focal pad instead of a free-text CSS box", () => {
+    assert.ok(admin.includes("function FocalPicker("), "FocalPicker missing");
+    assert.ok(admin.includes("FOCAL_POINTS"), "the nine focal points should be named");
+    assert.equal((admin.match(/aria-label="Image focal point"/g) || []).length, 1, "the pad needs an accessible name");
+    assert.ok(admin.includes('onChange("center")'), "reset to centre missing");
+    assert.ok(admin.includes("Custom value"), "custom CSS positions must still be editable");
+    assert.ok(!admin.includes('label="Image position"><input'), "the old free-text box must be gone");
+  });
+
+  it("can switch the image between fill and show-whole", () => {
+    assert.ok(admin.includes('onFit("cover")') && admin.includes('onFit("contain")'), "fill / show-whole buttons missing");
+    // and the renderers must honour imageFit, otherwise the button is a lie
+    const parts = readFileSync(join(root, "src/components/scene/parts.tsx"), "utf8");
+    assert.ok(parts.includes('scene.imageFit === "contain"'), "HeroMedia/ProductImage must honour imageFit");
+    assert.ok(renderer.includes('scene.imageFit === "contain"'), "the background image must honour imageFit");
+  });
+});
+
+describe("media library: search and upload", () => {
+  it("the picker can be searched", () => {
+    assert.ok(picker.includes('type="search"'), "no search box in the picker");
+    assert.ok(picker.includes("a.name.toLowerCase().includes(q)"), "search should match asset names");
+    assert.ok(picker.includes("Nothing matches"), "search needs an empty state");
+    assert.ok(picker.includes("`${items.length} of ${all.length}`") || picker.includes("of ${all.length}"), "show how many results are showing");
+  });
+
+  it("a file can be uploaded from the picker and from the field", () => {
+    assert.ok(picker.includes("+ Upload"), "the picker needs an upload button");
+    assert.ok(picker.includes("onUpload"), "the picker must accept an upload handler");
+    assert.ok(admin.includes("const uploadToLibrary"), "the admin needs one shared upload helper");
+    assert.ok(admin.includes("Drop to upload and use this file"), "fields should accept a dropped file");
+    assert.ok(admin.includes("void drop(e.dataTransfer.files?.[0])"), "drop handler missing");
+  });
+
+  it("the scene list can be searched", () => {
+    assert.ok(admin.includes('aria-label="Search scenes"'), "no scene search box");
+    assert.ok(admin.includes("shownScenes"), "the list is not filtered");
+    assert.ok(admin.includes("No scenes match"), "scene search needs an empty state");
   });
 });

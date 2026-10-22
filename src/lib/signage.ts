@@ -55,6 +55,9 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "team-intro",
   "testimonial-quote",
   "trustpilot-review",
+  // splash draws its contact cards from items[] — it was missing here, so the
+  // editor never offered the rows and the cards could not be changed in the CMS.
+  "splash",
 ];
 
 export type AnimationPresetId =
