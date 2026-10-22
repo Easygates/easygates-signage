@@ -9,8 +9,11 @@ import { validateSession, SESSION_COOKIE } from "@/lib/session";
 //   /display, GET /api/player, GET /api/uploads/*, GET /api/health,
 //   POST /api/displays/:id/heartbeat, and the login routes themselves.
 // Read-only admin data (GET) is open as before, EXCEPT device control, which can
-// take screenshots of and send commands to the player boxes.
+// take screenshots of and send commands to the player boxes, and the database
+// backup, which contains every row including Fully Kiosk passwords in
+// displays.settings.
 const HEARTBEAT = /^\/api\/displays\/[^/]+\/heartbeat$/;
+const BACKUP = /^\/api\/backup(?:\/|$)/;
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -24,7 +27,7 @@ export async function middleware(req: NextRequest) {
   if (!isAdmin && !isApi) return NextResponse.next();
 
   if (isApi && req.method === "POST" && HEARTBEAT.test(pathname)) return NextResponse.next();
-  if (isApi && req.method === "GET" && !pathname.endsWith("/control")) return NextResponse.next();
+  if (isApi && req.method === "GET" && !pathname.endsWith("/control") && !BACKUP.test(pathname)) return NextResponse.next();
 
   if (await validateSession(req.cookies.get(SESSION_COOKIE)?.value ?? null)) {
     return NextResponse.next();

@@ -153,12 +153,51 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 | `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`, `&offline=1` to preview the failsafe) |
 | `/export?playlistId=…` | Record one playlist pass as a 1080p MP4 from the browser |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline, failsafe |
-| `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
+| `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + backup / restore (JSON + SQL) |
 | `/docs` | Hardware research, deploy guide and Supabase setup |
 | `/api/db-status` | Live DB health, latency, pooler mode & table row counts |
+| `/api/backup` | Download every table as JSON (default) or `?format=sql`; `POST` a JSON backup with `?mode=merge` or `?mode=replace` to restore |
 | `/api/selftest` | Automated checks (JSON) |
 | `/api/player?displayId=…` | What a screen should play right now (`&poll=` is a player-side refresh hint) |
 | `/api/displays/:id/control` | Proxy to Fully Kiosk Remote Admin — reload / wake / restart / screenshot (POST action, GET screenshot) |
+
+## Backing up and restoring the database
+
+**Admin → Database / Supabase → 💾 Backup & restore** exports the complete database as one file:
+
+| Button | File | Best for |
+|---|---|---|
+| **Download JSON backup** | `novasign-backup-YYYY-MM-DD-HHmm.json` | Restoring from the same card — roll the database back, or clone the whole setup onto a new server |
+| **Download SQL dump** | `novasign-backup-YYYY-MM-DD-HHmm.sql` | `psql "$DATABASE_URL" -f novasign-backup-….sql`, pgAdmin, or pasting into the Supabase SQL Editor |
+
+Both contain all seven tables — `assets`, `scenes`, `playlists`, `playlist_items`, `displays`, `schedules` and `settings` — including business details, the failsafe choice and the Fully Kiosk passwords stored on each screen.
+
+- **Merge** (default) adds rows that don't exist yet and leaves current content untouched.
+- **Replace** empties all seven tables first, then restores the file exactly (the UI asks for an extra confirmation).
+- Restores run in a single PostgreSQL transaction: a malformed file is rejected by validation before anything is written, and a database error rolls the whole restore back.
+- Both restore paths expect the seven tables to exist. On a brand-new database run `supabase/schema.sql` (or `npx drizzle-kit push`) first; the JSON restore returns that hint if the tables are missing.
+- Backups carry a format version. A file from a newer NovaSign is refused with an "update first" message instead of being half-imported.
+
+Once `ADMIN_PASSWORD` is set, both downloading and restoring a backup require the admin login. **Keep backup files private** — like the database itself, they contain screen-control passwords.
+
+**Media files are not in a database backup.** The `assets` table stores URLs; the image and video files live in `public/uploads/` (or the Supabase Storage bucket). Copy those separately — e.g. `rsync -a public/uploads/ /backup/uploads/`, or download the bucket from Supabase → Storage. Supabase's own scheduled database backups are a useful second layer.
+
+### Automating backups
+
+```bash
+# Sign in first — the same cookie works for every admin request.
+curl -c cookies.txt -X POST localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" -d '{"password":"choose-a-password"}'
+
+curl -b cookies.txt -o novasign-backup.json http://localhost:3000/api/backup
+curl -b cookies.txt -o novasign-backup.sql  "http://localhost:3000/api/backup?format=sql"
+
+# Restore later (merge; use ?mode=replace to wipe first):
+curl -b cookies.txt -X POST --data-binary @novasign-backup.json \
+  "http://localhost:3000/api/backup?mode=merge"
+```
+
+A nightly `cron` entry or Windows Task Scheduler job around the first two commands is enough for most shops; copy the results off the machine (NAS, cloud drive or another PC).
 
 ## Exporting a playlist to MP4
 

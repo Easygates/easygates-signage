@@ -1047,7 +1047,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
         {/* ── DATABASE / SUPABASE ── */}
         {tab === "failsafe" && <FailsafePanel playlists={playlists} onFlash={flash} />}
-        {tab === "database" && <DatabasePanel onFlash={flash} onSeed={seed} />}
+        {tab === "database" && <DatabasePanel onFlash={flash} onSeed={seed} onRestored={load} />}
       </div>
     </main>
   );
