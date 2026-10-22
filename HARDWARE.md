@@ -1,6 +1,6 @@
 # Hardware guide — putting NovaSign on multiple TVs
 
-Chosen setup: **Android TV boxes running Fully Kiosk Browser, one per TV, all pointed at the CMS on your PC.** The PC and Raspberry Pi options are kept below as fallbacks. Either way: skip the Steam Link. Prices below are UK, October 2026, and move around — treat them as ballpark.
+Chosen setup: **Android TV boxes running Fully Kiosk Browser, one per TV, all pointed at the CMS on your PC.** The PC and Raspberry Pi options are kept below as fallbacks. Prices below are UK, October 2026, and move around — treat them as ballpark.
 
 ---
 
@@ -15,7 +15,6 @@ Chosen setup: **Android TV boxes running Fully Kiosk Browser, one per TV, all po
 | **Amazon Fire TV Stick** | £35–60 | Low | Only if you already own an **older Fire OS** model | ⚠️ All 2025/26 Sticks run Vega OS and **cannot sideload** |
 | **One PC + HDMI splitter / HDBaseT** | £150–250 total for 4 TVs | Low | Every TV shows the same thing, perfectly in sync | No per-TV content; cable runs |
 | **Commercial signage display** (Samsung SSSP / LG webOS Signage) | £400–700 per screen | Medium-high | No box behind the TV, 24/7 rated panel | Needs a packaged app (.wgt / .ipk), not a bare URL |
-| ~~Steam Link~~ | ~£30 used | — | Nothing, in 2026 | Discontinued 2018, no browser, no firmware support |
 
 ---
 
@@ -38,13 +37,9 @@ That's why, if you're comfortable managing five PCs, the PC route is the better 
 
 ---
 
-## Why not the Steam Link
+## Keep the server address from changing
 
-- Valve **discontinued the hardware in November 2018** and stopped meaningful firmware updates afterwards. It's a decade-old, single-core ARMv7 box with ~256 MB of usable RAM.
-- It has **no browser**. Its only display mode is Steam Remote Play: stream a PC desktop to it. That works as a demo, but for 24/7 signage you get a fragile chain (Steam client updates, session drops, host GPU encoding per screen), one host session per Link, and an overlay UI that can appear over your content.
-- If you already own one, it's fine for a *temporary* single screen. Don't build a five-TV rollout on it.
-
-Sources: [Steam Link (Wikipedia)](https://en.wikipedia.org/wiki/Steam_Link), [Valve store news](https://store.steampowered.com/news/app/353380/view/5264101341768013277).
+Screens open `http://<pc-ip>:3000/display?displayId=…`, and your router can hand the PC a different IP after a router restart or power cut, a long time switched off, or a network change. Then every screen's address stops working until retyped. Fix it once: **reserve the PC's address in the router** ("DHCP reservation" / "address reservation"), or set a fixed address on the PC outside the router's automatic range, or host the app online so it never changes. Also turn off PC sleep. Details in `/docs` (section 6).
 
 ---
 

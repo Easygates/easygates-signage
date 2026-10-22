@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NovaSign — Retail Digital Signage for Steam Link",
+  title: "NovaSign — Retail Digital Signage",
   description: "Professional animated signage player + CMS. 7 broadcast templates, animation engine, playlists, multi-display.",
 };
 

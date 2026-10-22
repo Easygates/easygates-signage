@@ -1132,18 +1132,3 @@ export function valueDemoPlaylist() {
     scenes: VALUE_DEMO_SCENES,
   };
 }
-
-// Steam Link hardware profile (researched, documented in /docs)
-export const STEAM_LINK_PROFILE = {
-  device: "Valve Steam Link (Model 1003, 2015–2018)",
-  soc: "Marvell DE3005-A1 / ARMADA 1500 Mini — single-core ARMv7 Cortex-A9 @ 1.0 GHz + NEON",
-  gpu: "Vivante GC1000, OpenGL ES 2.0",
-  ram: "~512 MB total (approx. 256 MB available to custom apps)",
-  storage: "4 GB NAND flash (~500 MB–1 GB usable for apps)",
-  video: "HDMI up to 1080p60, hardware H.264 decode",
-  network: "100 Mbit Ethernet, 802.11ac 2×2 MIMO Wi-Fi, BT 4.0",
-  os: "Custom Valve Linux (kernel 3.8/3.18 lineage)",
-  sdk: "Valve steamlink-sdk — SDL 2.0, Qt 5.4, OpenGL ES 2.0, GCC ARM toolchain",
-  browserNote:
-    "No modern evergreen browser. Rendering strategy: lightweight kiosk page (Chromium/Firefox on a Pi-class substitute) OR native SDL/OpenGL ES app; CMS stays on a separate powerful machine.",
-};
