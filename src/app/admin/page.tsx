@@ -11,6 +11,7 @@ import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAd
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 import { SCENE_TEXT_FIELDS, templateImageMode, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
+import { THEMES, themeDef } from "@/lib/themes";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
 const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "database"];
@@ -622,32 +623,39 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 </div>
               )}
               <div>
-                <label className="lbl">Season / theme</label>
+                <div className="flex items-end justify-between gap-3">
+                  <label className="lbl">Season / theme</label>
+                  <span className="mb-1.5 text-[11px] text-white/40">{themeDef(draft.theme).decor}</span>
+                </div>
                 <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { id: "none", label: "None", color: "#0f172a" },
-                    { id: "christmas", label: "Christmas", color: "#dc2626" },
-                    { id: "easter", label: "Easter", color: "#ec4899" },
-                    { id: "halloween", label: "Halloween", color: "#f97316" },
-                    { id: "spring", label: "Spring", color: "#16a34a" },
-                    { id: "summer", label: "Summer", color: "#0ea5e9" },
-                    { id: "autumn", label: "Autumn", color: "#d97706" },
-                    { id: "winter", label: "Winter", color: "#0ea5e9" },
-                  ].map((th) => {
-                    const active = draft.theme === th.id;
+                  {THEMES.map((th) => {
+                    const active = (draft.theme || "none") === th.id;
                     return (
                       <button
                         key={th.id}
                         onClick={() => set("theme", th.id as never)}
-                        className={`flex flex-col items-center gap-1 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                        aria-pressed={active}
+                        title={`${th.name} — ${th.blurb}`}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
                       >
-                        <div className={`h-6 w-6 rounded-full ${active ? "ring-2 ring-white" : ""}`} style={{ background: th.color }} />
-                        <span>{th.label}</span>
+                        {/* two-tone swatch: background gradient with the accent + second accent as dots */}
+                        <span
+                          className={`relative grid h-8 w-full place-items-center overflow-hidden rounded-lg ring-1 ${active ? "ring-black/20" : "ring-white/15"}`}
+                          style={{ background: `linear-gradient(135deg, ${th.palette.bgFrom}, ${th.palette.bgTo})` }}
+                        >
+                          <span className="absolute left-1.5 top-1.5 h-2 w-2 rounded-full" style={{ background: th.palette.accent }} />
+                          <span className="absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full" style={{ background: th.palette.accent2 }} />
+                          <span className="text-[10px] font-black" style={{ color: th.palette.text }}>{th.id === "none" ? "—" : th.name.slice(0, 2).toUpperCase()}</span>
+                        </span>
+                        <span>{th.name}</span>
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-1 text-[11px] text-white/40">Theme decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).</p>
+                <p className="mt-1 text-[11px] text-white/40">
+                  Decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).
+                  {" "}{themeDef(draft.theme).blurb}.
+                </p>
               </div>
               <Field label="Darken background">
                 <div className="flex items-center gap-2">

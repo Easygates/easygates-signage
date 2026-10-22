@@ -559,3 +559,120 @@ Replaced with `FocalPicker`:
 | `next build` | ✅ |
 | `node --test tests/*.mjs` | **145 pass** (was 131; +14 in `tests/template-fields.test.mjs` + rewritten editor checks) ✅ |
 | Browser (prod build) | product-grid → “8 fields hidden”, no image field, 5 row pictures in preview; splash → rows editor + 3 contact cards; focal pad 9 cells, click top-right writes the value; scene search “street” → “SCENES (1 / 8)”; picker search “bread” → “1 of 28”; broken URL → “Can't load this image”; upload via picker → file written + field set + picker closed ✅ |
+
+## 16. Seasonal themes: art direction instead of colour swaps — arena/989b2b84 (2026-10-22)
+
+The eight seasonal themes were a flat accent colour plus a handful of emoji-ish
+shapes, and two things were plainly broken: the **price plate was yellow on every
+theme** (so a “Christmas” slide looked like a “no theme” slide with a different
+background), and on the pale themes the **brand bar was white on white**.
+
+### One palette table — `src/lib/themes.ts`
+
+Before: the palette existed three times (a `palettes` record inside `brand.ts`,
+a `THEMES` record inside `ThemeDecor.tsx`, and a hand-written swatch list in the
+admin). Now a single data-only module defines, per theme, a two-tone palette
+(`accent`, `accent2`, `bgFrom → bgTo`, `text`, `muted`), a name, a one-line blurb
+and a description of its decorations. `themePalette()`, `themeDef()`,
+`themeIsLight()` and `THEME_IDS` are the only accessors.
+
+The file deliberately imports nothing: `node --test` can load it without a
+bundler, which is what lets the tests assert the contrast contract below.
+
+| Theme | Background | Accent | Second accent |
+|---|---|---|---|
+| none | `#0b1020 → #1e2a5a` | `#ff3b30` | `#ffd60a` |
+| christmas | `#07150f → #3b0d18` | `#e11d48` | `#f5c542` |
+| easter *light* | `#fff8fb → #ffe1ec` | `#d6336c` | `#7c3aed` |
+| halloween | `#12081c → #3a1338` | `#fb923c` | `#a855f7` |
+| spring *light* | `#f3fbf4 → #d5efdc` | `#16a34a` | `#facc15` |
+| summer | `#03243a → #0b6a8a` | `#06b6d4` | `#fbbf24` |
+| autumn | `#241003 → #6b2c0c` | `#f59e0b` | `#b45309` |
+| winter | `#04121f → #1b4a64` | `#38bdf8` | `#a5b4fc` |
+
+Backgrounds are deep two-stop gradients rather than flat primaries (a lit shop
+washes out pure `#dc2626`), and every theme now has a second accent that works as
+a **solid block**: `accent2` is what the price plates, stickers and tape use.
+
+### The yellow-plate bug
+
+`brandScene()` overwrote `accentColor` / `bgFrom` / `bgTo` / `textColor` for a
+themed slide but never `highlightColor`. `storeBoardParts.palette()` reads the
+plate colour from `scene.highlightColor`, so every theme fell through to the stock
+sale yellow `#ffd60a`. The theme branch now writes `accent2` into
+`highlightColor` (and brand mode without a theme writes the brand accent), so
+plates, sticker bursts, clearance tape and CTA strips all follow the theme.
+
+### Decoration layer — `ThemeDecor.tsx`
+
+Rewritten as layered art rather than a single row of shapes: each theme has a
+background wash, a mid-ground prop and depth-tiered falling particles (far / mid /
+near, with size, opacity and blur following the tier). Everything lives behind the
+template (`z-0`) and hugs the edges, in line with the template rule that theme
+colour is “only visible around the cards, never behind any text”.
+
+- **Christmas** — string lights across the top, pine sprigs and baubles in the
+  corners, snow at three depths.
+- **Easter** — blossom branches from the corners, a painted-egg row along the
+  bottom edge, confetti petals.
+- **Halloween** — low moon with halo, cobweb in the corner, bats, three lit
+  pumpkins along the floor.
+- **Spring** — grass blades, blossom-heavy branches, butterflies, drifting petals.
+- **Summer** — sun with slowly rotating rays, three parallax wave layers with
+  foam, gulls.
+- **Autumn** — bare tree with a diminishing leaf canopy, ground mist, falling
+  leaves.
+- **Winter** — aurora bands, frost corners, snow and sparkle flakes.
+- **None** — nothing drawn.
+
+Motion is `transform`/`opacity` only (`sg-fall`, `sg-sway`, `sg-twinkle`,
+`sg-drift`, `sg-glow-pulse`, `sg-spin-slow`, `sg-bob`), which keeps a TV that is
+left on for days cheap to render.
+
+### Chrome follows the theme
+
+The brand bar and ticker sit *on top of* the theme background, not on the slide, so
+they were the worst offender on pale themes: the business name was white with a
+dark shadow and the logo sat on white with no edge. Now:
+
+- `BrandBar` takes the slide’s theme: the name uses the theme’s `text` colour with
+  a soft light-side glow, the logo badge gains a ring on light themes (and flips to
+  a dark plate when the logo is meant for dark backgrounds).
+- `LiveClock` becomes a light chip with the theme’s ink on light themes.
+- `Ticker` and `ProgressBar` are themed too — the ticker is a deep tint of the
+  theme background with the accent in the text, instead of a black bar on a pink
+  slide.
+
+### Admin picker
+
+The picker is generated from `THEMES`: a two-tone gradient swatch with the accent
+and second-accent dots, the theme’s initials, its name, and its decoration
+description under the grid. Adding a theme now only means editing `themes.ts`.
+
+### Reduced motion
+
+`.sg-reduced .sg-theme *` stops every decoration animation, and the falling layers
+are hidden outright — frozen particles suspended in mid-air read as debris.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint .` | 0 errors, 0 warnings ✅ |
+| `next build` | ✅ (no `/theme-preview` route in the shipped build) |
+| `node --test tests/*.mjs` | **157 pass** (was 145; +12 in `tests/themes.test.mjs`) ✅ |
+| Contrast (min over both gradient ends) | text 5.8–15.7:1, muted 4.2–10.4:1, plate ink 4.5–12.6:1 — all eight pass AA ✅ |
+| Browser (production build) | 8 themes rendered on the real 1920×1080 canvas; plates now gold/violet/purple/lemon/amber/rust/lilac by theme; decorations visible in the margins and along the edges; ticker and clock themed; brand bar legible on `#fff8fb` ✅ |
+| Reduced motion | `.sg-reduced .sg-theme *` stops every animation and hidden falling layers — asserted in `tests/themes.test.mjs` ✅ |
+
+Screenshots (local, not committed): `.cache/shots/themes-before.png`,
+`.cache/shots/themes-after-prod.png`,
+`.cache/shots/product-grid-prod.png`, `.cache/shots/admin-theme-picker.png`.
+
+**Guarded by** `tests/themes.test.mjs`: the table is complete and unique; every
+palette entry is a hex colour; text ≥ 4.5:1 and muted ≥ 3:1 on both ends of the
+gradient; `accent2` reaches 4.5:1 with black or white ink; only Easter and Spring
+are light; `brand.ts` writes `highlightColor` and no longer carries its own palette
+table; every animation class used by the decoration layer has both an `@keyframes`
+and an `animation-name` rule; reduced motion stops the layer.
