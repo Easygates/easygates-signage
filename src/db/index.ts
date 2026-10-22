@@ -19,6 +19,19 @@ export interface ResolvedDbInfo {
 export function resolveDbConfig(rawUrl?: string): ResolvedDbInfo {
   const input = (rawUrl || process.env.DATABASE_URL || "").trim();
   if (!input) {
+    // During `next build` there may be no .env — don't crash the build; let
+    // the runtime API handlers catch the missing DB and respond with 503/db-unavailable.
+    if (process.env.NEXT_PHASE === "phase-production-build" || process.env.SKIP_DB_CHECK === "1") {
+      return {
+        connectionString: "postgresql://postgres:postgres@localhost:5432/app_db",
+        ssl: false as PoolConfig["ssl"],
+        host: "localhost",
+        port: "5432",
+        database: "app_db",
+        provider: "local",
+        poolerMode: "session-or-direct-5432",
+      };
+    }
     throw new Error(
       "DATABASE_URL is required. Set it in .env (local PostgreSQL or Supabase URI)."
     );

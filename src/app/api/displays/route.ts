@@ -34,10 +34,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const rows = await db
-    .insert(displays)
-    .values({ name: body.name || "New display", location: body.location || "", playlistId: body.playlistId || null, resolution: body.resolution || "1920x1080", orientation: body.orientation || "landscape", status: "offline", pairingCode: code(), settings: body.settings || null } as never)
-    .returning();
-  return NextResponse.json({ display: rows[0] }, { status: 201 });
+  try {
+    const body = await req.json();
+    const rows = await db
+      .insert(displays)
+      .values({ name: body.name || "New display", location: body.location || "", playlistId: body.playlistId || null, resolution: body.resolution || "1920x1080", orientation: body.orientation || "landscape", status: "offline", pairingCode: code(), settings: body.settings || null } as never)
+      .returning();
+    return NextResponse.json({ display: rows[0] }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "db-unavailable" }, { status: 503 });
+  }
 }

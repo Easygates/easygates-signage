@@ -36,7 +36,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const rows = await db.insert(playlists).values({ name: body.name || "New playlist", description: body.description || "", loop: body.loop ?? true } as never).returning();
-  return NextResponse.json({ playlist: rows[0] }, { status: 201 });
+  try {
+    const body = await req.json();
+    const rows = await db.insert(playlists).values({ name: body.name || "New playlist", description: body.description || "", loop: body.loop ?? true } as never).returning();
+    return NextResponse.json({ playlist: rows[0] }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "db-unavailable" }, { status: 503 });
+  }
 }

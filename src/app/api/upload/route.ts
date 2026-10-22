@@ -8,9 +8,10 @@ import { secretKeyProblem, supabaseAuthHeaders, supabaseStorageConfig } from "@/
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const form = await req.formData();
-  const file = form.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "no file" }, { status: 400 });
+  try {
+    const form = await req.formData();
+    const file = form.get("file") as File | null;
+    if (!file) return NextResponse.json({ error: "no file" }, { status: 400 });
 
   const allowed = [
     "image/jpeg",
@@ -107,7 +108,11 @@ export async function POST(req: Request) {
       { asset: rows[0], storageBackend },
       { status: 201 }
     );
-  } catch {
-    return NextResponse.json({ url, name: file.name, storageBackend });
+    } catch {
+      return NextResponse.json({ url, name: file.name, storageBackend });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "upload failed";
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

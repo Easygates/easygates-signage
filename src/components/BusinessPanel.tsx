@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- admin previews and media-library thumbnails render arbitrary upload/storage URLs; next/image allowlist can't cover user content */
 
 import { useState, type ReactNode } from "react";
 import ScreenView from "@/components/ScreenView";
@@ -88,8 +89,11 @@ export default function BusinessPanel({
         <Section title="Logo" hint="PNG with a transparent background works best. Leave it empty to show the business name instead.">
           <div className="flex flex-wrap items-center gap-3">
             <span className={`flex h-16 min-w-[120px] items-center justify-center rounded-2xl px-4 ring-1 ring-white/15 ${draft.logoOnWhite ? "bg-white" : "bg-black/40"}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {draft.logoUrl ? <img src={draft.logoUrl} alt="Logo" className="h-10 w-auto max-w-[260px] object-contain" /> : <span className={`text-xs font-bold ${draft.logoOnWhite ? "text-black/50" : "text-white/50"}`}>No logo</span>}
+              {draft.logoUrl ? (
+                <img src={draft.logoUrl} alt="Logo" className="h-10 w-auto max-w-[260px] object-contain" />
+              ) : (
+                <span className={`text-xs font-bold ${draft.logoOnWhite ? "text-black/50" : "text-white/50"}`}>No logo</span>
+              )}
             </span>
             <label className="cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-black text-black hover:bg-white/90">
               {uploading ? "Uploading…" : "Upload logo"}
@@ -106,7 +110,6 @@ export default function BusinessPanel({
               <label className="lbl">Or pick from your media library</label>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {images.slice(0, 16).map((a) => (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img key={a.id} src={a.url} alt={a.name} title={a.name} onClick={() => onChange("logoUrl", a.url)} className="h-14 w-20 shrink-0 cursor-pointer rounded-lg bg-white object-contain ring-1 ring-white/20 hover:ring-white" />
                 ))}
               </div>

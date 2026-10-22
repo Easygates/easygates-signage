@@ -5,11 +5,9 @@ import type { Config } from "drizzle-kit";
 // falling back to DATABASE_URL (local Postgres or Supabase pooler).
 const raw = (process.env.DIRECT_URL || process.env.DATABASE_URL || "").trim();
 
-if (!raw) {
-  throw new Error(
-    "Missing DATABASE_URL (or DIRECT_URL) in .env. Cannot run drizzle-kit."
-  );
-}
+// drizzle-kit is only needed when pushing schema — during `next build` we don't have a DB.
+// Provide a placeholder so the import doesn't crash the build when DATABASE_URL is unset.
+const drizzleUrl = raw || "postgresql://postgres:postgres@localhost:5432/app_db";
 
 function buildDrizzleUrl(input: string): string {
   try {
@@ -32,10 +30,14 @@ function buildDrizzleUrl(input: string): string {
   }
 }
 
+if (!raw && process.env.NEXT_PHASE !== "phase-production-build") {
+  console.warn("Missing DATABASE_URL (or DIRECT_URL) — drizzle-kit will use a placeholder; `npx drizzle-kit push` needs a real .env.");
+}
+
 export default {
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   dbCredentials: {
-    url: buildDrizzleUrl(raw),
+    url: buildDrizzleUrl(drizzleUrl),
   },
 } satisfies Config;

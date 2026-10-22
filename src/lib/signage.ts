@@ -764,11 +764,12 @@ const VALUE_IMG = {
   chips: "/retail/chips.jpg",
   soap: "/retail/soap.jpg",
   mincePies: "/seasonal/christmas.jpg",
-  eggs: "",
-  cheese: "",
-  chicken: "",
-  chocolate: "",
-  pumpkin: "",
+  // seasonal product images — previously empty strings (no image rendered)
+  eggs: "/retail/milk.jpg",
+  cheese: "/retail/bread.jpg",
+  chicken: "/retail/soda.jpg",
+  chocolate: "/seasonal/easter-eggs.jpg",
+  pumpkin: "/seasonal/halloween-sweets.jpg",
 };
 
 export const VALUE_DEMO_SCENES: Scene[] = [
@@ -1105,6 +1106,7 @@ export const VALUE_DEMO_SCENES: Scene[] = [
     subheadline: "Fresh starts, lower prices",
     ctaText: "IN STORE NOW",
     imageUrl: VALUE_IMG.soap,
+    bgImageUrl: "/seasonal/spring-bg.jpg",
     bgFrom: "#14532d",
     bgTo: "#dcfce7",
     bgAngle: 135,
