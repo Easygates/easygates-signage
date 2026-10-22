@@ -114,3 +114,35 @@ body { background: #05070f; }
 
 /* Admin preview scaling keeps display composition intact */
 .sg-stage { aspect-ratio: 16 / 9; }
+
+/* ── Admin form controls ──────────────────────────────────
+   These used to live in a <style jsx global> block inside the admin page, but
+   Turbopack (next dev) never injected it, so labels ran inline with the fields
+   and every input lost its box. Keeping them in the global stylesheet makes the
+   CMS look the same in dev and in production. They sit in the base layer so a
+   Tailwind width/padding utility can still override them. */
+@layer base {
+  .lbl {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 6px;
+  }
+  .inp {
+    width: 100%;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #fff;
+    outline: none;
+  }
+  .inp:focus { border-color: #fff; }
+  .inp::placeholder { color: rgba(255, 255, 255, 0.3); }
+  /* Native <select> popups follow the OS theme — force readable options. */
+  .inp option { background: #141b33; color: #fff; }
+}

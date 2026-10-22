@@ -412,3 +412,82 @@ and the starter branch may call it).
 New tests: `tests/corporate-demo.test.mjs`, `tests/admin-wiring.test.mjs`
 (117/117 total, was 88). Gate: tsc ✅ · eslint ✅ · `next build` ✅ ·
 live `GET /api/selftest` pass ✅ · asset delete verified end-to-end ✅
+
+## 14. Scene-editor image fields & media picker — arena/989b2b84 (2026-10-22)
+
+Reported: *"img URL / file picker in scene editor not showing correctly"*. Reproduced
+in a headless Chromium against a production build and confirmed four separate bugs.
+
+### 🔴 P1 — Row image picker rendered as an unreadable sliver
+**File:** `src/app/admin/page.tsx` (`ItemsEditor`)
+
+The library panel was rendered as a child of the row's layout, i.e. inside
+`grid-cols-[1fr_150px_40px]`. It therefore landed in a grid cell: measured
+**40 px wide × 122 px tall**, with the heading, count and thumbnails clipped to a
+few pixels. On top of that, the row's image URL field was squeezed to ~80 px and
+the 📂 button had no label.
+
+**Fix**
+- The picker now renders **full width below the row** (512 px measured at 1500 px
+  viewport), with a close button, tile count and the in-use tile marked.
+- Rows reorganised: name / price / tag on line 1, detail + a labelled
+  **`Image`** button on line 2, image address (full width, with a live
+  thumbnail) on line 3.
+- Empty libraries now show "No images in the library yet — upload one in the
+  Assets tab" instead of the picker vanishing (`return null`).
+- Tiles are real `<button>`s with names, hover/focus rings.
+
+### 🟠 P1 — Same squashed-picker bug in the scene image / background fields
+The scene-level **Image URL**, **Background image** and **Video URL** fields were
+plain text boxes — the only way to pick a library image was to scroll to a
+*Quick-set* block at the bottom of the preview column, and the label even said
+"pick from Assets → click to copy".
+
+**Fix** — new `MediaField`: address box + **📂 Library** button (opens the
+library inline under the field) + clear button + live thumbnail that turns into
+"Can't load this image — check the address" when the URL 404s. The video field
+filters the library to videos, the splash/Trustpilot image field shows whole
+logos (`object-contain`) instead of cropping them.
+
+### 🟠 P1 — Typing an image URL on some templates silently did nothing
+`product-grid`, `deals-grid`, `multibuy`, `clearance`, `aisle-guide`,
+`top-sellers`, `store-services`, `price-list`, `brand-wall` and `team-intro`
+never draw `scene.imageUrl` (they use the per-row images / background instead),
+so a perfectly valid URL appeared to be ignored.
+
+**Fix** — the image field shows an amber note on those templates: *"This
+template doesn't draw the slide image — add pictures to the rows below, or use
+the background image."* Those templates now always show a per-row image field
+(previously `team-intro` and `trustpilot-review` had no way to set avatars at
+all), and the misleading "Quick-set any row image" block — which silently
+overwrote the **last** row — was removed.
+
+### 🟡 P2 — Admin form styles were dead under `next dev`
+`.lbl` / `.inp` lived in a `<style jsx global>` block inside the page. The
+production build injected it, but Turbopack dev never did: labels rendered
+inline at 16 px and inputs lost their box (`border-radius: 0`, transparent
+background) — the "labels running into the fields" look.
+
+**Fix** — moved to `src/app/globals.css` in `@layer base` (so Tailwind
+width/padding utilities can still override), plus a dark `<option>` style for
+native selects.
+
+### 🟡 P2 — Assets upload area
+The drop zone only ever said "Drop / click to upload" (no drop handler), and
+choosing the same file twice did nothing because the input's value was never
+reset. Failures were parsed with `await r.json()` and dropped when the response
+wasn't JSON.
+
+**Fix** — real `onDragOver`/`onDrop` with a highlight state, input reset after
+each pick, and explicit "Upload failed" messages. Verified end-to-end: a
+synthetic `drop` of a 1×1 PNG wrote the file and returned a library URL.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint` | 0 errors, 0 warnings ✅ |
+| `next build` | ✅ |
+| `node --test tests/*.mjs` | **131 pass** (was 117; +14 in `tests/media-picker.test.mjs`) ✅ |
+| Browser (prod build, 1680×1050) | row picker 512×276 with 29 tiles; picking writes the URL, marks the draft UNSAVED and closes the panel; broken URL shows the error state; drop-to-upload works ✅ |

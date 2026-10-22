@@ -294,6 +294,12 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
+  // These templates draw the slide image as a logo/sticker, so the picker should
+  // show whole images instead of cropping them to a rectangle.
+  const imageIsLogo = draft.template === "splash" || draft.template === "trustpilot-review";
+  // Templates whose renderer never draws the slide-level image (they show the
+  // per-row pictures instead) — typing an address there silently does nothing.
+  const imageUnused = IMAGE_UNUSED_TEMPLATES.includes(draft.template);
 
   const save = async () => {
     setSaving(true);
@@ -473,34 +479,45 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <Field label="Ticker"><input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" /></Field>
               </div>
               <p className="text-[11px] text-white/40">Tip: type <code className="text-white/70">{"{phone}"}</code> or <code className="text-white/70">{"{business}"}</code> in any text and the screen shows the details from the <button onClick={() => setTab("business")} className="underline">Business</button> tab.</p>
-              <Field label="Image URL (or pick from Assets → click to copy)">
-                <div className="flex gap-2">
-                  <input value={draft.imageUrl || ""} onChange={(e) => set("imageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.imageUrl && <button onClick={() => set("imageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
-                </div>
-              </Field>
-              <Field label="Background image (full-bleed behind the slide)">
-                <div className="flex gap-2">
-                  <input value={draft.bgImageUrl || ""} onChange={(e) => set("bgImageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.bgImageUrl && <button onClick={() => set("bgImageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
-                </div>
-                {[
+              <MediaField
+                label={imageIsLogo ? "Logo image URL (overrides the Business logo)" : "Image URL"}
+                value={draft.imageUrl || ""}
+                onChange={(v) => set("imageUrl", v as never)}
+                assets={allAssets}
+                fit={imageIsLogo ? "contain" : "cover"}
+                hint={
+                  <>
+                    <p className="mt-1 text-[11px] text-white/40">Type or paste an address, or press “Library” to pick a picture from your media library.</p>
+                    {imageUnused && (
+                      <p className="mt-1 text-[11px] text-amber-300/90">This template doesn&apos;t draw the slide image — add pictures to the rows below, or use the background image.</p>
+                    )}
+                  </>
+                }
+              />
+              <MediaField
+                label="Background image (full-bleed behind the slide)"
+                value={draft.bgImageUrl || ""}
+                onChange={(v) => set("bgImageUrl", v as never)}
+                assets={allAssets}
+                hint={[
                   "product-showcase",
                   "fullscreen-campaign",
                   "split-promo",
                   "callout-emergency",
-                ].includes(draft.template) && (
+                ].includes(draft.template) ? (
                   <p className="mt-1 text-[11px] text-white/40">
                     On this template the background image replaces the main photo.
                   </p>
-                )}
-              </Field>
-              <Field label="Video URL (muted, looping hero background)">
-                <div className="flex gap-2">
-                  <input value={draft.videoUrl || ""} onChange={(e) => set("videoUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.videoUrl && <button onClick={() => set("videoUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
-                </div>
-              </Field>
+                ) : undefined}
+              />
+              <MediaField
+                label="Video URL (muted, looping hero background)"
+                value={draft.videoUrl || ""}
+                onChange={(v) => set("videoUrl", v as never)}
+                assets={allAssets}
+                media="video"
+                placeholder="https://…/clip.mp4"
+              />
               <div>
                 <label className="lbl">Season / theme</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -625,8 +642,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <button onClick={save} className="rounded-xl bg-green-500/20 p-3 font-black text-green-300 ring-1 ring-green-400/40">⬆ Publish<br />to displays</button>
                 <button onClick={() => setTab("timeline")} className="rounded-xl bg-white/10 p-3 font-bold ring-1 ring-white/15">◷ View<br />timeline</button>
               </div>
-              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={allAssets} onPick={(url) => set("imageUrl", url as never)} />
-              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={allAssets} onPick={(url) => set("bgImageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={allAssets} current={draft.imageUrl || ""} onPick={(url) => set("imageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={allAssets} current={draft.bgImageUrl || ""} onPick={(url) => set("bgImageUrl", url as never)} />
             </div>
           </div>
         )}
@@ -871,12 +888,6 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         {/* ── DATABASE / SUPABASE ── */}
         {tab === "database" && <DatabasePanel onFlash={flash} onSeed={seed} />}
       </div>
-
-      <style jsx global>{`
-        .lbl { display:block; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.5); margin-bottom:6px; }
-        .inp { width:100%; border-radius:12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; font-size:14px; color:#fff; outline:none; }
-        .inp:focus { border-color:#fff; }
-      `}</style>
     </main>
   );
 }
@@ -885,25 +896,184 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label className="lbl">{label}</label>{children}</div>;
 }
 
+// Templates that never render scene.imageUrl (see SceneRenderer / templates/*).
+const IMAGE_UNUSED_TEMPLATES: TemplateId[] = ["product-grid", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "price-list", "brand-wall", "team-intro"];
+
 const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "splash"];
 
-/** Every picture in the media library as a scrollable grid (videos can't be images or backgrounds). */
-function LibraryPicker({ title, assets, onPick }: { title: string; assets: { id: string; name: string; url: string; type: string }[]; onPick: (url: string) => void }) {
-  const pics = assets.filter((a) => a.type !== "video");
-  const hidden = assets.length - pics.length;
-  if (pics.length === 0) return null;
+type Asset = { id: string; name: string; url: string; type: string; source?: string };
+
+/**
+ * One media thumbnail with a visible fallback when the file can't be loaded, so a
+ * broken/mistyped URL or a deleted file reads as "404" instead of an empty box.
+ */
+function Thumb({ url, fit = "cover", className = "h-10 w-16" }: { url: string; fit?: "cover" | "contain"; className?: string }) {
+  const [failed, setFailed] = useState("");
+  const broken = failed === url;
   return (
-    <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
-      <div className="mb-2 flex items-center justify-between text-[11px] font-black tracking-widest text-white/50">
-        <span>{title}</span>
-        <span className="font-mono text-white/40">{pics.length} images{hidden ? ` · ${hidden} video${hidden > 1 ? "s" : ""} hidden` : ""}</span>
+    <span className={`${className} grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/15`}>
+      {broken ? (
+        <span className="text-sm font-black text-red-300" title="This file could not be loaded — is the address right, or is the display offline?">!</span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" loading="lazy" draggable={false} onError={() => setFailed(url)} className={`h-full w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+      )}
+    </span>
+  );
+}
+
+/** Small picture icon for the library buttons (emoji glyphs are not on every machine). */
+function BrowseIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]">
+      <rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="9" cy="10" r="1.8" fill="currentColor" />
+      <path d="M4.5 18l5-5 4 4 3-2.5 3 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * Media-library browser. It is always rendered *inline below the field that opened
+ * it* — never inside the narrow row grid — because as a grid child it used to be
+ * squeezed into the 40px column and clipped to an unreadable sliver.
+ */
+function LibraryPicker({
+  title,
+  assets,
+  onPick,
+  current = "",
+  onClose,
+  media = "image",
+  fit = "cover",
+}: {
+  title: string;
+  assets: Asset[];
+  onPick: (url: string) => void;
+  current?: string;
+  onClose?: () => void;
+  media?: "image" | "video";
+  fit?: "cover" | "contain";
+}) {
+  const items = assets.filter((a) => (media === "video" ? a.type === "video" : a.type !== "video"));
+  const noun = media === "video" ? "video" : "image";
+  return (
+    <div className="mt-2 w-full rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10" role="group" aria-label={title}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-black tracking-widest text-white/50">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-white/40">
+            {items.length} {noun}{items.length === 1 ? "" : "s"}
+          </span>
+          {onClose && (
+            <button type="button" onClick={onClose} aria-label="Close the media library" className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black text-white/70 ring-1 ring-white/15 hover:bg-white/20">✕</button>
+          )}
+        </span>
       </div>
-      <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-5">
-        {pics.map((a) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={a.id} src={a.url} alt={a.name} loading="lazy" onClick={() => onPick(a.url)} className="aspect-[4/3] w-full cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
-        ))}
+      {items.length === 0 ? (
+        <p className="text-xs text-white/50">
+          No {noun}s in the library yet — upload one in the <span className="font-bold text-white/70">Assets</span> tab and it shows up here.
+        </p>
+      ) : (
+        <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-4">
+          {items.map((a) => {
+            const active = current === a.url;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onPick(a.url)}
+                title={a.name}
+                aria-pressed={active}
+                className={`relative overflow-hidden rounded-lg transition ${active ? "ring-2 ring-white" : "ring-1 ring-white/20 hover:ring-2 hover:ring-white/70"}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={a.url} alt={a.name} loading="lazy" draggable={false} className={`aspect-[4/3] w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/65 px-1 py-0.5 text-left text-[10px] font-bold text-white/90">{a.name}</span>
+                {active && <span className="pointer-events-none absolute right-1 top-1 rounded bg-white px-1 text-[9px] font-black text-black">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Address field for an image/video with a library button, a live preview and a
+ * clear button. Used for the slide image, the background image and the video.
+ */
+function MediaField({
+  label,
+  value,
+  onChange,
+  assets,
+  media = "image",
+  fit = "cover",
+  placeholder = "https://… or /retail/apples.jpg",
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  assets: Asset[];
+  media?: "image" | "video";
+  fit?: "cover" | "contain";
+  placeholder?: string;
+  hint?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState("");
+  const broken = value !== "" && failed === value;
+  const isVideo = media === "video";
+  return (
+    <div>
+      <label className="lbl">{label}</label>
+      <div className="flex gap-2">
+        <input value={value} onChange={(e) => onChange(e.target.value)} className="inp" placeholder={placeholder} />
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          title="Browse the media library"
+          className={`shrink-0 rounded-xl px-3 text-xs font-bold ring-1 ${open ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+        >
+          <BrowseIcon /> Library
+        </button>
+        {value && (
+          <button type="button" onClick={() => onChange("")} title="Clear this field" aria-label="Clear" className="shrink-0 rounded-xl bg-white/10 px-3 text-xs font-bold ring-1 ring-white/15 hover:bg-white/20">✕</button>
+        )}
       </div>
+      {value && (
+        <div className="mt-1.5 flex items-center gap-2">
+          {broken ? (
+            <span className="rounded-lg bg-red-500/15 px-2 py-1 text-[11px] font-bold text-red-300 ring-1 ring-red-400/30">Can&apos;t load this {isVideo ? "video" : "image"} — check the address</span>
+          ) : (
+            <span className="h-10 w-16 shrink-0 overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/15">
+              {isVideo ? (
+                <video src={value} className="h-full w-full object-cover" muted onError={() => setFailed(value)} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={value} alt="" draggable={false} onError={() => setFailed(value)} className="h-full w-full object-cover" />
+              )}
+            </span>
+          )}
+          <span className="min-w-0 truncate font-mono text-[10px] text-white/35">{value}</span>
+        </div>
+      )}
+      {hint}
+      {open && (
+        <LibraryPicker
+          title={`${label.toUpperCase()} — MEDIA LIBRARY`}
+          assets={assets}
+          current={value}
+          media={media}
+          fit={fit}
+          onClose={() => setOpen(false)}
+          onPick={(url) => { onChange(url); setOpen(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -941,7 +1111,12 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "trustpilot-review": "Top reviews — name = reviewer, detail = review text, tag = stars (★★★★★). The rating number goes in the slide's Headline",
 };
 
-function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: { id: string; name: string; url: string; type: string }[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
+// Templates whose renderer draws a picture per row (see SceneRenderer): product
+// cards, brand logos, deal tiles, ranked thumbnails, clearance items, multi-buy
+// products, team avatars and Trustpilot reviewer photos.
+const IMAGE_TEMPLATES: TemplateId[] = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy", "team-intro", "trustpilot-review"];
+
+function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
   const list = items || [];
   const [pickIndex, setPickIndex] = useState<number | null>(null);
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
@@ -952,9 +1127,9 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
     template === "deals-grid" ||
     template === "clearance" ||
     template === "top-sellers";
-  // only these layouts draw a picture per row
-  const showImage = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy"].includes(template);
-  const pics = assets.filter((a) => a.type !== "video");
+  const showImage = IMAGE_TEMPLATES.includes(template);
+  const isLogo = template === "brand-wall";
+  const imagePlaceholder = isLogo ? "Logo image URL" : template === "team-intro" ? "Photo URL (optional)" : template === "trustpilot-review" ? "Reviewer photo URL" : "Image URL";
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -963,39 +1138,73 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
       </div>
       <p className="mb-2 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
       <div className="space-y-2">
-        {list.map((it, i) => (
-          <div key={i} className="space-y-1.5 rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/10">
-            <div className="grid grid-cols-[1fr_84px_96px_26px] gap-1.5">
-              <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
-              {showPrice ? (
-                <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
-              ) : (
-                <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
-              )}
-              {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
-              <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
-            </div>
-            <div className={`grid gap-1.5 ${showImage ? "grid-cols-[1fr_150px_40px]" : "grid-cols-1"}`}>
-              <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 text-xs" placeholder="Detail / spec value" />
-              <div className="flex items-center gap-1">
-                <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs flex-1" placeholder={template === "brand-wall" ? "logo image URL" : "img URL"} />
-                <button onClick={() => setPickIndex(i)} className="rounded-lg bg-white/10 px-2 text-[12px] font-bold hover:bg-white/20" title="Pick from library">📂</button>
+        {list.map((it, i) => {
+          const picking = pickIndex === i;
+          return (
+            <div key={i} className="space-y-1.5 rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/10">
+              <div className="grid grid-cols-[minmax(0,1fr)_84px_96px_26px] gap-1.5">
+                <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
+                {showPrice ? (
+                  <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
+                ) : (
+                  <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
+                )}
+                {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
+                <button onClick={() => { onChange(list.filter((_, j) => j !== i)); setPickIndex(null); }} title="Remove this row" aria-label={`Remove row ${i + 1}`} className="rounded-lg bg-white/10 text-red-300">✕</button>
               </div>
-              {pickIndex === i && pics.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 min-w-0 flex-1 text-xs" placeholder="Detail / spec value" />
+                {showImage && (
+                  <button
+                    type="button"
+                    onClick={() => setPickIndex(picking ? null : i)}
+                    aria-expanded={picking}
+                    aria-label={`Pick an image for row ${i + 1} from the library`}
+                    title="Pick from the media library"
+                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black ring-1 ${picking ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+                  >
+                    <BrowseIcon /> Image
+                  </button>
+                )}
+              </div>
+              {showImage && (
+                <div className="flex items-center gap-1.5">
+                  {it.image && <Thumb url={it.image} fit={isLogo ? "contain" : "cover"} className="h-9 w-14" />}
+                  <input
+                    value={it.image || ""}
+                    onChange={(e) => { edit(i, "image", e.target.value); setPickIndex(null); }}
+                    className="inp !py-2 min-w-0 flex-1 text-xs"
+                    placeholder={imagePlaceholder}
+                    aria-label={`Row ${i + 1} image URL`}
+                  />
+                  {it.image && (
+                    <button
+                      type="button"
+                      onClick={() => { edit(i, "image", ""); setPickIndex(null); }}
+                      title="Remove this row's image"
+                      aria-label={`Clear the image on row ${i + 1}`}
+                      className="shrink-0 rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-red-300 ring-1 ring-white/15 hover:bg-red-500/25"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* The library opens full-width below the row — as a grid child it was
+                  squeezed into a 40px column and clipped to an unreadable sliver. */}
+              {showImage && picking && (
                 <LibraryPicker
-                  title={`ROW ${i + 1} IMAGE`}
-                  assets={pics}
+                  title={`ROW ${i + 1} IMAGE — MEDIA LIBRARY`}
+                  assets={assets}
+                  current={it.image || ""}
+                  fit={isLogo ? "contain" : "cover"}
+                  onClose={() => setPickIndex(null)}
                   onPick={(url) => { edit(i, "image", url); setPickIndex(null); }}
                 />
               )}
             </div>
-          </div>
-        ))}
-        {showImage && pickIndex === null && pics.length > 0 && list.length > 0 && (
-          <div className="mt-2">
-            <LibraryPicker title="QUICK-SET ANY ROW IMAGE" assets={pics} onPick={(url) => { if (list.length) edit(list.length - 1, "image", url); }} />
-          </div>
-        )}
+          );
+        })}
         {list.length === 0 && <p className="text-xs text-white/40">No rows yet — add some above.</p>}
       </div>
     </div>
@@ -1006,6 +1215,7 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string; url: string; type: string; source?: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -1026,25 +1236,40 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
   };
 
   const upload = async (f: File) => {
+    if (busy) return;
     setBusy(true);
     const fd = new FormData();
     fd.append("file", f);
-    const r = await fetch("/api/upload", { method: "POST", body: fd });
-    const j = await r.json();
+    try {
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) flash(j.error || `Upload failed (${r.status})`);
+      else { onReload(); flash("Uploaded to library"); }
+    } catch {
+      flash("Upload failed — check the connection to the server");
+    }
     setBusy(false);
-    if (j.error) flash(j.error);
-    else { onReload(); flash("Uploaded to library"); }
   };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
       <div className="h-fit space-y-4 rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
         <h3 className="font-black">Add media</h3>
-        <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-white/20 p-6 text-center hover:border-white/50">
+        <label
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) upload(f); }}
+          className={`block cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? "border-white bg-white/10" : "border-white/20 hover:border-white/50"}`}
+        >
           <div className="text-3xl">⇪</div>
           <div className="mt-1 text-sm font-bold">{busy ? "Uploading…" : "Drop / click to upload"}</div>
           <div className="text-xs text-white/40">jpg · png · webp · gif · mp4 · webm · max 25 MB</div>
-          <input type="file" className="hidden" accept="image/*,video/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*,video/*"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(f); }}
+          />
         </label>
         <div className="space-y-2">
           <label className="lbl">Or register by URL</label>
