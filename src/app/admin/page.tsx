@@ -370,6 +370,15 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <Color label="Accent" v={draft.accentColor} onChange={(v) => set("accentColor", v as never)} />
                 <Color label="Text" v={draft.textColor} onChange={(v) => set("textColor", v as never)} />
               </div>
+              {HIGHLIGHT_TEMPLATES.includes(draft.template) && (
+                <div className="flex items-end gap-3">
+                  <div className="w-1/4 min-w-[120px]">
+                    <Color label="Highlight (yellow)" v={draft.highlightColor || "#ffd60a"} onChange={(v) => set("highlightColor", v as never)} />
+                  </div>
+                  <button onClick={() => set("highlightColor", "" as never)} disabled={!draft.highlightColor} className="mb-1 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold ring-1 ring-white/15 disabled:opacity-40">Reset to yellow</button>
+                  <p className="mb-1 text-[11px] text-white/40">The second colour on strips, price flags and stickers.</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="lbl">Animation preset</label>
@@ -436,28 +445,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <button onClick={save} className="rounded-xl bg-green-500/20 p-3 font-black text-green-300 ring-1 ring-green-400/40">⬆ Publish<br />to displays</button>
                 <button onClick={() => setTab("timeline")} className="rounded-xl bg-white/10 p-3 font-bold ring-1 ring-white/15">◷ View<br />timeline</button>
               </div>
-              {assets.length > 0 && (
-                <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
-                  <div className="mb-2 text-[11px] font-black tracking-widest text-white/50">QUICK-SET IMAGE FROM LIBRARY</div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {assets.slice(0, 12).map((a) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={a.id} src={a.url} alt="" onClick={() => set("imageUrl", a.url as never)} className="h-14 w-20 cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {assets.length > 0 && (
-                <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
-                  <div className="mb-2 text-[11px] font-black tracking-widest text-white/50">QUICK-SET BACKGROUND FROM LIBRARY</div>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {assets.slice(0, 12).map((a) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={a.id} src={a.url} alt="" onClick={() => set("bgImageUrl", a.url as never)} className="h-14 w-20 cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
-                    ))}
-                  </div>
-                </div>
-              )}
+              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={assets} onPick={(url) => set("imageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={assets} onPick={(url) => set("bgImageUrl", url as never)} />
             </div>
           </div>
         )}
@@ -713,6 +702,28 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><label className="lbl">{label}</label>{children}</div>;
+}
+
+const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services"];
+
+/** Every picture in the media library as a scrollable grid (videos can't be images or backgrounds). */
+function LibraryPicker({ title, assets, onPick }: { title: string; assets: { id: string; name: string; url: string; type: string }[]; onPick: (url: string) => void }) {
+  const pics = assets.filter((a) => a.type !== "video");
+  if (pics.length === 0) return null;
+  return (
+    <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+      <div className="mb-2 flex items-center justify-between text-[11px] font-black tracking-widest text-white/50">
+        <span>{title}</span>
+        <span className="font-mono text-white/40">{pics.length}</span>
+      </div>
+      <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-5">
+        {pics.map((a) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={a.id} src={a.url} alt={a.name} loading="lazy" onClick={() => onPick(a.url)} className="aspect-[4/3] w-full cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Color({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {

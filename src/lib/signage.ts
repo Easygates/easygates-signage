@@ -96,6 +96,8 @@ export interface Scene {
   textColor: string;
   mutedColor: string;
   cardColor: string;
+  /** Second colour of the value-store templates (default sale yellow). Empty = template default. */
+  highlightColor?: string;
   animationPreset: AnimationPresetId;
   durationSec: number;
   transition: TransitionId;

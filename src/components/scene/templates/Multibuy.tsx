@@ -33,7 +33,7 @@ const BANNER_TEXT_W = 1200;
 const STICKER_ROOM = 178;
 
 export default function MultibuyTemplate({ scene, d }: TemplateProps) {
-  const p = discountPalette(scene.accentColor, COLOURS);
+  const p = discountPalette(scene.accentColor, COLOURS, scene.highlightColor);
   const eyebrow = clean(scene.eyebrow);
   const offer = clean(scene.headline);
   const sub = clean(scene.subheadline);

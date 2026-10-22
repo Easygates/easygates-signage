@@ -53,6 +53,8 @@ export const scenes = pgTable("scenes", {
   textColor: text("text_color").default("#ffffff"),
   mutedColor: text("muted_color").default("#c7cede"),
   cardColor: text("card_color").default("#141b33"),
+  // Second colour of the value-store templates (the "sale yellow"); empty = template default
+  highlightColor: text("highlight_color"),
   // Motion
   animationPreset: text("animation_preset").default("launch"),
   durationSec: integer("duration_sec").default(10),
