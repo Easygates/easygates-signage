@@ -1,12 +1,13 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 20 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 27 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Three fictional demo campaigns, all loadable from `/admin`:
+Four fictional demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
 - **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
+- **Easygates · Head Office & Reception** — 7 corporate scenes, one per corporate / social-proof template (company values, team, milestone, news, testimonial, fullscreen background, Trustpilot review), using bundled images only so displays work offline.
 
 ## Templates
 
@@ -56,12 +57,13 @@ Theme decorations always render; theme colours only override the slide's own pal
 
 ## Demo campaigns
 
-Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**) or via the API:
+Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**) or via the API:
 
 ```bash
 curl -X POST 'http://localhost:3000/api/seed?campaign=value'
 curl -X POST 'http://localhost:3000/api/seed?campaign=retail'
 curl -X POST 'http://localhost:3000/api/seed?campaign=trade'
+curl -X POST 'http://localhost:3000/api/seed?campaign=corporate'
 ```
 
 The value campaign uses fictional products, a fictional store name ("Value Store"), and `{phone}` placeholders resolved from the Business tab settings. At least 4 slides use different seasonal themes.
@@ -105,7 +107,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 
    > **Why RLS with no policies?** Supabase exposes `public` tables through its Data API to anyone holding the project's publishable/anon key. NovaSign never uses that API — it connects to Postgres directly as the table owner, which bypasses RLS — so enabling RLS without policies closes the API off (including the Fully Kiosk passwords in `displays.settings`) without affecting the app. `/admin?tab=database` warns if any table still has RLS off.
 
-5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
+5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 

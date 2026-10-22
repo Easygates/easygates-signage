@@ -35,6 +35,133 @@ const emptyScene = (): Scene => ({
   kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null, theme: "none",
 });
 
+// Sample page loaded when a slide switches to one of these templates, so the
+// preview shows the template as intended instead of the previous product content.
+const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; flash: string }>> = {
+  splash: {
+    fields: {
+      imageUrl: "",
+      eyebrow: "WELCOME",
+      headline: "{business}",
+      subheadline: "",
+      ctaText: "",
+      items: [
+        { name: "Call us", desc: "{phone}" },
+        { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
+        { name: "Find us", desc: "Add your address" },
+      ],
+    },
+    flash: "Welcome starter loaded — the logo comes from the Business tab; edit the cards below",
+  },
+  "company-values": {
+    fields: {
+      eyebrow: "{business} · WHO WE ARE",
+      headline: "WHAT WE STAND FOR",
+      subheadline: "The principles behind everything we do.",
+      description: "",
+      imageUrl: "",
+      ctaText: "",
+      items: [
+        { name: "Safety first", desc: "Every site, every job — no shortcuts." },
+        { name: "Right first time", desc: "Specified, tested and signed off properly." },
+        { name: "Keep it simple", desc: "Straight answers and clear quotes." },
+        { name: "Proud people", desc: "Look after the team and the work speaks for itself." },
+      ],
+    },
+    flash: "Company Values sample loaded — edit the values to make them yours",
+  },
+  "team-intro": {
+    fields: {
+      eyebrow: "{business} · THE PEOPLE",
+      headline: "MEET THE TEAM",
+      subheadline: "The people who keep the work moving.",
+      description: "",
+      imageUrl: "",
+      ctaText: "WE'RE HIRING — ASK AT RECEPTION",
+      items: [
+        { name: "Alex M.", desc: "Head of Installation" },
+        { name: "Jordan T.", desc: "Site Surveyor" },
+        { name: "Sam K.", desc: "Electrician, First-Class" },
+        { name: "Ria P.", desc: "Accounts & Planning" },
+        { name: "Lee B.", desc: "Workshop Lead" },
+        { name: "Dan O.", desc: "Aftercare & Call-outs" },
+      ],
+    },
+    flash: "Meet the Team sample loaded — swap in your people and add photos per row",
+  },
+  "corporate-milestone": {
+    fields: {
+      eyebrow: "A MILESTONE",
+      headline: "25",
+      subheadline: "YEARS KEEPING BRITAIN MOVING",
+      description: "From a two-van fitting business to one of the UK's leading gate and barrier specialists.",
+      imageUrl: "",
+      ctaText: "HERE'S TO THE NEXT 25",
+      items: null,
+    },
+    flash: "Milestone sample loaded — put your number in the Headline",
+  },
+  "corporate-news": {
+    fields: {
+      eyebrow: "COMPANY NEWS",
+      headline: "NEW SMART PANEL LINE THIS WINTER",
+      subheadline: "",
+      description: "App control, visitor codes and remote release for residential and light commercial sites — fitted by our own teams.",
+      imageUrl: "",
+      ctaText: "BOOK A SITE SURVEY",
+      tickerText: "AVAILABLE FROM DECEMBER —",
+      items: null,
+    },
+    flash: "Company News sample loaded — headline = the story, Ticker = the date",
+  },
+  "testimonial-quote": {
+    fields: {
+      eyebrow: "CUSTOMER STORY",
+      headline: "Fitted in a day. Zero fuss. Brilliant team.",
+      description: "“They turned up on time, kept the site clean and the gate works perfectly.”",
+      productName: "M. Carter",
+      imageUrl: "",
+      ctaText: "Homeowner · Manchester",
+      items: [
+        { name: "J. O'Neill", desc: "“Clear quote, tidy install, great aftercare.”" },
+        { name: "S. Patel", desc: "“The smart panel app is easier than our phone keys.”" },
+      ],
+    },
+    flash: "Testimonial sample loaded — Headline is the big quote, rows add more",
+  },
+  "fullscreen-bg": {
+    fields: {
+      eyebrow: "",
+      headline: "{business}",
+      subheadline: "",
+      description: "",
+      ctaText: "",
+      imageUrl: "",
+      bgImageUrl: "/ambient/ambient-aurora.jpg",
+      videoUrl: "",
+      kenBurns: "zoom-in",
+      items: null,
+    },
+    flash: "Background sample loaded — swap the background via Quick-set or Image URL",
+  },
+  "trustpilot-review": {
+    fields: {
+      eyebrow: "RATED BY OUR CUSTOMERS",
+      headline: "4.8",
+      subheadline: "Excellent · based on 1,284 reviews",
+      description: "Independent, verified reviews from customers across the UK.",
+      imageUrl: "",
+      ctaText: "READ OUR REVIEWS ON TRUSTPILOT",
+      items: [
+        { name: "Karen H.", desc: "Gate fitted in a day — tidy, professional and on budget.", tag: "★★★★★" },
+        { name: "Tomasz W.", desc: "Remote release and visitor codes changed how we run the site.", tag: "★★★★★" },
+        { name: "Priya S.", desc: "Great aftercare — they came back to tweak the sensor for free.", tag: "★★★★☆" },
+      ],
+    },
+    flash: "Trustpilot sample loaded — rating in the Headline, reviews in the rows",
+  },
+};
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>(() => {
@@ -136,30 +263,16 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
   const set = (k: keyof Scene, v: never) => { setDraft((d) => ({ ...d, [k]: v })); setDirty(true); };
 
-  // Switching INTO splash starts from welcome-screen content: the old slide's product photo would otherwise
-  // be shown as the "logo" and its prices/menu rows mean nothing there. The draft is not saved until Publish.
+  // Templates that get sample content when a slide switches to them (like splash):
+  // without it the slide keeps the previous product content (prices, menu rows) and
+  // the new layout looks broken/empty. The draft is not saved until Publish.
   const pickTemplate = (id: TemplateId) => {
     if (draft.template === id) return;
-    if (id === "splash") {
-      setDraft((d) => ({
-        ...d,
-        template: id,
-        imageUrl: "",
-        eyebrow: "WELCOME",
-        headline: "{business}",
-        subheadline: "",
-        ctaText: "",
-        items: [
-          { name: "Call us", desc: "{phone}" },
-          { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
-          { name: "Find us", desc: "Add your address" },
-        ],
-      }));
-      setDirty(true);
-      flash("Welcome starter loaded — the logo comes from the Business tab; edit the cards below");
-      return;
-    }
-    set("template", id as never);
+    const starter = TEMPLATE_STARTERS[id];
+    if (!starter) { set("template", id as never); return; }
+    setDraft((d) => ({ ...d, ...starter.fields, template: id }));
+    setDirty(true);
+    flash(starter.flash);
   };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
@@ -224,7 +337,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
-  const seed = async (campaign: "retail" | "trade" | "value" = "retail") => {
+  const seed = async (campaign: "retail" | "trade" | "value" | "corporate" = "retail") => {
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     load();
@@ -233,7 +346,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
         : campaign === "value"
           ? `Value demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
-          : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+          : campaign === "corporate"
+            ? `Corporate demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+            : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
     );
   };
 
@@ -258,6 +373,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
             <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
             <button onClick={() => seed("value")} className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
+            <button onClick={() => seed("corporate")} className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -801,6 +917,10 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "aisle-guide": "Up to 6 sub-categories for this aisle — name + optional note",
   "splash": "Up to 4 contact cards — name = label (Call us), detail = the value ({phone} works). The icon is picked from the words. Put a logo URL in the slide's Image URL to override the Business logo.",
   "store-services": "Up to 6 service cards — name = title, detail = lines such as opening hours, tag = icon word (collect, returns, hours, help, delivery)",
+  "company-values": "Up to 6 values — name = the principle, detail = one line explaining it",
+  "team-intro": "Up to 8 people — name + role in detail; optional avatar image per row",
+  "testimonial-quote": "Up to 2 extra quotes — name = author, detail = the quote. The main quote goes in the slide's Headline + Description",
+  "trustpilot-review": "Top reviews — name = reviewer, detail = review text, tag = stars (★★★★★). The rating number goes in the slide's Headline",
 };
 
 function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: { id: string; name: string; url: string; type: string }[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
@@ -928,6 +1048,7 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
                 <div className="mt-1.5 flex gap-1.5">
                   <button onClick={() => { navigator.clipboard.writeText(a.url); flash("URL copied"); }} className="flex-1 rounded-lg bg-white/10 py-1.5 text-[11px] font-black">COPY</button>
                   <button onClick={() => onUse(a.url)} className="flex-1 rounded-lg bg-white py-1.5 text-[11px] font-black text-black">USE →</button>
+                  <button onClick={() => setPendingDelete(a)} title="Delete permanently" aria-label={`Delete ${a.name} permanently`} className="rounded-lg bg-white/10 px-2 py-1.5 text-[11px] font-black text-red-300 hover:bg-red-500/25">🗑</button>
                 </div>
               </div>
             </div>

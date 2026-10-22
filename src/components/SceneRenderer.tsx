@@ -812,16 +812,28 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
                 <span>★ Trustpilot</span>
                 <span className="ml-auto text-[14px]">{scene.items?.length || 0} reviews</span>
               </div>
-              <div className="space-y-2">
-                {[5, 4, 3, 2, 1].map((star) => (
-                  <div key={star} className="flex items-center gap-2" style={d.style(6 + star)}>
-                    <span className="w-8 text-xs font-mono">{star}</span>
-                    <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-white" style={{ width: "70%" }} />
-                    </div>
+              {(() => {
+                // bar widths come from the review rows' star tags (★★★★★) so the
+                // breakdown reflects the data entered; no rows yet → even 70% placeholder
+                const rows = scene.items || [];
+                const starsOf = (tag?: string) => { const m = (tag || "").match(/★/g); return m ? Math.min(5, m.length) : 5; };
+                const total = rows.length;
+                return (
+                  <div className="space-y-2">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const pct = total ? (rows.filter((r) => starsOf(r.tag) === star).length / total) * 100 : 70;
+                      return (
+                        <div key={star} className="flex items-center gap-2" style={d.style(6 + star)}>
+                          <span className="w-8 text-xs font-mono">{star}</span>
+                          <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-white transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
             <div className="space-y-3">
               {(scene.items || []).slice(0, 3).map((it, i) => (
