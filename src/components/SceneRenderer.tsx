@@ -771,6 +771,90 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
         </div>
       )}
 
+      {/* 27 · TRUSTPILOT REVIEW (social proof) */}
+      {t === "trustpilot-review" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1700px] grid-cols-[1fr_1.2fr] gap-10 px-[6%] py-[4%] items-center">
+          {/* Left column: rating + logo */}
+          <div className="space-y-6">
+            {scene.eyebrow && <Eyebrow scene={scene} d={d} />}
+            <div className="flex items-center gap-4">
+              {scene.imageUrl && (
+                <div className="shrink-0 h-12 w-auto object-contain">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={scene.imageUrl} alt="Trustpilot" className="h-full w-auto" draggable={false} />
+                </div>
+              )}
+              <div>
+                <div className="sg-mask">
+                  <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[96px] font-black tracking-tighter">{scene.headline}</span>
+                </div>
+                {scene.subheadline && (
+                  <p className="sg-anim sg-fade-up mt-2 text-[24px] font-black text-white/90" style={d.style(2)}>{scene.subheadline}</p>
+                )}
+              </div>
+            </div>
+            {scene.description && (
+              <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] px-6 py-5 ring-1 ring-white/10" style={d.style(3)}>
+                <p className="text-[18px] leading-relaxed text-white/90">{scene.description}</p>
+              </div>
+            )}
+            {scene.ctaText && (
+              <div className="sg-anim sg-pop mt-6" style={d.style(4)}>
+                <span className="inline-block rounded-full border border-white/40 px-7 py-3 text-[18px] font-black text-white">{scene.ctaText}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right column: star breakdown + top reviews */}
+          <div className="space-y-4">
+            <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10" style={d.style(5)}>
+              <div className="mb-3 flex items-center gap-2 text-xs font-black text-white/70">
+                <span>★ Trustpilot</span>
+                <span className="ml-auto text-[14px]">{scene.items?.length || 0} reviews</span>
+              </div>
+              <div className="space-y-2">
+                {[5, 4, 3, 2, 1].map((star) => (
+                  <div key={star} className="flex items-center gap-2" style={d.style(6 + star)}>
+                    <span className="w-8 text-xs font-mono">{star}</span>
+                    <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-white" style={{ width: "70%" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {(scene.items || []).slice(0, 3).map((it, i) => (
+                <div key={i} className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10" style={d.style(12 + i)}>
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 h-10 w-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                      {it.image && (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={it.image} alt={it.name} className="h-full w-full object-cover" draggable={false} />
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <div className="text-[18px] font-black">{it.name}</div>
+                        <div className="text-[14px] font-mono text-white/70">{it.tag || "★★★★★"}</div>
+                      </div>
+                      {it.desc && <p className="text-[16px] leading-relaxed text-white/90">{it.desc}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(scene.items || []).length === 0 && (
+                <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10 text-center text-xs text-white/60">
+                  Add reviews in the scene editor (Author + review text + star tag).
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />
     </div>

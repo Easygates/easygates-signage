@@ -223,3 +223,27 @@ Added 5 corporate templates + 1 background-only template to the scene editor:
 All registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` (new "Corporate" group), `ITEM_TEMPLATES` (company-values, team-intro, testimonial-quote) and rendered in `SceneRenderer.tsx`. The `fullscreen-bg` template supports `videoUrl` (autoplay muted loop) or `bgImageUrl`/`imageUrl` with Ken Burns, plus an optional darkened overlay and centered text — no logo is ever rendered.
 
 Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.
+
+## 9. Trustpilot Review template — arena/c5ccc534-easygates-signage
+
+Added `trustpilot-review` template ("Social proof" category) for showing the
+company's Trustpilot rating, star breakdown and top 5-star reviews on signage.
+Source profile: https://uk.trustpilot.com/review/easygates.co.uk
+
+How it works: data is entered manually in the scene editor (reliable on TVs —
+no internet dependency at display time, no fragile scraping; Trustpilot's
+official API needs a Trustpilot business account + API key and can be wired in
+later if live data is wanted).
+
+Field mapping in the scene editor:
+- `imageUrl` — Trustpilot logo (upload the logo asset or use library quick-set)
+- `headline` — big rating number, e.g. "4.8"
+- `subheadline` — e.g. "Excellent · based on 2,341 reviews"
+- `description` — optional summary/blurb card
+- `ctaText` — optional call to action, e.g. "Read our reviews on Trustpilot"
+- `items` rows — name = reviewer name, desc = review text, tag = stars
+  (e.g. "★★★★★", defaults to 5 stars), image = optional reviewer avatar
+
+Registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` ("Social proof"),
+`ITEM_TEMPLATES`, and rendered in `SceneRenderer.tsx`.
+Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.

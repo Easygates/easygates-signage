@@ -31,7 +31,9 @@ export type TemplateId =
   | "corporate-news"
   | "testimonial-quote"
   // ── background only ──
-  | "fullscreen-bg";
+  | "fullscreen-bg"
+  // ── social proof ──
+  | "trustpilot-review";
 
 /** Templates that read the `items` array */
 export const ITEM_TEMPLATES: TemplateId[] = [
@@ -52,6 +54,7 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "company-values",
   "team-intro",
   "testimonial-quote",
+  "trustpilot-review",
 ];
 
 export type AnimationPresetId =
@@ -162,6 +165,8 @@ export const TEMPLATES: {
   { id: "testimonial-quote", name: "Testimonial / Quote", blurb: "Large quote with attribution and optional customer photo", bestFor: "Customer praise & reviews" },
   // ── background only ──
   { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video with optional overlay text — no logo", bestFor: "Ambient & mood screens" },
+  // ── social proof ──
+  { id: "trustpilot-review", name: "Trustpilot Review", blurb: "Trustpilot rating, star breakdown and top reviews — social proof for reception screens", bestFor: "Customer trust & reputation" },
 ];
 
 /** Groups for the template picker in the admin. Any template not listed lands in "Other". */
@@ -172,6 +177,7 @@ export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: Templat
   { id: "brand", name: "Brand & welcome", templates: ["splash"] },
   { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
   { id: "corporate", name: "Corporate", templates: ["company-values", "team-intro", "corporate-milestone", "corporate-news", "testimonial-quote", "fullscreen-bg"] },
+  { id: "social-proof", name: "Social proof", templates: ["trustpilot-review"] },
 ];
 
 export function templateCategory(id: string): string {
