@@ -105,6 +105,173 @@ export function normalizeBrand(input: unknown): BrandSettings {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Multiple businesses
+//
+// One NovaSign install can run several brands (two shops, a trade counter and a
+// showroom, …). Each business is a complete set of screen details — logo, phone,
+// colours, ticker — so a slide shown on a Smart & Secure screen looks like Smart
+// & Secure even though the same slide plays on an EasyGates screen.
+//
+// Storage: the `settings` table, key `businesses`, shaped like BusinessCollection.
+// The old single-business row (`brand`) stays as the fallback: the first time this
+// runs, the saved business details become the first profile rather than being lost.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One business. Everything a BrandSettings has, plus the admin label and contact extras. */
+export interface BusinessProfile extends BrandSettings {
+  /** stable id — scenes/displays reference this, never the array position */
+  id: string;
+  /** the name shown in the admin list (the brand, e.g. "Smart & Secure") */
+  profileName: string;
+  /** short line under the name in the picker, e.g. "Smart home superstore" */
+  tagline: string;
+  /** website shown on contact-style slides; optional */
+  website: string;
+}
+
+export interface BusinessCollection {
+  profiles: BusinessProfile[];
+  /** which profile new screens and previews use when nothing else is chosen */
+  activeId: string;
+}
+
+/**
+ * Ready-made businesses. Colours are read off the supplied logos:
+ * EasyGates Direct is silver + #e62d34 red on deep navy (with the EasyGates blue
+ * #1a7bbf and a safety amber as the second and third accents); Smart & Secure is
+ * teal #74c0cd, coral #d07374 and cream #ecea91 on charcoal-teal.
+ * Every pairing clears WCAG AA for signage (checked by tests/businesses.test.mjs).
+ */
+export const BUSINESS_PRESETS: Omit<BusinessProfile, "id">[] = [
+  {
+    profileName: "EasyGates Direct",
+    businessName: "EasyGates Direct",
+    tagline: "Gate automation · access control · safety",
+    website: "https://www.easygatesdirect.co.uk",
+    // silver-on-transparent mark — it needs a dark plate, not a white one
+    logoUrl: "/brands/easygates-direct-logo.png",
+    logoOnWhite: false,
+    showName: false,
+    phone: "01384 569 942",
+    defaultBgImageUrl: "",
+    timezone: "Europe/London",
+    accentColor: "#ff3b43",
+    backgroundColor: "#07131f",
+    applyColors: false,
+    tickerText: "TRADE COUNTER OPEN 7.30AM–5PM · ORDER BY 3PM FOR NEXT DAY DELIVERY · CALL {phone} ·",
+    tickerOnAll: false,
+    tickerSize: "md",
+    showBrandBar: true,
+    showClock: true,
+  },
+  {
+    profileName: "Smart & Secure",
+    businessName: "Smart & Secure",
+    tagline: "Smart home · security · home cinema",
+    website: "https://www.smart-secure.co.uk",
+    logoUrl: "/brands/smart-secure-logo.png",
+    logoOnWhite: true,
+    showName: false,
+    phone: "01384 900 262",
+    defaultBgImageUrl: "",
+    timezone: "Europe/London",
+    accentColor: "#74c0cd",
+    backgroundColor: "#08161b",
+    applyColors: false,
+    tickerText: "5,000 SQ FT OF SMART HOME TO TRY · OPEN MON–SAT · CALL {phone} ·",
+    tickerOnAll: false,
+    tickerSize: "md",
+    showBrandBar: true,
+    showClock: true,
+  },
+];
+
+/** Turn a name into a short, stable id: "Smart & Secure" → "smart-secure". */
+export function profileSlug(name: string, taken: string[] = []): string {
+  const base =
+    (name || "business")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "business";
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+function withId(profile: Omit<BusinessProfile, "id">, taken: string[]): BusinessProfile {
+  return { ...profile, id: profileSlug(profile.profileName, taken) };
+}
+
+/** The two shipped businesses. Used when there is nothing saved yet. */
+export function defaultBusinesses(): BusinessCollection {
+  const profiles = BUSINESS_PRESETS.map((p, i) => withId(p, BUSINESS_PRESETS.slice(0, i).map((q) => profileSlug(q.profileName))));
+  return { profiles, activeId: profiles[0].id };
+}
+
+function normalizeProfile(input: unknown, taken: string[], fallback: BusinessProfile): BusinessProfile {
+  const base = normalizeBrand(input) as BusinessProfile;
+  const v = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const str = (k: "profileName" | "tagline" | "website", max: number, dflt: string) =>
+    typeof v[k] === "string" ? v[k].trim().slice(0, max) : dflt;
+  const rawId = typeof v.id === "string" ? v.id.trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40) : "";
+  const profile: BusinessProfile = {
+    ...base,
+    profileName: str("profileName", 60, fallback.profileName),
+    tagline: str("tagline", 120, ""),
+    website: str("website", 200, ""),
+    id: "",
+  };
+  profile.id = rawId && !taken.includes(rawId) ? rawId : profileSlug(profile.profileName || fallback.profileName, taken);
+  return profile;
+}
+
+/**
+ * Accept anything stored under `businesses` and return a usable collection:
+ * always at least one profile, unique ids, and an activeId that exists.
+ * `fallbackBrand` is the legacy single-business row, migrated into profile one
+ * the first time this runs so existing installs keep their details.
+ */
+export function normalizeBusinesses(input: unknown, fallbackBrand?: BrandSettings): BusinessCollection {
+  const v = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const raw = Array.isArray(v.profiles) ? v.profiles : null;
+  if (!raw || raw.length === 0) {
+    const seed: Omit<BusinessProfile, "id"> | undefined = fallbackBrand
+      ? { ...fallbackBrand, profileName: fallbackBrand.businessName, tagline: "", website: "" }
+      : undefined;
+    const profiles = [withId(seed ?? BUSINESS_PRESETS[0], [])];
+    return { profiles, activeId: profiles[0].id };
+  }
+  const taken: string[] = [];
+  const profiles: BusinessProfile[] = [];
+  for (const [i, item] of raw.entries()) {
+    const fallback = BUSINESS_PRESETS[i] ?? BUSINESS_PRESETS[0];
+    const p = normalizeProfile(item, taken, { ...fallback, id: "" } as BusinessProfile);
+    taken.push(p.id);
+    profiles.push(p);
+  }
+  const activeId = typeof v.activeId === "string" && profiles.some((p) => p.id === v.activeId) ? v.activeId : profiles[0].id;
+  return { profiles, activeId };
+}
+
+/** The profile screens use when nothing is chosen for them. */
+export function activeProfile(c: BusinessCollection): BusinessProfile {
+  return c.profiles.find((p) => p.id === c.activeId) ?? c.profiles[0];
+}
+
+export function profileById(c: BusinessCollection, id?: string | null): BusinessProfile | undefined {
+  if (!id) return undefined;
+  return c.profiles.find((p) => p.id === id);
+}
+
+/** Profile for an id, falling back to the active one — never undefined. */
+export function profileOrDefault(c: BusinessCollection, id?: string | null): BusinessProfile {
+  return profileById(c, id) ?? activeProfile(c);
+}
+
 const TOKENS = /\{\s*(phone|business)\s*\}/gi;
 
 /** Swap {phone} and {business} in slide text for the saved business details. */

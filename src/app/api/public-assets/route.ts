@@ -3,12 +3,13 @@ import { readdir, unlink } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Scans public/ subdirectories (seasonal, retail, trade, ambient, uploads)
+ * Scans public/ subdirectories (seasonal, retail, trade, ambient, easygates,
+ * smartsecure, brands, uploads)
  * for image files so they appear in the media library / quick-set pickers
  * without needing a database entry. These files live on disk, not in the
  * assets table — GET lists them, DELETE physically removes one file.
  */
-const PUBLIC_DIRS = ["seasonal", "retail", "trade", "ambient", "uploads"];
+const PUBLIC_DIRS = ["seasonal", "retail", "trade", "ambient", "easygates", "smartsecure", "brands", "uploads"];
 const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
 
 export const dynamic = "force-dynamic";

@@ -1,23 +1,43 @@
 import { NextResponse } from "next/server";
-import { loadBrand, loadFailsafe, saveBrand, saveFailsafe } from "@/lib/settings";
+import { loadBrand, loadBusinesses, loadFailsafe, saveBrand, saveBusinesses, saveFailsafe } from "@/lib/settings";
+import type { BusinessCollection } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // One round trip for the admin: business details + the offline failsafe choice.
-  const [brand, failsafe] = await Promise.all([loadBrand(), loadFailsafe()]);
-  return NextResponse.json({ ...brand, failsafe: failsafe.failsafe, failsafeStored: failsafe.stored });
+  // One round trip for the admin: the business list, the legacy single-business
+  // details (still what screens read when no business is chosen) and the failsafe.
+  const [brand, businesses, failsafe] = await Promise.all([loadBrand(), loadBusinesses(), loadFailsafe()]);
+  return NextResponse.json({
+    ...brand,
+    businesses: businesses.businesses,
+    businessesStored: businesses.stored,
+    businessesReady: businesses.ready,
+    failsafe: failsafe.failsafe,
+    failsafeStored: failsafe.stored,
+  });
 }
 
 export async function PUT(req: Request) {
   const body = await req.json().catch(() => null);
   try {
-    // PUT { brand } saves the business details, PUT { failsafe } the fallback —
-    // either or both, so the two panels can't overwrite each other's settings.
-    const brandInput = body?.brand ?? (body?.failsafe ? undefined : body);
+    // PUT { brand } saves the single business details, PUT { businesses } the list,
+    // PUT { failsafe } the fallback — any combination, so the panels on the admin
+    // page can each save their own slice without overwriting each other.
+    const brandInput = body?.brand ?? (body?.failsafe || body?.businesses ? undefined : body);
     const brand = brandInput === undefined ? (await loadBrand()).brand : await saveBrand(brandInput);
+    let businesses: BusinessCollection;
+    if (body?.businesses === undefined) {
+      businesses = (await loadBusinesses()).businesses;
+    } else {
+      businesses = await saveBusinesses(body.businesses);
+      // Keep the legacy single-business row in step with the active business, so
+      // everything that still reads `brand` (the player, exports) shows that one.
+      const active = businesses.profiles.find((p) => p.id === businesses.activeId) ?? businesses.profiles[0];
+      if (active) await saveBrand(active);
+    }
     const failsafe = body?.failsafe === undefined ? (await loadFailsafe()).failsafe : await saveFailsafe(body.failsafe);
-    return NextResponse.json({ brand, failsafe, stored: true, ready: true });
+    return NextResponse.json({ brand, businesses, failsafe, stored: true, ready: true });
   } catch (err) {
     const missing = /relation .*settings.* does not exist/i.test(err instanceof Error ? err.message : "");
     return NextResponse.json(

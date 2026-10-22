@@ -11,7 +11,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALL_DEMO_SCENES, CORPORATE_DEMO_SCENES, COUNTER_DEMO_SCENES, DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "../src/lib/signage.ts";
+import {
+  ALL_DEMO_SCENES,
+  CORPORATE_DEMO_SCENES,
+  COUNTER_DEMO_SCENES,
+  DEMO_SCENES,
+  EASYGATES_DEMO_SCENES,
+  SMARTSECURE_DEMO_SCENES,
+  TEMPLATES,
+  TRADE_DEMO_SCENES,
+  VALUE_DEMO_SCENES,
+} from "../src/lib/signage.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
@@ -54,8 +64,10 @@ describe("opening page", () => {
         TRADE_DEMO_SCENES.length +
         VALUE_DEMO_SCENES.length +
         CORPORATE_DEMO_SCENES.length +
-        COUNTER_DEMO_SCENES.length,
-      "ALL_DEMO_SCENES must be the sum of the five packs"
+        COUNTER_DEMO_SCENES.length +
+        EASYGATES_DEMO_SCENES.length +
+        SMARTSECURE_DEMO_SCENES.length,
+      "ALL_DEMO_SCENES must be the sum of the seven packs"
     );
     const covered = new Set(ALL_DEMO_SCENES.map((s) => s.template));
     const missing = TEMPLATES.map((t) => t.id).filter((id) => !covered.has(id));
@@ -79,7 +91,10 @@ describe("ticker size option", () => {
 
   it("is offered as a segmented control on the Business tab", () => {
     assert.ok(businessPanel.includes("TICKER_SIZE_IDS.map"), "the Business tab must render one button per size");
-    assert.ok(businessPanel.includes('onChange("tickerSize"'), "the button must save the choice");
+    assert.ok(
+      businessPanel.includes('set("tickerSize"') || businessPanel.includes('onChange("tickerSize"'),
+      "the button must save the choice",
+    );
     assert.ok(businessPanel.includes("aria-pressed={active}"), "the control must expose its state");
   });
 });

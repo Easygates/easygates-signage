@@ -202,6 +202,70 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     ["name", "desc", "tag", "image"],
     "logo",
   ),
+
+  // ── EasyGates Direct ────────────────────────────────────────────────────────
+  "eg-kit-builder": t(
+    ["eyebrow", "subheadline", "productName", "description", "originalPrice", "promoPrice", "discountBadge", "ctaText", "imageUrl", "highlightColor"],
+    ["name", "price", "tag"],
+    "hero",
+  ),
+  "eg-safety-check": t(
+    ["eyebrow", "subheadline", "description", "ctaText", "highlightColor"],
+    ["name", "desc", "tag"],
+    "none",
+  ),
+  "eg-trade-tiers": t(
+    ["eyebrow", "subheadline", "description", "discountBadge", "ctaText", "highlightColor"],
+    ["name", "price", "desc", "tag"],
+    "none",
+  ),
+  "eg-delivery-cutoff": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "hero",
+  ),
+  "eg-compare": t(
+    ["eyebrow", "subheadline", "ctaText", "highlightColor"],
+    ["name", "price", "desc", "tag", "image"],
+    "none",
+  ),
+  "eg-support-hub": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "hero",
+  ),
+
+  // ── Smart & Secure ──────────────────────────────────────────────────────────
+  "ss-zone-guide": t(
+    ["eyebrow", "subheadline", "productName", "ctaText"],
+    ["name", "desc"],
+    "none",
+  ),
+  "ss-scene-cards": t(
+    ["eyebrow", "subheadline", "ctaText", "highlightColor"],
+    ["name", "desc", "tag", "image"],
+    "none",
+  ),
+  "ss-package-cards": t(
+    ["eyebrow", "subheadline", "description", "discountBadge", "ctaText", "highlightColor"],
+    ["name", "price", "desc", "tag", "image"],
+    "none",
+  ),
+  "ss-works-with": t(
+    ["eyebrow", "subheadline", "ctaText"],
+    ["name", "tag", "image"],
+    "none",
+  ),
+  "ss-book-demo": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "hero",
+  ),
+  "ss-product-spotlight": t(
+    ["eyebrow", "productName", "description", "originalPrice", "promoPrice", "discountBadge", "ctaText", "imageUrl", "highlightColor"],
+    ["name", "desc"],
+    "hero",
+  ),
 };
 
 /**

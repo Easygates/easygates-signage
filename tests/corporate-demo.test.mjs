@@ -11,7 +11,9 @@ import {
   CORPORATE_DEMO_SCENES,
   COUNTER_DEMO_SCENES,
   DEMO_SCENES,
+  EASYGATES_DEMO_SCENES,
   ITEM_TEMPLATES,
+  SMARTSECURE_DEMO_SCENES,
   TEMPLATES,
   TRADE_DEMO_SCENES,
   VALUE_DEMO_SCENES,
@@ -31,7 +33,15 @@ describe("corporate demo campaign", () => {
   });
 
   it("all demo campaigns together cover every template in the catalogue", () => {
-    const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES, ...VALUE_DEMO_SCENES, ...CORPORATE_DEMO_SCENES, ...COUNTER_DEMO_SCENES];
+    const all = [
+      ...DEMO_SCENES,
+      ...TRADE_DEMO_SCENES,
+      ...VALUE_DEMO_SCENES,
+      ...CORPORATE_DEMO_SCENES,
+      ...COUNTER_DEMO_SCENES,
+      ...EASYGATES_DEMO_SCENES,
+      ...SMARTSECURE_DEMO_SCENES,
+    ];
     const covered = new Set(all.map((s) => s.template));
     for (const t of TEMPLATES) {
       assert.ok(covered.has(t.id), `no demo campaign covers template ${t.id}`);

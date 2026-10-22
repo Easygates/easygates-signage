@@ -10,14 +10,36 @@ import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
-import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
+import {
+  DEFAULT_BRAND,
+  activeProfile,
+  defaultBusinesses,
+  normalizeBrand,
+  normalizeBusinesses,
+  type BrandSettings,
+  type BusinessCollection,
+} from "@/lib/brand";
 import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
 import { THEMES, themeDef } from "@/lib/themes";
+
+/** Demo packs loadable from the admin header. */
+type DemoCampaign = "retail" | "trade" | "value" | "corporate" | "counter" | "easygates" | "smartsecure";
+const DEMO_CAMPAIGN_LABELS: Record<DemoCampaign, string> = {
+  retail: "Retail",
+  trade: "Trade",
+  value: "Value",
+  corporate: "Corporate",
+  counter: "Trade counter",
+  easygates: "EasyGates Direct",
+  smartsecure: "Smart & Secure",
+};
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "failsafe" | "database";
 const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "failsafe", "database"];
 
 const sameBrand = (a: BrandSettings, b: BrandSettings) => JSON.stringify(a) === JSON.stringify(b);
+// The two shipped businesses, built once and shared by the initial state and the ref.
+const STARTING_BUSINESSES = defaultBusinesses();
 
 interface PlaylistFull {
   id: string; name: string; description?: string; loop?: boolean;
@@ -252,6 +274,214 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
     },
     flash: "Trade-account sample loaded — benefits go in Rows, the stamp is the Discount badge",
   },
+  "eg-kit-builder": {
+    fields: {
+      eyebrow: "{business} · GATE KITS",
+      headline: "SLIDING GATE KIT. 230V.",
+      subheadline: "Everything for gates up to 600kg, in one box.",
+      productName: "KIT-SL-600",
+      description: "Pre-wired control panel, so most installs are finished before lunch.",
+      originalPrice: "\u00a3689.00",
+      promoPrice: "\u00a3569.00",
+      discountBadge: "SAVE \u00a3120",
+      ctaText: "ORDER BY 3PM FOR NEXT DAY",
+      imageUrl: "/easygates/sliding-gate-motor.jpg",
+      items: [
+        { name: "230V sliding gate motor \u00b7 600kg", price: "INCLUDED", tag: "UPGRADED" },
+        { name: "Steel rack rail \u00b7 4 \u00d7 1m lengths", price: "4M" },
+        { name: "Control panel with built-in receiver", price: "INCLUDED" },
+        { name: "Two rolling-code fobs", price: "\u00d72" },
+      ],
+    },
+    flash: "Gate kit sample loaded — the part number is the Product name, the contents go in Rows",
+  },
+  "eg-safety-check": {
+    fields: {
+      eyebrow: "{business} \u00b7 GATE SAFETY",
+      headline: "FORCE TESTED. FULLY COMPLIANT.",
+      subheadline: "Every automated gate we commission leaves with a signed record.",
+      description: "We log closing forces, test every safety device and hand over the paperwork on the day.",
+      ctaText: "BOOK A GATE SAFETY SURVEY",
+      imageUrl: "",
+      items: [
+        { name: "Closing force measured and logged", desc: "Recorded at the leading edge", tag: "PASS" },
+        { name: "Photocells and safety edges tested", desc: "Every device on the gate", tag: "PASS" },
+        { name: "Risk assessment carried out on site", desc: "Written up before handover", tag: "ANNUAL" },
+        { name: "Manual release checked", desc: "You are shown how to open it by hand", tag: "PASS" },
+      ],
+    },
+    flash: "Safety board sample loaded — one row per check; the stamp shows the regulations",
+  },
+  "eg-trade-tiers": {
+    fields: {
+      eyebrow: "{business} \u00b7 TRADE ACCOUNT",
+      headline: "TRADE PRICING THAT SCALES WITH YOU",
+      subheadline: "Open an account in about two minutes \u2014 no minimum spend.",
+      description: "All prices exclude VAT.",
+      discountBadge: "Gold",
+      ctaText: "OPEN A TRADE ACCOUNT TODAY",
+      imageUrl: "",
+      items: [
+        { name: "Bronze account", price: "5%", desc: "Trade pricing on over 1,000 lines \u00b7 Monthly invoice", tag: "STARTER" },
+        { name: "Silver account", price: "10%", desc: "Priority picking \u00b7 Free delivery over \u00a3150", tag: "MOST POPULAR" },
+        { name: "Gold account", price: "15%", desc: "Dedicated account manager \u00b7 30-day terms", tag: "BEST VALUE" },
+      ],
+    },
+    flash: "Trade tiers sample loaded — put the tier to highlight in Discount badge",
+  },
+  "eg-delivery-cutoff": {
+    fields: {
+      eyebrow: "{business} \u00b7 NEXT DAY DELIVERY",
+      headline: "ORDER BY 3PM. ON SITE TOMORROW.",
+      subheadline: "Picked, checked and dispatched the same afternoon.",
+      productName: "3PM",
+      description: "Stock lines leave our counter the same day.",
+      ctaText: "CALL THE TRADE COUNTER",
+      imageUrl: "/easygates/trade-counter.jpg",
+      items: [
+        { name: "Next day \u2014 pre 12", desc: "Order by 3pm, Monday to Friday", tag: "\u00a312.95" },
+        { name: "Next day \u2014 anytime", desc: "Order by 3pm, Monday to Friday", tag: "\u00a38.95" },
+        { name: "Free next day", desc: "On trade orders over \u00a3150", tag: "FREE" },
+        { name: "Click & collect", desc: "Ready at the counter in one minute", tag: "FREE" },
+      ],
+    },
+    flash: "Delivery board sample loaded \u2014 the clock dial reads the Product name",
+  },
+  "eg-compare": {
+    fields: {
+      eyebrow: "{business} \u00b7 WHICH MOTOR?",
+      headline: "PICK THE RIGHT AUTOMATION",
+      subheadline: "Three ways to open a gate \u2014 and which one suits your drive.",
+      ctaText: "ASK AN ENGINEER \u2014 {phone}",
+      imageUrl: "",
+      items: [
+        { name: "Sliding gate motor", price: "FROM \u00a3449", tag: "BEST SELLER", desc: "Wide or sloping drives \u00b7 Up to 600kg \u00b7 Rack-driven", image: "/easygates/sliding-gate-motor.jpg" },
+        { name: "Swing gate ram", price: "FROM \u00a3389", desc: "Pair of gates on flat ground \u00b7 Up to 3m per leaf", image: "/trade/gate-hero.jpg" },
+        { name: "Underground motor", price: "FROM \u00a3729", tag: "INVISIBLE", desc: "Listed or period drives \u00b7 Nothing on show", image: "/trade/gate-install.jpg" },
+      ],
+    },
+    flash: "Comparison sample loaded \u2014 up to four columns, one row per machine (detail: one point per line)",
+  },
+  "eg-support-hub": {
+    fields: {
+      eyebrow: "{business} \u00b7 TECHNICAL SUPPORT",
+      headline: "{phone}",
+      subheadline: "Stuck on site? Talk to an engineer, not a call centre.",
+      productName: "ANSWERED IN 3 RINGS",
+      description: "Our team fits this kit every week, so they know the fault list by heart.",
+      ctaText: "SAVE THE NUMBER NOW",
+      imageUrl: "/easygates/technical-support.jpg",
+      items: [
+        { name: "Technical helpline", desc: "Gate, barrier and door faults", tag: "MON\u2013FRI 7.30\u20135" },
+        { name: "Manuals & wiring diagrams", desc: "Free to download", tag: "24/7" },
+        { name: "Live chat with an engineer", desc: "Photos and part numbers welcome", tag: "9\u20135" },
+      ],
+    },
+    flash: "Support hub sample loaded \u2014 the phone number is the Headline, the promise is the Product name",
+  },
+  "ss-zone-guide": {
+    fields: {
+      eyebrow: "{business} \u00b7 SHOWROOM",
+      headline: "ZONE 3 \u00b7 HOME CINEMA",
+      subheadline: "5,000 sq ft of working smart home \u2014 touch everything.",
+      productName: "3",
+      ctaText: "ASK FOR A DEMO",
+      imageUrl: "",
+      items: [
+        { name: "4K laser projector", desc: "120in screen with full surround sound" },
+        { name: "Immersive lighting", desc: "Walls that follow the film" },
+        { name: "One-touch scenes", desc: "Lights down, film on, phone silenced" },
+      ],
+    },
+    flash: "Zone guide sample loaded \u2014 the big number is the Product name, the displays go in Rows",
+  },
+  "ss-scene-cards": {
+    fields: {
+      eyebrow: "{business} \u00b7 SMART SCENES",
+      headline: "ONE TAP. THE WHOLE HOUSE.",
+      subheadline: "The scenes we set up for you.",
+      ctaText: "SEE IT IN THE SHOWROOM",
+      imageUrl: "",
+      items: [
+        { name: "Good morning", desc: "Blinds up, lights warm, radio on", tag: "7:00AM", image: "/smartsecure/smart-lighting.jpg" },
+        { name: "Leaving home", desc: "Lights off, plugs off, alarm set", tag: "1 TAP", image: "/smartsecure/smart-lock.jpg" },
+        { name: "Movie night", desc: "Lights down, projector on, doors locked", tag: "EVENING", image: "/smartsecure/cinema-room.jpg" },
+      ],
+    },
+    flash: "Smart-scenes sample loaded \u2014 up to six cards; the triggers are the Detail, separated by commas",
+  },
+  "ss-package-cards": {
+    fields: {
+      eyebrow: "{business} \u00b7 CCTV & ALARMS",
+      headline: "SECURITY THAT SUITS YOUR HOME",
+      subheadline: "Designed, installed and supported by our own engineers.",
+      description: "Every package includes installation, setup and a year of support.",
+      discountBadge: "Family",
+      ctaText: "BOOK A FREE SURVEY",
+      imageUrl: "",
+      items: [
+        { name: "Essential", price: "\u00a3749", desc: "2 \u00d7 4K cameras \u00b7 Video doorbell \u00b7 App setup", image: "/smartsecure/smart-lock.jpg" },
+        { name: "Family", price: "\u00a31,299", tag: "MOST CHOSEN", desc: "4 \u00d7 4K cameras \u00b7 Video doorbell \u00b7 Smart alarm", image: "/smartsecure/showroom.jpg" },
+        { name: "Complete", price: "\u00a32,499", desc: "6 \u00d7 4K cameras \u00b7 Full alarm \u00b7 Smart locks", image: "/smartsecure/cinema-room.jpg" },
+      ],
+    },
+    flash: "Packages sample loaded \u2014 put the package to highlight in Discount badge",
+  },
+  "ss-works-with": {
+    fields: {
+      eyebrow: "{business} \u00b7 WORKS WITH",
+      headline: "YOUR HOME. ONE APP.",
+      subheadline: "Bring whatever you already own \u2014 it will almost certainly work.",
+      ctaText: "BRING YOUR DEVICE IN",
+      imageUrl: "",
+      items: [
+        { name: "Philips Hue", tag: "Lighting" },
+        { name: "Aqara", tag: "Sensors" },
+        { name: "Ring", tag: "Doorbells" },
+        { name: "Google Nest", tag: "Thermostats" },
+        { name: "Nanoleaf", tag: "Lighting" },
+        { name: "Hive", tag: "Heating" },
+      ],
+    },
+    flash: "Works-with sample loaded \u2014 add a logo image to a row to show the logo instead of the name",
+  },
+  "ss-book-demo": {
+    fields: {
+      eyebrow: "{business} \u00b7 SHOWROOM",
+      headline: "COME AND TRY IT BEFORE YOU BUY.",
+      subheadline: "A 5,000 sq ft showroom, open Monday to Saturday.",
+      productName: "{phone}",
+      description: "93 Dudley Road, Halesowen B63 3NS \u00b7 Mon\u2013Sat",
+      ctaText: "BOOK YOUR SLOT",
+      imageUrl: "/smartsecure/showroom.jpg",
+      items: [
+        { name: "Book a slot", desc: "Pick a time that suits you \u2014 or just walk in", tag: "2 MINUTES" },
+        { name: "Try everything", desc: "Lighting, locks, cameras, cinema \u2014 all live", tag: "1 HOUR" },
+        { name: "Take a design home", desc: "We spec the whole house and price it up", tag: "FREE" },
+      ],
+    },
+    flash: "Book-a-demo sample loaded \u2014 the phone number goes in Product name",
+  },
+  "ss-product-spotlight": {
+    fields: {
+      eyebrow: "{business} \u00b7 PRODUCT OF THE MONTH",
+      headline: "SMART LOCK. NO KEY. NO FUSS.",
+      productName: "SMART LOCKS \u00b7 FITTED FROM \u00a3149",
+      description: "\u201cFitted in twenty minutes and the whole family uses their phone now.\u201d",
+      originalPrice: "\u00a3229",
+      promoPrice: "\u00a3179",
+      discountBadge: "4.8",
+      ctaText: "TRY IT IN THE SHOWROOM",
+      imageUrl: "/smartsecure/smart-lock.jpg",
+      items: [
+        { name: "Fits", desc: "Most UK multipoint doors" },
+        { name: "Opens", desc: "Fingerprint, phone, code or key" },
+        { name: "Battery", desc: "About a year, and it warns you" },
+        { name: "Works with", desc: "Apple Home, Alexa, Google" },
+      ],
+    },
+    flash: "Spotlight sample loaded \u2014 the rating (e.g. 4.8) goes in Discount badge and draws as stars",
+  },
 };
 
 export default function AdminPage() {
@@ -265,7 +495,7 @@ export default function AdminPage() {
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
   const [publicAssets, setPublicAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
-  const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean }[]>([]);
+  const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean; settings?: Record<string, unknown> | null }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
   const [sceneQuery, setSceneQuery] = useState("");
@@ -301,6 +531,12 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [brandReady, setBrandReady] = useState(true);
   const [brandSaving, setBrandSaving] = useState(false);
   const savedBrandRef = useRef<BrandSettings>(DEFAULT_BRAND);
+  // Many businesses can share one NovaSign install. `businesses` is what is saved;
+  // `brand` stays as the single "default business" view used by the player and exports.
+  const [businesses, setBusinesses] = useState<BusinessCollection>(defaultBusinesses);
+  const [businessesDraft, setBusinessesDraft] = useState<BusinessCollection>(defaultBusinesses);
+  const [businessesReady, setBusinessesReady] = useState(true);
+  const savedBusinessesRef = useRef<BusinessCollection>(STARTING_BUSINESSES);
 
   const load = useCallback(async () => {
     const [s, p, a, d, sch, st, pub] = await Promise.all([
@@ -328,9 +564,18 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
       setBrandReady(st.ready !== false);
     }
+    if (st?.businesses) {
+      const collection = normalizeBusinesses(st.businesses, st.brand ? normalizeBrand(st.brand) : undefined);
+      const prev = savedBusinessesRef.current;
+      savedBusinessesRef.current = collection;
+      setBusinesses(collection);
+      // same rule as the brand: never stomp on edits the user has not saved yet
+      setBusinessesDraft((dr) => (JSON.stringify(dr) === JSON.stringify(prev) ? collection : dr));
+      setBusinessesReady(st.businessesReady !== false && st.ready !== false);
+    }
     if (selIdRef.current === null && dbScenes[0]) { setSelId(dbScenes[0].id); adoptDraft(dbScenes[0]); }
     if (selPlRef.current === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
-  }, [setBrandDraft, adoptDraft]);
+  }, [setBrandDraft, setBusinessesDraft, adoptDraft]);
 
   // load() only touches state after awaiting, but keep it out of the effect
   // body so the set-state-in-effect rule stays quiet.
@@ -359,6 +604,28 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       setBrand(b);
       setBrandDraft(b);
       flash("Business settings saved — screens update within 30s");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "Save failed");
+    }
+    setBrandSaving(false);
+  };
+
+  const saveBusinesses = async () => {
+    setBrandSaving(true);
+    try {
+      const r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businesses: businessesDraft }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Save failed");
+      const collection = normalizeBusinesses(j.businesses);
+      const active = activeProfile(collection);
+      savedBusinessesRef.current = collection;
+      setBusinesses(collection);
+      setBusinessesDraft(collection);
+      // the player still reads the single "brand" row for screens with no assignment
+      savedBrandRef.current = active;
+      setBrand(active);
+      setBrandDraft(active);
+      flash(`Saved ${collection.profiles.length} business${collection.profiles.length === 1 ? "" : "es"} — screens update within 30s`);
     } catch (e) {
       flash(e instanceof Error ? e.message : "Save failed");
     }
@@ -504,8 +771,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // Load a demo campaign and go straight to the playlist it builds. The endpoint
   // creates the scenes, the playlist, the screens and a schedule; before this the
   // only feedback was a toast, so it looked like the button had done nothing.
-  const seed = async (campaign: "retail" | "trade" | "value" | "corporate" | "counter" = "retail") => {
-    const label = campaign === "trade" ? "Trade" : campaign === "value" ? "Value" : campaign === "corporate" ? "Corporate" : campaign === "counter" ? "Trade counter" : "Retail";
+  const seed = async (campaign: DemoCampaign = "retail") => {
+    const label = DEMO_CAMPAIGN_LABELS[campaign];
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.playlistId) {
@@ -555,6 +822,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             <button onClick={() => seed("value")} title="12 value-store slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
             <button onClick={() => seed("corporate")} title="7 corporate slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
             <button onClick={() => seed("counter")} title="5 trade-counter slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-red-500/20 px-4 py-2 text-red-200 ring-1 ring-red-400/40 hover:bg-red-500/30">🔧 Trade counter demo</button>
+            <button onClick={() => seed("easygates")} title="6 EasyGates Direct slides + a playlist + 3 screens, then opens the playlist" className="rounded-full bg-blue-500/20 px-4 py-2 text-blue-200 ring-1 ring-blue-400/40 hover:bg-blue-500/30">🚧 EasyGates demo</button>
+            <button onClick={() => seed("smartsecure")} title="6 Smart & Secure slides + a playlist + 3 screens, then opens the playlist" className="rounded-full bg-teal-400/20 px-4 py-2 text-teal-200 ring-1 ring-teal-300/40 hover:bg-teal-400/30">🏠 Smart &amp; Secure demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -991,6 +1260,22 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                         {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
+                    <div className="mt-3">
+                      <label className="lbl">Business / branding</label>
+                      <select
+                        value={typeof x.settings?.businessId === "string" ? x.settings.businessId : ""}
+                        onChange={async (e) => {
+                          await fetch(`/api/displays/${x.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: { businessId: e.target.value || null } }) });
+                          load();
+                          flash(e.target.value ? "Screen now uses that business's logo, phone and colours" : "Screen reset to the default business");
+                        }}
+                        className="inp bg-[#141b33]"
+                      >
+                        <option value="">— default ({activeProfile(businesses).profileName || "none"}) —</option>
+                        {businesses.profiles.map((p) => <option key={p.id} value={p.id}>{p.profileName}</option>)}
+                      </select>
+                      <p className="mt-1 text-[11px] text-white/40">Which business this screen belongs to. It decides the logo, phone number, colours and ticker.</p>
+                    </div>
                     <ScreenUrl url={`${screenBase.base}/display?displayId=${x.id}`} onCopied={() => flash("Screen URL copied")} />
                     <div className="mt-3 flex gap-2 text-xs font-black">
                       <Link href={`/display?displayId=${x.id}`} target="_blank" className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-center hover:bg-red-400">▶ OPEN SCREEN</Link>
@@ -1120,13 +1405,13 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         {/* ── BUSINESS ── */}
         {tab === "business" && (
           <BusinessPanel
-            draft={brandDraft}
-            onChange={(k, v) => setBrandDraft((b) => ({ ...b, [k]: v }))}
-            dirty={!sameBrand(brandDraft, brand)}
+            draft={businessesDraft}
+            onChange={setBusinessesDraft}
+            dirty={JSON.stringify(businessesDraft) !== JSON.stringify(businesses)}
             saving={brandSaving}
-            ready={brandReady}
-            onSave={saveBrand}
-            onUndo={() => setBrandDraft(brand)}
+            ready={brandReady && businessesReady}
+            onSave={saveBusinesses}
+            onUndo={() => setBusinessesDraft(businesses)}
             scenes={scenes}
             assets={allAssets}
             onAssetsChanged={load}
@@ -1536,6 +1821,18 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "flash-sale": "Up to 4 categories in the sale — name / detail / tag (the % off chip)",
   "click-collect": "Up to 4 collection steps — name / detail / tag (the timing chip, e.g. 1 MINUTE)",
   "trade-account": "Up to 5 account benefits — name / detail + optional tag chip",
+  "eg-kit-builder": "Up to 8 kit contents — name = component, price = quantity or INCLUDED, tag = optional badge",
+  "eg-safety-check": "Up to 7 checks — name = the check, detail = the reading, tag = status (PASS / ANNUAL)",
+  "eg-trade-tiers": "Up to 4 tiers — name = tier, price = discount, detail = benefits (one per line), tag = badge. Name the tier to highlight in Discount badge",
+  "eg-delivery-cutoff": "Up to 5 delivery services — name / detail (when to order) / tag (the price)",
+  "eg-compare": "Up to 4 machines — name / price (from-price) / detail (spec, one per line) / tag + optional photo",
+  "eg-support-hub": "Up to 5 channels — name / detail / tag (when it is open). The phone number is the slide Headline",
+  "ss-zone-guide": "Up to 6 displays in this zone — name + optional detail. The zone number goes in Product name",
+  "ss-scene-cards": "Up to 6 scenes — name / detail (triggers, separated by commas) / tag (when) + optional photo",
+  "ss-package-cards": "Up to 4 packages — name / price / detail (what is included, one per line) / tag + optional photo. Name the package to highlight in Discount badge",
+  "ss-works-with": "Up to 12 brands — name + optional category tag. Add a logo image to show the logo instead of the name",
+  "ss-book-demo": "Up to 4 steps — name / detail / tag (how long). The phone number goes in Product name",
+  "ss-product-spotlight": "Up to 6 spec chips — name = the label, detail = the value. The star rating goes in Discount badge (e.g. 4.8)",
 };
 
 function ItemsEditor({ items, template, assets, onChange, onUpload }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void; onUpload?: (file: File) => Promise<string | null> }) {
