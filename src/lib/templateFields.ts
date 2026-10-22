@@ -81,6 +81,33 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     ["eyebrow", "productName", "description", "originalPrice", "promoPrice", "discountBadge", "ctaText", "imageUrl", "videoUrl"],
   ),
 
+  // ── Trade-counter retail (Screwfix-style) ───────────────────────────────────
+  "bulk-buy": t(
+    ["eyebrow", "subheadline", "productName", "description", "originalPrice", "promoPrice", "discountBadge", "ctaText", "imageUrl", "highlightColor"],
+    ["name", "price", "desc", "tag"],
+    "hero",
+  ),
+  "shelf-edge": t(
+    ["eyebrow", "subheadline", "ctaText", "highlightColor"],
+    ["name", "price", "desc", "tag", "image"],
+    "none",
+  ),
+  "flash-sale": t(
+    ["eyebrow", "subheadline", "description", "promoPrice", "discountBadge", "ctaText", "highlightColor"],
+    ["name", "desc", "tag"],
+    "none",
+  ),
+  "click-collect": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "hero",
+  ),
+  "trade-account": t(
+    ["eyebrow", "subheadline", "description", "discountBadge", "ctaText", "highlightColor"],
+    ["name", "desc", "tag"],
+    "none",
+  ),
+
   // ── Value store ─────────────────────────────────────────────────────────────
   "price-drop": t(
     ["eyebrow", "subheadline", "productName", "description", "originalPrice", "promoPrice", "discountBadge", "ctaText", "imageUrl", "highlightColor"],

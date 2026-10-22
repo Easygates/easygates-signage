@@ -14,6 +14,8 @@ const IMAGE_TEMPLATES = new Set([
   "service-offer",
   "product-spec",
   "callout-emergency",
+  "bulk-buy",
+  "click-collect",
 ]);
 
 export async function GET() {

@@ -12,6 +12,11 @@ import AisleGuideTemplate from "./scene/templates/AisleGuide";
 import TopSellersTemplate from "./scene/templates/TopSellers";
 import StoreServicesTemplate from "./scene/templates/StoreServices";
 import SplashTemplate from "./scene/templates/Splash";
+import BulkBuyTemplate from "./scene/templates/BulkBuy";
+import ShelfEdgeTemplate from "./scene/templates/ShelfEdge";
+import FlashSaleTemplate from "./scene/templates/FlashSale";
+import ClickCollectTemplate from "./scene/templates/ClickCollect";
+import TradeAccountTemplate from "./scene/templates/TradeAccount";
 
 interface Props {
   scene: Scene;
@@ -857,6 +862,21 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
           </div>
         </div>
       )}
+
+      {/* 28 · BULK BUY (trade-counter retail) → src/components/scene/templates/BulkBuy.tsx */}
+      {t === "bulk-buy" && <BulkBuyTemplate scene={scene} d={d} />}
+
+      {/* 29 · SHELF-EDGE DEALS (trade-counter retail) → src/components/scene/templates/ShelfEdge.tsx */}
+      {t === "shelf-edge" && <ShelfEdgeTemplate scene={scene} d={d} />}
+
+      {/* 30 · FLASH SALE (trade-counter retail) → src/components/scene/templates/FlashSale.tsx */}
+      {t === "flash-sale" && <FlashSaleTemplate scene={scene} d={d} />}
+
+      {/* 31 · CLICK & COLLECT (trade-counter retail) → src/components/scene/templates/ClickCollect.tsx */}
+      {t === "click-collect" && <ClickCollectTemplate scene={scene} d={d} />}
+
+      {/* 32 · TRADE ACCOUNT (trade-counter retail) → src/components/scene/templates/TradeAccount.tsx */}
+      {t === "trade-account" && <TradeAccountTemplate scene={scene} d={d} />}
 
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />

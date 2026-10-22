@@ -1,12 +1,13 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 27 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 32 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Four fictional demo campaigns, all loadable from `/admin`:
+Five fictional demo campaigns, all loadable from `/admin`:
 
-- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
+- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering the 7 original retail templates.
 - **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
+- **RAPIDFIX · Trade Counter** — 5 trade-counter retail scenes: bulk-buy price ladder, six shelf-edge labels, a 48-hour flash sale, click & collect and a trade-account sign-up. Uses the bundled `public/counter/` packshots, so it also runs offline.
 - **Easygates · Head Office & Reception** — 7 corporate scenes, one per corporate / social-proof template (company values, team, milestone, news, testimonial, fullscreen background, Trustpilot review), using bundled images only so displays work offline.
 
 ## Templates
@@ -30,6 +31,18 @@ Four fictional demo campaigns, all loadable from `/admin`:
 | Announcement | Store news & events (original) |
 | Full-Screen Campaign | Brand moments (original) |
 | Split-Screen Promo | Dual-message promos (original) |
+
+### Trade counter / Screwfix-style retail
+
+| Template | Best for |
+|---|---|
+| Bulk Buy | Quantity-break price ladder beside a catalogue product card — "buy more, pay less" |
+| Shelf-Edge Deals | Up to six white shelf-edge labels with cat numbers, pack tags and barcodes |
+| Flash Sale | Hazard-taped event board with a giant % burst and the categories included |
+| Click & Collect | Stopwatch dial and numbered collection steps |
+| Trade Account | Oversized trade card, benefits list and an apply-now plate |
+
+Charcoal steel, off-white catalogue paper, safety yellow and hard red, with mono part numbers and generated bar codes. They sit in the **Retail & promo** group in the template picker.
 
 ### Trade (electrical / smart home / gate automation)
 
@@ -57,13 +70,14 @@ Theme decorations always render; theme colours only override the slide's own pal
 
 ## Demo campaigns
 
-Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**) or via the API:
+Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**, **🔧 Trade counter demo**) or via the API:
 
 ```bash
 curl -X POST 'http://localhost:3000/api/seed?campaign=value'
 curl -X POST 'http://localhost:3000/api/seed?campaign=retail'
 curl -X POST 'http://localhost:3000/api/seed?campaign=trade'
 curl -X POST 'http://localhost:3000/api/seed?campaign=corporate'
+curl -X POST 'http://localhost:3000/api/seed?campaign=counter'
 ```
 
 The value campaign uses fictional products, a fictional store name ("Value Store"), and `{phone}` placeholders resolved from the Business tab settings. At least 4 slides use different seasonal themes.
@@ -107,7 +121,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 
    > **Why RLS with no policies?** Supabase exposes `public` tables through its Data API to anyone holding the project's publishable/anon key. NovaSign never uses that API — it connects to Postgres directly as the table owner, which bypasses RLS — so enabling RLS without policies closes the API off (including the Fully Kiosk passwords in `displays.settings`) without affecting the app. `/admin?tab=database` warns if any table still has RLS off.
 
-5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
+5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** / **🔧 Trade counter demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 
@@ -139,7 +153,7 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 |---|---|
 | **Last playlist it played** (default) | The copy each player keeps in its own browser (`localStorage`), so the real content keeps running through an outage. |
 | **A playlist I choose** | A playlist downloaded onto the screen in the background (refreshed about every 5 minutes) and played from that copy if the CMS disappears. |
-| **The built-in demo pack** | The 26 built-in scenes whose photos ship in `public/` — so they still render with no internet. Works with no database at all: day-one content or a shop-window loop. |
+| **The built-in demo pack** | The 31 built-in scenes whose photos ship in `public/` — so they still render with no internet. Works with no database at all: day-one content or a shop-window loop. |
 
 - The choice is stored in `settings` under the `failsafe` key and reaches screens on their next poll (≤ 30 s).
 - A screen that has never loaded anything plays the built-in pack, so it is never blank. A screen that already has content keeps playing it even if the API answers 503.

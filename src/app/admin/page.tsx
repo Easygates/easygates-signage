@@ -164,6 +164,94 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
     },
     flash: "Trustpilot sample loaded — rating in the Headline, reviews in the rows",
   },
+  // ── Trade-counter retail (Screwfix-style) ──
+  "bulk-buy": {
+    fields: {
+      eyebrow: "{business} · TRADE COUNTER",
+      headline: "BUY MORE. PAY LESS.",
+      subheadline: "Quantity breaks on the everyday kit",
+      productName: "18V Combi Drill Kit",
+      description: "Two batteries, a charger and a hard case.",
+      originalPrice: "£149.99",
+      promoPrice: "£99.99",
+      discountBadge: "SAVE £50",
+      ctaText: "TRADE PRICES · IN STORE NOW",
+      imageUrl: "",
+      items: [
+        { name: "1–4", price: "£119.99", desc: "each", tag: "SAVE £30" },
+        { name: "5–9", price: "£109.99", desc: "each", tag: "SAVE £40" },
+        { name: "10+", price: "£99.99", desc: "each", tag: "SAVE £50" },
+      ],
+    },
+    flash: "Bulk-buy sample loaded — put the quantity breaks in Rows and the best price in Promo price",
+  },
+  "shelf-edge": {
+    fields: {
+      eyebrow: "{business} · WEEKLY DEALS",
+      headline: "PRICES CUT ACROSS THE TRADE COUNTER",
+      subheadline: "Six shelf-edge deals — while stocks last",
+      ctaText: "OFFERS END SUNDAY",
+      imageUrl: "",
+      items: [
+        { name: "Product one", price: "£8.99", desc: "Cat No. 3318 · was £12.99", tag: "PACK OF 1000" },
+        { name: "Product two", price: "£99.99", desc: "Cat No. 6841 · was £149.99", tag: "SAVE £50" },
+        { name: "Product three", price: "£24.99", desc: "Cat No. 5527 · was £34.99", tag: "SAVE 28%" },
+      ],
+    },
+    flash: "Shelf-edge sample loaded — each row is one white label; add a photo per row for the product shot",
+  },
+  "flash-sale": {
+    fields: {
+      eyebrow: "{business} · FLASH SALE",
+      headline: "48-HOUR FLASH SALE",
+      subheadline: "20% off selected lines",
+      description: "Show your trade card at the counter — the discount is applied at checkout.",
+      promoPrice: "20%",
+      discountBadge: "OFF",
+      ctaText: "ENDS SUNDAY · IN STORE",
+      imageUrl: "",
+      items: [
+        { name: "Category one", desc: "What is included", tag: "-20%" },
+        { name: "Category two", desc: "What is included", tag: "-20%" },
+        { name: "Category three", desc: "What is included", tag: "-20%" },
+      ],
+    },
+    flash: "Flash-sale sample loaded — the big number is Promo price, the word under it is the Discount badge",
+  },
+  "click-collect": {
+    fields: {
+      eyebrow: "{business} · CLICK & COLLECT",
+      headline: "CLICK & COLLECT IN 1 MINUTE",
+      subheadline: "Order before 6pm and collect on the way home.",
+      productName: "1 MINUTE",
+      description: "Everything you need, in stock at the trade counter.",
+      ctaText: "ORDER ONLINE · COLLECT IN STORE",
+      imageUrl: "",
+      items: [
+        { name: "Order online", desc: "Browse the range and pay as normal", tag: "6PM CUT-OFF" },
+        { name: "We pick it", desc: "The counter team checks your order", tag: "SAME DAY" },
+        { name: "Collect in store", desc: "Show your order number at the counter", tag: "1 MINUTE" },
+      ],
+    },
+    flash: "Click & Collect sample loaded — the dial text is the Product name, the steps are Rows",
+  },
+  "trade-account": {
+    fields: {
+      eyebrow: "{business} · TRADE ACCOUNT",
+      headline: "TRADE PRICES. NO HASSLE.",
+      subheadline: "Open an account and buy at trade prices every day.",
+      description: "Apply at the counter or online — it takes about two minutes.",
+      discountBadge: "NO MINIMUM SPEND",
+      ctaText: "APPLY AT THE TRADE COUNTER",
+      imageUrl: "",
+      items: [
+        { name: "Trade pricing", desc: "Lower prices on the whole range" },
+        { name: "Bulk breaks", desc: "Buy more, pay less on packs and pallets" },
+        { name: "One invoice", desc: "Monthly account, one statement" },
+      ],
+    },
+    flash: "Trade-account sample loaded — benefits go in Rows, the stamp is the Discount badge",
+  },
 };
 
 export default function AdminPage() {
@@ -416,8 +504,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // Load a demo campaign and go straight to the playlist it builds. The endpoint
   // creates the scenes, the playlist, the screens and a schedule; before this the
   // only feedback was a toast, so it looked like the button had done nothing.
-  const seed = async (campaign: "retail" | "trade" | "value" | "corporate" = "retail") => {
-    const label = campaign === "trade" ? "Trade" : campaign === "value" ? "Value" : campaign === "corporate" ? "Corporate" : "Retail";
+  const seed = async (campaign: "retail" | "trade" | "value" | "corporate" | "counter" = "retail") => {
+    const label = campaign === "trade" ? "Trade" : campaign === "value" ? "Value" : campaign === "corporate" ? "Corporate" : campaign === "counter" ? "Trade counter" : "Retail";
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.playlistId) {
@@ -466,6 +554,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             <button onClick={() => seed("trade")} title="7 trade slides + a playlist + 5 screens, then opens the playlist" className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
             <button onClick={() => seed("value")} title="12 value-store slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
             <button onClick={() => seed("corporate")} title="7 corporate slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
+            <button onClick={() => seed("counter")} title="5 trade-counter slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-red-500/20 px-4 py-2 text-red-200 ring-1 ring-red-400/40 hover:bg-red-500/30">🔧 Trade counter demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -1442,6 +1531,11 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "team-intro": "Up to 8 people — name + role in detail; optional avatar image per row",
   "testimonial-quote": "Up to 2 extra quotes — name = author, detail = the quote. The main quote goes in the slide's Headline + Description",
   "trustpilot-review": "Top reviews — name = reviewer, detail = review text, tag = stars (★★★★★). The rating number goes in the slide's Headline",
+  "bulk-buy": "Up to 4 quantity breaks — name = quantity band (1–4 / 5–9 / 10+), price = price each, detail = unit note, tag = saving. The last row is highlighted",
+  "shelf-edge": "Up to 6 shelf labels — name / price / detail (cat no. + was price) / tag (pack size) + optional product photo",
+  "flash-sale": "Up to 4 categories in the sale — name / detail / tag (the % off chip)",
+  "click-collect": "Up to 4 collection steps — name / detail / tag (the timing chip, e.g. 1 MINUTE)",
+  "trade-account": "Up to 5 account benefits — name / detail + optional tag chip",
 };
 
 function ItemsEditor({ items, template, assets, onChange, onUpload }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void; onUpload?: (file: File) => Promise<string | null> }) {

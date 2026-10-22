@@ -33,7 +33,13 @@ export type TemplateId =
   // ── background only ──
   | "fullscreen-bg"
   // ── social proof ──
-  | "trustpilot-review";
+  | "trustpilot-review"
+  // ── trade-counter retail (Screwfix-style) ──
+  | "bulk-buy"
+  | "shelf-edge"
+  | "flash-sale"
+  | "click-collect"
+  | "trade-account";
 
 /** Templates that read the `items` array */
 export const ITEM_TEMPLATES: TemplateId[] = [
@@ -58,6 +64,12 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   // splash draws its contact cards from items[] — it was missing here, so the
   // editor never offered the rows and the cards could not be changed in the CMS.
   "splash",
+  // trade-counter retail templates
+  "bulk-buy",
+  "shelf-edge",
+  "flash-sale",
+  "click-collect",
+  "trade-account",
 ];
 
 export type AnimationPresetId =
@@ -144,6 +156,12 @@ export const TEMPLATES: {
   { id: "announcement", name: "Announcement", blurb: "Oversized headline, supporting copy, ticker", bestFor: "Store news & events" },
   { id: "fullscreen-campaign", name: "Full-Screen Campaign", blurb: "Immersive layered image + display typography", bestFor: "Brand moments" },
   { id: "split-promo", name: "Split-Screen Promo", blurb: "Imagery one side, animated offer stack other side", bestFor: "Dual-message promos" },
+  // ── trade-counter retail templates (Screwfix-style) ──
+  { id: "bulk-buy", name: "Bulk Buy", blurb: "Catalogue product card beside a quantity-break price ladder — buy more, pay less", bestFor: "Multi-buy trade pricing" },
+  { id: "shelf-edge", name: "Shelf-Edge Deals", blurb: "Up to six shelf-edge labels with catalogue numbers, pack tags, barcodes and big red prices", bestFor: "Weekly trade-counter offers" },
+  { id: "flash-sale", name: "Flash Sale", blurb: "Hazard-taped event board with a giant percentage burst and the categories included", bestFor: "48-hour sales & trade events" },
+  { id: "click-collect", name: "Click & Collect", blurb: "Stopwatch dial and numbered collection steps — order, pick, collect", bestFor: "Collection & fulfilment promises" },
+  { id: "trade-account", name: "Trade Account", blurb: "Oversized trade card, account benefits and an apply-now plate", bestFor: "Trade sign-ups & account promos" },
   // ── value retail templates (big-box discount store) ──
   { id: "price-drop", name: "Price Drop", blurb: "Hero product, huge new price, struck-through was-price, flag + burst sticker", bestFor: "Single-hero discount promos" },
   { id: "deals-grid", name: "Deals Grid", blurb: "Header banner, six deal tiles with per-tile flags, ends-Sunday strip", bestFor: "Multi-item weekly offers" },
@@ -174,7 +192,7 @@ export const TEMPLATES: {
 
 /** Groups for the template picker in the admin. Any template not listed lands in "Other". */
 export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: TemplateId[] }[] = [
-  { id: "retail", name: "Retail & promo", templates: ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo"] },
+  { id: "retail", name: "Retail & promo", templates: ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo", "bulk-buy", "shelf-edge", "flash-sale", "click-collect", "trade-account"] },
   { id: "value", name: "Value store · deals", templates: ["price-drop", "deals-grid", "multibuy", "clearance", "top-sellers"] },
   { id: "store-info", name: "Value store · in-store info", templates: ["aisle-guide", "store-services"] },
   { id: "brand", name: "Brand & welcome", templates: ["splash"] },
@@ -1462,8 +1480,197 @@ export const CORPORATE_DEMO_SCENES: Scene[] = [
   },
 ];
 
+
+// ─── Trade-counter demo campaign: "RAPIDFIX · Trade Counter" ───
+// Sample pages for the five Screwfix-style retail templates. Every photo ships
+// in public/counter/, so these slides also work in the offline failsafe pack.
+const COUNTER_IMG = {
+  drill: "/counter/drill-kit.jpg",
+  screws: "/counter/screws.jpg",
+  sockets: "/counter/socket-set.jpg",
+  gloves: "/counter/work-gloves.jpg",
+  torch: "/counter/site-torch.jpg",
+  bag: "/counter/tool-bag.jpg",
+};
+
+export const COUNTER_DEMO_SCENES: Scene[] = [
+  {
+    id: "counter-1",
+    name: "01 · Bulk Buy — Combi Drill Kit",
+    template: "bulk-buy",
+    theme: "none",
+    eyebrow: "RAPIDFIX · TRADE COUNTER",
+    headline: "BUY MORE. PAY LESS.",
+    subheadline: "Quantity breaks on the kit every site asks for",
+    productName: "18V Brushless Combi Drill Kit",
+    description: "Two 4.0Ah batteries, a fast charger and a hard case — the everyday drill for fitters and sparks.",
+    originalPrice: "£149.99",
+    promoPrice: "£99.99",
+    discountBadge: "SAVE £50",
+    ctaText: "TRADE PRICES · IN STORE NOW",
+    tickerText: "BULK BUYS — BUY MORE, PAY LESS — TRADE PRICES IN STORE —",
+    imageUrl: COUNTER_IMG.drill,
+    bgFrom: "#0b0f14",
+    bgTo: "#1f2a37",
+    bgAngle: 135,
+    accentColor: "#e11d2e",
+    textColor: "#ffffff",
+    mutedColor: "#9aa7b8",
+    cardColor: "#111827",
+    highlightColor: "#ffce00",
+    animationPreset: "snap",
+    durationSec: 12,
+    transition: "slide-left",
+    staggerMs: 100,
+    kenBurns: "zoom-in",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "1–4", price: "£119.99", desc: "each", tag: "SAVE £30" },
+      { name: "5–9", price: "£109.99", desc: "each", tag: "SAVE £40" },
+      { name: "10+", price: "£99.99", desc: "each", tag: "SAVE £50" },
+    ],
+  },
+  {
+    id: "counter-2",
+    name: "02 · Shelf Edge — Six Trade Deals",
+    template: "shelf-edge",
+    theme: "none",
+    eyebrow: "RAPIDFIX · WEEKLY DEALS",
+    headline: "PRICES CUT ACROSS THE TRADE COUNTER",
+    subheadline: "Six shelf-edge deals — while stocks last",
+    ctaText: "OFFERS END SUNDAY",
+    tickerText: "SHELF-EDGE DEALS — NEW OFFERS EVERY MONDAY —",
+    bgFrom: "#10151c",
+    bgTo: "#232f3d",
+    bgAngle: 135,
+    accentColor: "#e11d2e",
+    textColor: "#ffffff",
+    mutedColor: "#9aa7b8",
+    cardColor: "#f6f4ef",
+    highlightColor: "#ffce00",
+    animationPreset: "snap",
+    durationSec: 13,
+    transition: "fade",
+    staggerMs: 80,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Assorted Wood Screws 1,000pk", price: "£8.99", desc: "Cat No. 3318 · was £12.99", tag: "PACK OF 1000", image: COUNTER_IMG.screws },
+      { name: "18V Combi Drill Kit", price: "£99.99", desc: "Cat No. 6841 · was £149.99", tag: "SAVE £50", image: COUNTER_IMG.drill },
+      { name: "Socket & Bit Set 90pc", price: "£24.99", desc: "Cat No. 5527 · was £34.99", tag: "SAVE 28%", image: COUNTER_IMG.sockets },
+      { name: "Site Work Gloves 3pk", price: "£6.49", desc: "Cat No. 1180 · was £9.99", tag: "PACK OF 3", image: COUNTER_IMG.gloves },
+      { name: "LED Site Torch 1200lm", price: "£14.99", desc: "Cat No. 9024 · was £19.99", tag: "-25%", image: COUNTER_IMG.torch },
+      { name: "Heavy-Duty Tool Bag 18in", price: "£22.99", desc: "Cat No. 4407 · was £29.99", tag: "SAVE £7", image: COUNTER_IMG.bag },
+    ],
+  },
+  {
+    id: "counter-3",
+    name: "03 · Flash Sale — 48 Hours",
+    template: "flash-sale",
+    theme: "none",
+    eyebrow: "RAPIDFIX · FLASH SALE",
+    headline: "48-HOUR FLASH SALE",
+    subheadline: "20% off power tools, fixings and workwear",
+    description: "Show your trade card at the counter — the discount is applied at checkout.",
+    promoPrice: "20%",
+    discountBadge: "OFF",
+    ctaText: "ENDS SUNDAY · IN STORE",
+    tickerText: "FLASH SALE — 48 HOURS ONLY — 20% OFF SELECTED LINES —",
+    bgFrom: "#160b0b",
+    bgTo: "#2b1512",
+    bgAngle: 135,
+    accentColor: "#e11d2e",
+    textColor: "#ffffff",
+    mutedColor: "#b9a3a3",
+    cardColor: "#111827",
+    highlightColor: "#ffce00",
+    animationPreset: "launch",
+    durationSec: 11,
+    transition: "zoom",
+    staggerMs: 110,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Power tools", desc: "Drills, saws and grinders", tag: "-20%" },
+      { name: "Fixings", desc: "Screws, anchors and plugs", tag: "-20%" },
+      { name: "Workwear", desc: "Boots, gloves and hi-vis", tag: "-20%" },
+    ],
+  },
+  {
+    id: "counter-4",
+    name: "04 · Click & Collect in 1 Minute",
+    template: "click-collect",
+    theme: "none",
+    eyebrow: "RAPIDFIX · CLICK & COLLECT",
+    headline: "CLICK & COLLECT IN 1 MINUTE",
+    subheadline: "Order before 6pm and pick it up on the way home.",
+    productName: "1 MINUTE",
+    description: "Thousands of trade essentials in stock at your local counter — no waiting and no delivery charge.",
+    ctaText: "ORDER ONLINE · COLLECT IN STORE",
+    tickerText: "CLICK & COLLECT — ORDER BY 6PM — COLLECT IN 1 MINUTE —",
+    imageUrl: COUNTER_IMG.bag,
+    bgFrom: "#081019",
+    bgTo: "#16232f",
+    bgAngle: 135,
+    accentColor: "#e11d2e",
+    textColor: "#ffffff",
+    mutedColor: "#9aa7b8",
+    cardColor: "#111827",
+    highlightColor: "#ffce00",
+    animationPreset: "smooth",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 100,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Order online", desc: "Browse the range and pay as normal", tag: "6PM CUT-OFF" },
+      { name: "We pick it", desc: "The counter team picks and checks your order", tag: "SAME DAY" },
+      { name: "Collect in store", desc: "Show your order number at the trade counter", tag: "1 MINUTE" },
+    ],
+  },
+  {
+    id: "counter-5",
+    name: "05 · Trade Account — Apply Today",
+    template: "trade-account",
+    theme: "none",
+    eyebrow: "RAPIDFIX · TRADE ACCOUNT",
+    headline: "TRADE PRICES. NO HASSLE.",
+    subheadline: "Open an account and buy at trade prices every day.",
+    description: "Apply at the counter or online — it takes about two minutes. Credit accounts subject to status.",
+    discountBadge: "NO MINIMUM SPEND",
+    ctaText: "APPLY AT THE TRADE COUNTER",
+    tickerText: "TRADE ACCOUNT — LOWER PRICES — ONE MONTHLY INVOICE —",
+    bgFrom: "#0a0f16",
+    bgTo: "#1c2733",
+    bgAngle: 135,
+    accentColor: "#e11d2e",
+    textColor: "#ffffff",
+    mutedColor: "#9aa7b8",
+    cardColor: "#111827",
+    highlightColor: "#ffce00",
+    animationPreset: "elegant",
+    durationSec: 12,
+    transition: "slide-right",
+    staggerMs: 120,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Trade pricing", desc: "Lower prices on the whole range, every day", tag: "CORE" },
+      { name: "Bulk breaks", desc: "Buy more, pay less on packs and pallets", tag: "BULK" },
+      { name: "One invoice", desc: "Monthly account, one simple statement", tag: "30 DAYS" },
+      { name: "Click & Collect", desc: "Order by 6pm and collect the next morning", tag: "1 MIN" },
+    ],
+  },
+];
+
 /**
- * Every built-in demo slide, in pack order (retail, trade, value, corporate).
+ * Every built-in demo slide, in pack order (retail, trade, value, corporate, counter).
  * Used by the landing page so “built-in demo scenes” is a count of what is
  * actually shipped rather than a number in the copy that goes stale.
  */
@@ -1472,6 +1679,7 @@ export const ALL_DEMO_SCENES: Scene[] = [
   ...TRADE_DEMO_SCENES,
   ...VALUE_DEMO_SCENES,
   ...CORPORATE_DEMO_SCENES,
+  ...COUNTER_DEMO_SCENES,
 ];
 
 /**
