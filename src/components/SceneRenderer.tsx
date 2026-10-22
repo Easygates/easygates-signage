@@ -17,6 +17,18 @@ import ShelfEdgeTemplate from "./scene/templates/ShelfEdge";
 import FlashSaleTemplate from "./scene/templates/FlashSale";
 import ClickCollectTemplate from "./scene/templates/ClickCollect";
 import TradeAccountTemplate from "./scene/templates/TradeAccount";
+import EgKitBuilderTemplate from "./scene/templates/EgKitBuilder";
+import EgSafetyCheckTemplate from "./scene/templates/EgSafetyCheck";
+import EgTradeTiersTemplate from "./scene/templates/EgTradeTiers";
+import EgDeliveryCutoffTemplate from "./scene/templates/EgDeliveryCutoff";
+import EgCompareTemplate from "./scene/templates/EgCompare";
+import EgSupportHubTemplate from "./scene/templates/EgSupportHub";
+import SsZoneGuideTemplate from "./scene/templates/SsZoneGuide";
+import SsSceneCardsTemplate from "./scene/templates/SsSceneCards";
+import SsPackageCardsTemplate from "./scene/templates/SsPackageCards";
+import SsWorksWithTemplate from "./scene/templates/SsWorksWith";
+import SsBookDemoTemplate from "./scene/templates/SsBookDemo";
+import SsProductSpotlightTemplate from "./scene/templates/SsProductSpotlight";
 
 interface Props {
   scene: Scene;
@@ -877,6 +889,22 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
 
       {/* 32 · TRADE ACCOUNT (trade-counter retail) → src/components/scene/templates/TradeAccount.tsx */}
       {t === "trade-account" && <TradeAccountTemplate scene={scene} d={d} />}
+
+      {/* 33–38 · EASYGATES DIRECT (gate automation, access control & safety) */}
+      {t === "eg-kit-builder" && <EgKitBuilderTemplate scene={scene} d={d} />}
+      {t === "eg-safety-check" && <EgSafetyCheckTemplate scene={scene} d={d} />}
+      {t === "eg-trade-tiers" && <EgTradeTiersTemplate scene={scene} d={d} />}
+      {t === "eg-delivery-cutoff" && <EgDeliveryCutoffTemplate scene={scene} d={d} />}
+      {t === "eg-compare" && <EgCompareTemplate scene={scene} d={d} />}
+      {t === "eg-support-hub" && <EgSupportHubTemplate scene={scene} d={d} />}
+
+      {/* 39–44 · SMART & SECURE (smart home, security & home cinema) */}
+      {t === "ss-zone-guide" && <SsZoneGuideTemplate scene={scene} d={d} />}
+      {t === "ss-scene-cards" && <SsSceneCardsTemplate scene={scene} d={d} />}
+      {t === "ss-package-cards" && <SsPackageCardsTemplate scene={scene} d={d} />}
+      {t === "ss-works-with" && <SsWorksWithTemplate scene={scene} d={d} />}
+      {t === "ss-book-demo" && <SsBookDemoTemplate scene={scene} d={d} />}
+      {t === "ss-product-spotlight" && <SsProductSpotlightTemplate scene={scene} d={d} />}
 
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />

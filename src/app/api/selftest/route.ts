@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
-import { buildTimeline, CORPORATE_DEMO_SCENES, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
+import {
+  buildTimeline,
+  CORPORATE_DEMO_SCENES,
+  COUNTER_DEMO_SCENES,
+  DEMO_SCENES,
+  EASYGATES_DEMO_SCENES,
+  ITEM_TEMPLATES,
+  SMARTSECURE_DEMO_SCENES,
+  TEMPLATES,
+  TRADE_DEMO_SCENES,
+  VALUE_DEMO_SCENES,
+} from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +27,26 @@ const IMAGE_TEMPLATES = new Set([
   "callout-emergency",
   "bulk-buy",
   "click-collect",
+  "eg-kit-builder",
+  "eg-delivery-cutoff",
+  "eg-support-hub",
+  "ss-book-demo",
+  "ss-product-spotlight",
 ]);
 
 export async function GET() {
   const checks: { name: string; pass: boolean; detail?: string }[] = [];
   const ids = new Set(TEMPLATES.map((t) => t.id));
   const itemTemplates = new Set<string>(ITEM_TEMPLATES);
-  const all = [...DEMO_SCENES, ...TRADE_DEMO_SCENES, ...VALUE_DEMO_SCENES, ...CORPORATE_DEMO_SCENES];
+  const all = [
+    ...DEMO_SCENES,
+    ...TRADE_DEMO_SCENES,
+    ...VALUE_DEMO_SCENES,
+    ...CORPORATE_DEMO_SCENES,
+    ...COUNTER_DEMO_SCENES,
+    ...EASYGATES_DEMO_SCENES,
+    ...SMARTSECURE_DEMO_SCENES,
+  ];
 
   checks.push({
     name: `template catalogue has ${TEMPLATES.length} entries with unique ids`,

@@ -1,14 +1,16 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 32 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 44 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof + 6 EasyGates Direct + 6 Smart & Secure), a deterministic animation engine, playlists, schedules, seasonal themes, **multiple businesses** and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Five fictional demo campaigns, all loadable from `/admin`:
+Seven demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering the 7 original retail templates.
 - **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
 - **RAPIDFIX · Trade Counter** — 5 trade-counter retail scenes: bulk-buy price ladder, six shelf-edge labels, a 48-hour flash sale, click & collect and a trade-account sign-up. Uses the bundled `public/counter/` packshots, so it also runs offline.
 - **Easygates · Head Office & Reception** — 7 corporate scenes, one per corporate / social-proof template (company values, team, milestone, news, testimonial, fullscreen background, Trustpilot review), using bundled images only so displays work offline.
+- **EasyGates Direct · Trade Counter** — 6 EasyGates Direct scenes: gate kit builder, gate safety compliance, trade account tiers, order cut-off & delivery, “which automation?” comparison and the technical support hub.
+- **Smart & Secure · Showroom** — 6 Smart & Secure scenes: showroom zone guide, smart scenes, security packages, “works with…” brand wall, book-a-demo and product spotlight.
 
 ## Templates
 
@@ -44,6 +46,39 @@ Five fictional demo campaigns, all loadable from `/admin`:
 
 Charcoal steel, off-white catalogue paper, safety yellow and hard red, with mono part numbers and generated bar codes. They sit in the **Retail & promo** group in the template picker.
 
+### EasyGates Direct (gate automation, access control & safety)
+
+Six industrial templates in EasyGates red `#ff3b43`, EasyGates blue `#2f9ade` and
+safety amber `#ffc21f` on deep navy — hard edges, monospaced part numbers, hairline rules.
+
+| Template | Best for |
+|---|---|
+| Gate Kit Builder | Framed kit photo, contents as a specification list, part-number strip, price plate |
+| Gate Safety Compliance | Ticked checklist beside a compliance stamp — force testing, UKCA, BS EN 12453 |
+| Trade Account Tiers | Up to four discount tiers with metal header bars and ticked benefits |
+| Order Cut-Off & Delivery | Clock dial with the cut-off time beside the delivery services and prices |
+| Which Automation? | Up to four machines side by side with photos, from-prices and specifications |
+| Technical Support Hub | Oversized helpline, response promise and the channels customers can reach |
+
+### Smart & Secure (smart home, security & home cinema)
+
+Six soft-edged templates in teal `#74c0cd`, coral `#d07374` and cream `#ecea91` on
+charcoal-teal — rounded cards, glow, generous space.
+
+| Template | Best for |
+|---|---|
+| Showroom Zone Guide | Giant glowing zone circle, zone name and the displays to try in it |
+| Smart Scenes | Grid of up to six scenes with photos and the triggers that fire them |
+| Security Packages | Up to four package cards with prices, kit lists and a highlighted pick |
+| Works With… | Wall of up to twelve compatible brands as soft pills or logos |
+| Book a Demo | Numbered steps, a contact card with the phone number and a showroom photo |
+| Product Spotlight | Hero photo, price, star rating, specification chips and one customer quote |
+
+Both families are palette-driven: the layouts read their colours from the slide, so
+they work for any brand — the two shipped palettes are simply the starting points
+that ship with the sample scenes. Every pairing clears WCAG AA for signage
+(`tests/brand-templates.test.mjs`).
+
 ### Trade (electrical / smart home / gate automation)
 
 | Template | Best for |
@@ -70,7 +105,7 @@ Theme decorations always render; theme colours only override the slide's own pal
 
 ## Demo campaigns
 
-Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**, **🔧 Trade counter demo**) or via the API:
+Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**, **🔧 Trade counter demo**, **🚧 EasyGates demo**, **🏠 Smart & Secure demo**) or via the API:
 
 ```bash
 curl -X POST 'http://localhost:3000/api/seed?campaign=value'
@@ -78,13 +113,28 @@ curl -X POST 'http://localhost:3000/api/seed?campaign=retail'
 curl -X POST 'http://localhost:3000/api/seed?campaign=trade'
 curl -X POST 'http://localhost:3000/api/seed?campaign=corporate'
 curl -X POST 'http://localhost:3000/api/seed?campaign=counter'
+curl -X POST 'http://localhost:3000/api/seed?campaign=easygates'
+curl -X POST 'http://localhost:3000/api/seed?campaign=smartsecure'
 ```
 
 The value campaign uses fictional products, a fictional store name ("Value Store"), and `{phone}` placeholders resolved from the Business tab settings. At least 4 slides use different seasonal themes.
 
 ## Images
 
-Sample imagery for the value campaign lives in `public/retail/` and `public/seasonal/`. See [`public/retail/CREDITS.md`](public/retail/CREDITS.md) for sources and photographer attribution. All images are ≤ 1920 px wide and ≤ 300 KB.
+Sample imagery lives in `public/retail/`, `public/seasonal/`, `public/trade/`, `public/ambient/`, `public/counter/`, `public/easygates/` and `public/smartsecure/`; business logos live in `public/brands/`. See the `CREDITS.md` in each folder for sources and attribution. All images are ≤ 1920 px wide and ≤ 300 KB.
+
+## Multiple businesses
+
+`/admin?tab=business` holds a **list** of businesses, not just one. Each business keeps its own logo, phone number, colours, ticker, website and screen-corner settings, so one NovaSign install can run EasyGates Direct and Smart & Secure side by side.
+
+- **Add business** / **Duplicate** builds a new one; the two shipped presets (EasyGates Direct and Smart & Secure) are used first, then blanks.
+- **★ Make default** decides which business new screens and previews use.
+- **Displays → Business / branding** assigns any other business to an individual screen. A screen tagged with a business shows that business's logo, phone number, colours and ticker; screens with no tag follow the default.
+- Every business resolves `{phone}` and `{business}` to *its own* details, so one slide can play correctly on both brands' screens.
+
+Saved under the `businesses` key in `settings`. On first run the old single-business row is migrated into the first profile, so existing installs keep their details. Nothing is lost if you never add a second business.
+
+Colours come straight off the supplied logos: EasyGates Direct is silver `#d1d1d1` + red `#e62d34` (with the EasyGates blue `#1a7bbf` and a safety amber), Smart & Secure is teal `#74c0cd`, coral `#d07374` and cream `#ecea91` on charcoal. Both are nudged until text on them clears WCAG AA (`tests/businesses.test.mjs`).
 
 ## Quick start (Local PostgreSQL or Supabase)
 
@@ -121,7 +171,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 
    > **Why RLS with no policies?** Supabase exposes `public` tables through its Data API to anyone holding the project's publishable/anon key. NovaSign never uses that API — it connects to Postgres directly as the table owner, which bypasses RLS — so enabling RLS without policies closes the API off (including the Fully Kiosk passwords in `displays.settings`) without affecting the app. `/admin?tab=database` warns if any table still has RLS off.
 
-5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** / **🔧 Trade counter demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
+5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** / **🔧 Trade counter demo** / **🚧 EasyGates demo** / **🏠 Smart & Secure demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 

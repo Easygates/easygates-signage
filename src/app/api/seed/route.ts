@@ -2,12 +2,21 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { CORPORATE_DEMO_SCENES, COUNTER_DEMO_SCENES, DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
+import {
+  CORPORATE_DEMO_SCENES,
+  COUNTER_DEMO_SCENES,
+  DEMO_SCENES,
+  EASYGATES_DEMO_SCENES,
+  SMARTSECURE_DEMO_SCENES,
+  TRADE_DEMO_SCENES,
+  VALUE_DEMO_SCENES,
+} from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
+import type { Scene } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
-type Campaign = "retail" | "trade" | "value" | "corporate" | "counter";
+type Campaign = "retail" | "trade" | "value" | "corporate" | "counter" | "easygates" | "smartsecure";
 
 const CAMPAIGNS = {
   retail: {
@@ -53,6 +62,28 @@ const CAMPAIGNS = {
       { name: "Trade Counter · Warehouse", location: "Warehouse / loading bay", pairingCode: "RAPW" },
     ],
   },
+  easygates: {
+    scenes: EASYGATES_DEMO_SCENES,
+    playlistName: "EasyGates Direct · Trade Counter",
+    description: "6-scene EasyGates Direct campaign: gate kits, safety compliance, trade tiers, delivery, product choice and support",
+    scheduleName: "Trade counter hours",
+    displays: [
+      { name: "EasyGates · Trade counter TV", location: "Trade counter", pairingCode: "EGTC" },
+      { name: "EasyGates · Workshop", location: "Workshop / stores", pairingCode: "EGWS" },
+      { name: "EasyGates · Showroom", location: "Gate display bay", pairingCode: "EGSR" },
+    ],
+  },
+  smartsecure: {
+    scenes: SMARTSECURE_DEMO_SCENES,
+    playlistName: "Smart & Secure · Showroom",
+    description: "6-scene Smart & Secure campaign: zone guide, smart scenes, security packages, compatibility, bookings and product spotlight",
+    scheduleName: "Showroom opening hours",
+    displays: [
+      { name: "Smart & Secure · Showroom TV", location: "Showroom entrance", pairingCode: "SSTV" },
+      { name: "Smart & Secure · Cinema room", location: "Home cinema demo", pairingCode: "SSCR" },
+      { name: "Smart & Secure · Consultation", location: "Design desk", pairingCode: "SSDS" },
+    ],
+  },
   corporate: {
     scenes: CORPORATE_DEMO_SCENES,
     playlistName: "Easygates · Head Office & Reception",
@@ -63,14 +94,14 @@ const CAMPAIGNS = {
       { name: "Office Screen", location: "Staff office", pairingCode: "OFFC" },
     ],
   },
-} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES | typeof CORPORATE_DEMO_SCENES | typeof COUNTER_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
+} satisfies Record<Campaign, { scenes: Scene[]; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
 
 async function campaignFrom(req: Request): Promise<Campaign> {
   const q = new URL(req.url).searchParams.get("campaign");
-  if (q === "trade" || q === "retail" || q === "value" || q === "corporate" || q === "counter") return q;
+  if (q === "trade" || q === "retail" || q === "value" || q === "corporate" || q === "counter" || q === "easygates" || q === "smartsecure") return q;
   try {
     const body = await req.json();
-    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value" || body?.campaign === "corporate" || body?.campaign === "counter") return body.campaign;
+    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value" || body?.campaign === "corporate" || body?.campaign === "counter" || body?.campaign === "easygates" || body?.campaign === "smartsecure") return body.campaign;
   } catch {
     /* no body */
   }

@@ -101,8 +101,9 @@ export default function Home() {
         <h2 className="text-3xl font-black tracking-tight">{TEMPLATES.length} coordinated templates.</h2>
         <p className="mt-2 max-w-3xl text-white/60">
           Not one slideshow theme — {TEMPLATES.length} art-directed layouts, each with its own staged timeline: retail promos
-          and deal grids, café and takeaway menus, store information boards, trade rate cards and spec sheets, plus corporate
-          values, team, news and review boards.
+          and deal grids, café and takeaway menus, store information boards, trade rate cards and spec sheets, corporate
+          values, team, news and review boards, plus two ready-styled brand families — <b>EasyGates Direct</b> for gate
+          automation, safety and trade supply, and <b>Smart &amp; Secure</b> for smart home, security and home cinema.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEMPLATES.map((t, i) => {

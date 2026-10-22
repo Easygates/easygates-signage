@@ -4,7 +4,8 @@ import { playlists, playlistItems, scenes, displays, schedules } from "@/db/sche
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { rowToScene } from "@/lib/server";
 import { DEMO_SCENES } from "@/lib/signage";
-import { loadBrand, loadFailsafe } from "@/lib/settings";
+import { loadBrand, loadBusinesses, loadFailsafe } from "@/lib/settings";
+import { profileById, type BrandSettings } from "@/lib/brand";
 import type { FailsafeSettings } from "@/lib/failsafe";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +19,11 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const displayId = searchParams.get("displayId");
   const playlistIdParam = searchParams.get("playlistId");
-  const [loadedBrand, loadedFailsafe] = await Promise.all([loadBrand(), loadFailsafe()]);
-  const brand = loadedBrand.brand;
+  const [loadedBrand, loadedFailsafe, loadedBusinesses] = await Promise.all([loadBrand(), loadFailsafe(), loadBusinesses()]);
+  // Multi-business: the active business is the default, and a screen can be
+  // assigned to any other business (Displays tab → Business). Screens that have
+  // no assignment keep using the active business's logo, phone and colours.
+  let brand: BrandSettings = loadedBrand.brand;
   // Every payload carries the fallback choice so the screen knows what to keep
   // on hand (and what to show if this request is the last one that ever works).
   const failsafe: FailsafeSettings = loadedFailsafe.failsafe;
@@ -34,6 +38,14 @@ export async function GET(req: Request) {
       if (display) {
         await db.update(displays).set({ status: "online", lastSeen: new Date() } as never).where(eq(displays.id, displayId));
         playlistId = display.playlistId;
+        // A screen tagged with a business plays that business's branding.
+        const assigned = profileById(
+          loadedBusinesses.businesses,
+          typeof (display.settings as Record<string, unknown> | null)?.businessId === "string"
+            ? ((display.settings as Record<string, unknown>).businessId as string)
+            : null,
+        );
+        if (assigned) brand = assigned;
         // schedule override: enabled schedule matching today + time window wins by priority,
         // evaluated in the business time zone so UK schedules stay right in summer.
         const { day, hhmm } = scheduleNow(brand.timezone);
