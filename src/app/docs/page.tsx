@@ -52,7 +52,7 @@ export default function DocsPage() {
             <li>Run this app on a PC/NAS: <code>npm install && npx drizzle-kit push && npm run build && npm start</code> (or Docker — see README).</li>
             <li>Find the PC&apos;s LAN IP (<code>ipconfig / ifconfig</code>), open <code>http://&lt;pc-ip&gt;:3000/admin</code> from a tablet/laptop. For editing from outside the shop, put the PC on <b>Tailscale</b> (free) and use its private <code>https://…ts.net</code> address — do not port-forward the CMS. Cloudflare Tunnel + Access is the alternative for a public URL.</li>
             <li><b>Scenes:</b> pick a template → edit copy/prices/colours → set animation preset + duration → live preview → Publish.</li>
-            <li><b>Playlists:</b> add scenes, drag-order with ↑/↓, override per-item duration. Total runtime is shown.</li>
+            <li><b>Playlists:</b> add scenes, drag-order with ↑/↓, override per-item duration. Total runtime is shown. Click <b>Export MP4</b> to record one pass as silent 1080p H.264; use Chrome/Edge on <code>localhost</code> or HTTPS and select <b>This Tab</b> in the share picker.</li>
             <li><b>Displays:</b> register each TV → copy its <code>/display?displayId=…</code> URL → set it as the Start URL in Fully Kiosk (or a PC/Pi kiosk). Assign different playlists per screen.</li>
             <li><b>Schedules:</b> time windows (e.g. lunch menu 11:00–14:00) override a display&apos;s playlist by priority.</li>
             <li>Pushes land within 30 s (or 10 s with <code>&amp;poll=10</code> on the screen URL) — no reinstall, no SSH, no USB stick.</li>

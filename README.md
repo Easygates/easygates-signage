@@ -135,6 +135,7 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 |---|---|
 | `/` | Product overview |
 | `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`) |
+| `/export?playlistId=…` | Record one playlist pass as a 1080p MP4 from the browser |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline |
 | `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
 | `/docs` | Hardware research, deploy guide and Supabase setup |
@@ -142,6 +143,12 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 | `/api/selftest` | Automated checks (JSON) |
 | `/api/player?displayId=…` | What a screen should play right now (`&poll=` is a player-side refresh hint) |
 | `/api/displays/:id/control` | Proxy to Fully Kiosk Remote Admin — reload / wake / restart / screenshot (POST action, GET screenshot) |
+
+## Exporting a playlist to MP4
+
+In **Admin → Playlists**, choose a playlist and click **Export MP4**. The exporter records one pass at the playlist's saved durations and transitions, in real time, as a silent 1920×1080 H.264 MP4. Choose a save location, start recording, then select **This Tab** in the browser's share picker and leave the tab open until the export finishes. Stopping screen sharing early saves the part already recorded.
+
+This uses the browser's rendered signage player plus WebCodecs/Mediabunny for local MP4 encoding, rather than taking still screenshots or running FFmpeg on the server. That preserves the actual HTML/CSS animations, transitions, tickers and video backgrounds, and avoids installing large platform-specific server binaries. It requires a current desktop Chrome/Edge browser with H.264 encoding, and the CMS page must be secure (HTTPS or `localhost`). On a self-hosted network, an `http://<server-ip>` admin URL is not a secure origin for screen capture; open the app on the CMS computer at `http://localhost:3000` or configure HTTPS.
 
 ## Tests & validation
 
