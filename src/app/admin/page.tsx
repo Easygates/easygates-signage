@@ -7,6 +7,7 @@ import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import PlayerControls from "@/components/PlayerControls";
+import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 
@@ -57,6 +58,7 @@ export default function AdminPage() {
   const selIdRef = useRef<string | null>(null);
   const selPlRef = useRef<string | null>(null);
   useEffect(() => { selIdRef.current = selId; selPlRef.current = selPlaylist; });
+  const screenBase = useScreenBase();
   const [reduced, setReduced] = useState(false);
 const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
@@ -532,6 +534,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         {/* ── DISPLAYS ── */}
         {tab === "displays" && (
           <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+            <div className="space-y-4">
+            <ScreenBasePanel {...screenBase} />
             <div className="grid gap-4 sm:grid-cols-2">
               {displays.map((x) => {
                 const pl = playlists.find((p) => p.id === x.playlistId);
@@ -551,9 +555,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                         {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
+                    <ScreenUrl url={`${screenBase.base}/display?displayId=${x.id}`} onCopied={() => flash("Screen URL copied")} />
                     <div className="mt-3 flex gap-2 text-xs font-black">
                       <Link href={`/display?displayId=${x.id}`} target="_blank" className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-center hover:bg-red-400">▶ OPEN SCREEN</Link>
-                      <button onClick={async () => { await navigator.clipboard.writeText(`${location.origin}/display?displayId=${x.id}`); flash("Screen URL copied"); }} className="rounded-xl bg-white/10 px-4 py-2.5 ring-1 ring-white/20">COPY URL</button>
                       <button onClick={async () => { if (!confirm("Remove display?")) return; await fetch(`/api/displays/${x.id}`, { method: "DELETE" }); load(); }} className="rounded-xl bg-white/10 px-4 py-2.5 text-red-300 ring-1 ring-white/20">✕</button>
                     </div>
                     <PlayerControls displayId={x.id} fullyUrl={x.fullyUrl} hasFully={x.hasFully} onSaved={load} flash={flash} />
@@ -563,10 +567,19 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               })}
               {displays.length === 0 && <p className="text-white/50">No displays — load the demo or add one.</p>}
             </div>
+            </div>
             <div className="h-fit rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
               <h3 className="font-black">Add a screen</h3>
               <p className="mt-1 text-sm text-white/50">Each TV gets its own URL, opened fullscreen by a player device (Fully Kiosk on an Android box, or a PC/Pi in kiosk mode).</p>
               <button onClick={async () => { const r = await fetch("/api/displays", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `Screen ${displays.length + 1}`, playlistId: selPlaylist }) }); await r.json(); load(); flash("Screen added — open its URL on the player device"); }} className="mt-4 w-full rounded-2xl bg-white px-5 py-3 text-sm font-black text-black">+ Register display</button>
+              <ol className="mt-4 list-decimal space-y-1.5 pl-5 text-sm text-white/70">
+                <li>Click <b>+ Register display</b>. A card appears with its own web address.</li>
+                <li>Choose the <b>Playlist</b> that screen should play.</li>
+                <li>Click <b>COPY</b> on the screen&apos;s address box.</li>
+                <li>On the device plugged into the TV (TV browser, streaming stick or mini PC), open that address. It plays full screen and shows <b>ONLINE</b> here within about 20 seconds.</li>
+                <li>To start on its own after a power cut, set that address as the start page of a kiosk app (see below).</li>
+              </ol>
+              <p className="mt-3 text-xs text-white/50">The TV and the server must be able to reach each other: on the same Wi-Fi/network for a PC at the shop, or any internet connection if the CMS is hosted online. If the address starts with <code>localhost</code>, it will only work on this PC.</p>
               <div className="mt-4 rounded-2xl bg-black/30 p-4 text-xs leading-relaxed text-white/60">
                 <span className="font-black text-white/80">FULLY KIOSK (RECOMMENDED):</span><br />1. Install Fully Kiosk Browser, buy the PLUS licence.<br />2. Start URL = this screen&apos;s URL · Launch on Boot · Keep Screen On.<br />3. Settings → Remote Administration: enable, set a password, allow local network.<br />4. Paste the player&apos;s <code>http://IP:2323</code> into <b>Player device</b> above to reload / wake / screenshot it from here.<br /><br />It heartbeats every 20 s and polls content every 30 s — no reinstall needed.
               </div>
