@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { readdir } from "node:fs/promises";
+import { readdir, unlink } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Scans public/ subdirectories (seasonal, retail, trade) for image files
- * so they appear in the media library / quick-set pickers without needing
- * a database entry. Read-only — these files live on disk, not in the assets table.
+ * Scans public/ subdirectories (seasonal, retail, trade, ambient, uploads)
+ * for image files so they appear in the media library / quick-set pickers
+ * without needing a database entry. These files live on disk, not in the
+ * assets table — GET lists them, DELETE physically removes one file.
  */
-const PUBLIC_DIRS = ["seasonal", "retail", "trade", "uploads"];
+const PUBLIC_DIRS = ["seasonal", "retail", "trade", "ambient", "uploads"];
 const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"]);
 
 export const dynamic = "force-dynamic";
@@ -44,5 +45,36 @@ export async function GET() {
     return NextResponse.json({ assets });
   } catch {
     return NextResponse.json({ assets: [] });
+  }
+}
+
+/**
+ * Permanently removes one public/ image file from disk.
+ * Query: ?url=/<dir>/<file> where <dir> must be one of PUBLIC_DIRS.
+ * Strictly validated so nothing outside the listed public/ subfolders can be touched.
+ */
+export async function DELETE(req: Request) {
+  try {
+    const url = new URL(req.url).searchParams.get("url") || "";
+    const parts = url.split("/").filter(Boolean);
+    if (parts.length !== 2) {
+      return NextResponse.json({ error: "invalid path" }, { status: 400 });
+    }
+    const [dir, file] = parts;
+    if (!PUBLIC_DIRS.includes(dir) || !IMAGE_EXT.has(path.extname(file).toLowerCase())) {
+      return NextResponse.json({ error: "invalid path" }, { status: 400 });
+    }
+    const base = path.join(process.cwd(), "public", dir);
+    const target = path.resolve(base, path.basename(file));
+    // belt-and-braces: resolved path must stay inside the allowed directory
+    if (!target.startsWith(base + path.sep)) {
+      return NextResponse.json({ error: "invalid path" }, { status: 400 });
+    }
+    await unlink(target);
+    return NextResponse.json({ deleted: true, url });
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") return NextResponse.json({ error: "file not found" }, { status: 404 });
+    return NextResponse.json({ error: "delete failed" }, { status: 500 });
   }
 }

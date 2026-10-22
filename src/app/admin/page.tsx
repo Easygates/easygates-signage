@@ -864,10 +864,28 @@ function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable
   );
 }
 
-function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string; name: string; url: string; type: string }[]; onReload: () => void; flash: (m: string) => void; onUse: (url: string) => void }) {
+function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string; name: string; url: string; type: string; source?: string }[]; onReload: () => void; flash: (m: string) => void; onUse: (url: string) => void }) {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string; url: string; type: string; source?: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const isPublicAsset = (a: { id: string; source?: string }) => a.source === "public" || a.id.startsWith("public-");
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    const endpoint = isPublicAsset(pendingDelete)
+      ? `/api/public-assets?url=${encodeURIComponent(pendingDelete.url)}`
+      : `/api/assets?id=${encodeURIComponent(pendingDelete.id)}`;
+    const r = await fetch(endpoint, { method: "DELETE" }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    setDeleting(false);
+    setPendingDelete(null);
+    if (!r || j.error) flash(j.error ? `Delete failed: ${j.error}` : "Delete failed");
+    else { onReload(); flash("Asset permanently deleted"); }
+  };
 
   const upload = async (f: File) => {
     setBusy(true);
@@ -917,6 +935,24 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
           {assets.length === 0 && <p className="col-span-full text-sm text-white/50">Library empty — load the demo or upload images.</p>}
         </div>
       </div>
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => !deleting && setPendingDelete(null)}>
+          <div className="w-full max-w-md rounded-3xl bg-[#171717] p-6 ring-1 ring-white/15" onClick={(e) => e.stopPropagation()}>
+            <div className="text-3xl">🗑️</div>
+            <h4 className="mt-2 text-lg font-black">Delete “{pendingDelete.name}”?</h4>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {pendingDelete.type === "video" ? <video src={pendingDelete.url} className="mt-3 h-40 w-full rounded-2xl object-cover" muted /> : <img src={pendingDelete.url} alt={pendingDelete.name} className="mt-3 h-40 w-full rounded-2xl object-cover" />}
+            <p className="mt-3 text-sm leading-relaxed text-white/70">
+              <span className="font-black text-red-300">⚠️ This will be permanently deleted</span> and cannot be undone. The file will be removed from the library{isPublicAsset(pendingDelete) ? " and from disk" : ""} — any scenes using this image will lose it.
+            </p>
+            <p className="mt-2 truncate text-xs text-white/40">{pendingDelete.url}</p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setPendingDelete(null)} disabled={deleting} className="flex-1 rounded-xl bg-white/10 py-2.5 text-sm font-black disabled:opacity-50">Cancel</button>
+              <button onClick={confirmDelete} disabled={deleting} className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-black text-white disabled:opacity-50">{deleting ? "Deleting…" : "Delete permanently"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
