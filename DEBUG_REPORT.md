@@ -401,3 +401,14 @@ Regression guards added to `tests/admin-wiring.test.mjs`: baseline ref +
 untouched check + preserve branch must exist, and no untracked wholesale
 `setDraft` call may remain (only `adoptDraft`, the per-field `set()` editor
 and the starter branch may call it).
+
+## 13. Final state — arena/35ef1cdf-easygates-signage (2026-10-22)
+
+| Commit | Change |
+|---|---|
+| `7ba4e93` | Branch review fixes: 🗑 delete button actually rendered on library cards (was dead code); 🏢 Corporate demo campaign = sample pages for all 7 new templates (bundled offline images); `TEMPLATE_STARTERS` so the picker loads a sample page per template; selftest coverage → 137/137 pass (was failing); row hints; data-driven Trustpilot star bars; README/docs updated (§11) |
+| `53a61ae` | Starter safety: template switching never overwrites user content — sample page only loads while the draft is untouched (baseline-tracked via `adoptDraft`); edited slides keep their content on template switch (§12) |
+
+New tests: `tests/corporate-demo.test.mjs`, `tests/admin-wiring.test.mjs`
+(117/117 total, was 88). Gate: tsc ✅ · eslint ✅ · `next build` ✅ ·
+live `GET /api/selftest` pass ✅ · asset delete verified end-to-end ✅
