@@ -8,7 +8,7 @@ import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
-import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
+import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
@@ -59,6 +59,9 @@ export default function AdminPage() {
   const selPlRef = useRef<string | null>(null);
   useEffect(() => { selIdRef.current = selId; selPlRef.current = selPlaylist; });
   const screenBase = useScreenBase();
+  // template picker filter: a pick applies only to the slide it was made on, then falls back to that slide's own category
+  const [catPick, setCatPick] = useState<{ forId: string | null; cat: string }>({ forId: null, cat: "all" });
+  const tplCat = catPick.forId === selId && catPick.cat ? catPick.cat : templateCategory(draft.template) === "other" ? "all" : templateCategory(draft.template);
   const [reduced, setReduced] = useState(false);
 const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
@@ -267,9 +270,15 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               {isDemo && <p className="rounded-2xl bg-amber-400/15 p-3 text-xs text-amber-200 ring-1 ring-amber-300/30">You&apos;re editing a built-in demo scene — Publish will save it as a new editable copy.</p>}
               <Field label="Scene name"><input value={draft.name} onChange={(e) => set("name", e.target.value as never)} className="inp" /></Field>
               <div>
-                <label className="lbl">Template</label>
+                <div className="flex items-end justify-between gap-3">
+                  <label className="lbl">Template</label>
+                  <select aria-label="Template category" value={tplCat} onChange={(e) => setCatPick({ forId: selId, cat: e.target.value })} className="inp mb-1.5 w-auto bg-[#141b33] py-1 text-xs">
+                    <option value="all">All templates ({TEMPLATES.length})</option>
+                    {TEMPLATE_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.templates.length})</option>)}
+                  </select>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {TEMPLATES.map((t) => (
+                  {TEMPLATES.filter((t) => tplCat === "all" || templateCategory(t.id) === tplCat || t.id === draft.template).map((t) => (
                     <button key={t.id} onClick={() => set("template", t.id as never)} className={`rounded-2xl p-3 text-left ring-1 ${draft.template === t.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
                       <div className="text-xs font-black">{t.name}</div>
                       <div className={`text-[11px] ${draft.template === t.id ? "text-black/60" : "text-white/50"}`}>{t.blurb}</div>

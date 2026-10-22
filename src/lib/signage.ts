@@ -138,6 +138,18 @@ export const TEMPLATES: {
   { id: "callout-emergency", name: "Emergency Call-Out", blurb: "Oversized phone number, response promise, fault types", bestFor: "24/7 electricians & gate engineers" },
 ];
 
+/** Groups for the template picker in the admin. Any template not listed lands in "Other". */
+export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: TemplateId[] }[] = [
+  { id: "retail", name: "Retail & promo", templates: ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo"] },
+  { id: "value", name: "Value store · deals", templates: ["price-drop", "deals-grid", "multibuy", "clearance", "top-sellers"] },
+  { id: "store-info", name: "Value store · in-store info", templates: ["aisle-guide", "store-services"] },
+  { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
+];
+
+export function templateCategory(id: string): string {
+  return TEMPLATE_CATEGORIES.find((c) => (c.templates as string[]).includes(id))?.id ?? "other";
+}
+
 export const ANIMATION_PRESETS: Record<
   AnimationPresetId,
   { name: string; blurb: string; baseMs: number; staggerMs: number; easing: string }
