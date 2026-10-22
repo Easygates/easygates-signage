@@ -126,6 +126,32 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
   const set = (k: keyof Scene, v: never) => { setDraft((d) => ({ ...d, [k]: v })); setDirty(true); };
 
+  // Switching INTO splash starts from welcome-screen content: the old slide's product photo would otherwise
+  // be shown as the "logo" and its prices/menu rows mean nothing there. The draft is not saved until Publish.
+  const pickTemplate = (id: TemplateId) => {
+    if (draft.template === id) return;
+    if (id === "splash") {
+      setDraft((d) => ({
+        ...d,
+        template: id,
+        imageUrl: "",
+        eyebrow: "WELCOME",
+        headline: "{business}",
+        subheadline: "",
+        ctaText: "",
+        items: [
+          { name: "Call us", desc: "{phone}" },
+          { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
+          { name: "Find us", desc: "Add your address" },
+        ],
+      }));
+      setDirty(true);
+      flash("Welcome starter loaded — the logo comes from the Business tab; edit the cards below");
+      return;
+    }
+    set("template", id as never);
+  };
+
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
 
   const save = async () => {
@@ -279,7 +305,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {TEMPLATES.filter((t) => tplCat === "all" || templateCategory(t.id) === tplCat || t.id === draft.template).map((t) => (
-                    <button key={t.id} onClick={() => set("template", t.id as never)} className={`rounded-2xl p-3 text-left ring-1 ${draft.template === t.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
+                    <button key={t.id} onClick={() => pickTemplate(t.id)} className={`rounded-2xl p-3 text-left ring-1 ${draft.template === t.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
                       <div className="text-xs font-black">{t.name}</div>
                       <div className={`text-[11px] ${draft.template === t.id ? "text-black/60" : "text-white/50"}`}>{t.blurb}</div>
                     </button>
