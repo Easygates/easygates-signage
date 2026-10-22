@@ -48,6 +48,25 @@ describe("admin: new templates load a sample page", () => {
     assert.ok(admin.includes("flash(starter.flash)"), "pickTemplate should announce the loaded sample");
   });
 
+  it("starter content never overwrites user edits (untouched-draft guard)", () => {
+    // the starter may only be applied while the draft is identical to the
+    // baseline (last loaded/saved/starter-applied content)
+    assert.ok(admin.includes("draftBaseline"), "baseline ref missing — no way to tell user edits from defaults");
+    assert.ok(admin.includes("JSON.stringify(draft) === draftBaseline.current"), "pickTemplate must compare draft to baseline before applying the starter");
+    assert.ok(admin.includes("your content was kept"), "preserve branch should reassure the user nothing was overwritten");
+  });
+
+  it("every scene-adopting site resets the baseline via adoptDraft", () => {
+    // the only legal setDraft callers: adoptDraft itself, the per-field set()
+    // editor and pickTemplate's starter branch
+    const raw = admin.match(/setDraft\((?!s\)|\(d\)|next\))/g) || [];
+    assert.deepEqual(raw, [], `untracked wholesale setDraft calls: ${raw.join(", ")}`);
+    assert.ok(admin.includes("adoptDraft(dbScenes[0])"), "initial load must adopt a baseline");
+    assert.ok(admin.includes("adoptDraft(j.scene)"), "save/duplicate must adopt a baseline");
+    assert.ok(admin.includes("adoptDraft(emptyScene())"), "new/delete must adopt a baseline");
+    assert.ok(admin.includes("adoptDraft(s)"), "picking a scene from the list must adopt a baseline");
+  });
+
   it("items editor has row hints for the new item templates", () => {
     for (const t of ["company-values", "team-intro", "testimonial-quote", "trustpilot-review"]) {
       assert.ok(admin.match(new RegExp(`"${t}": "`, "m")), `ITEM_HINTS missing an entry for ${t}`);

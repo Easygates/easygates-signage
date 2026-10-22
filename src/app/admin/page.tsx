@@ -185,6 +185,13 @@ export default function AdminPage() {
   // the first-render values and every reload jumps back to the first slide and playlist)
   const selIdRef = useRef<string | null>(null);
   const selPlRef = useRef<string | null>(null);
+  // Baseline of the draft: the content as last loaded / saved / starter-applied.
+  // While draft === baseline the slide is "untouched" and switching template may
+  // load that template's sample page; the moment the user edits anything,
+  // switching templates keeps their content instead of overwriting it (pickTemplate).
+  const draftBaseline = useRef("");
+  // stable (setDraft never changes) so it can be a dep of load() without recreating it
+  const adoptDraft = useCallback((s: Scene) => { setDraft(s); draftBaseline.current = JSON.stringify(s); }, [setDraft]);
   useEffect(() => { selIdRef.current = selId; selPlRef.current = selPlaylist; });
   const screenBase = useScreenBase();
   // template picker filter: a pick applies only to the slide it was made on, then falls back to that slide's own category
@@ -225,9 +232,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
       setBrandReady(st.ready !== false);
     }
-    if (selIdRef.current === null && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
+    if (selIdRef.current === null && dbScenes[0]) { setSelId(dbScenes[0].id); adoptDraft(dbScenes[0]); }
     if (selPlRef.current === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
-  }, [setBrandDraft]);
+  }, [setBrandDraft, adoptDraft]);
 
   // load() only touches state after awaiting, but keep it out of the effect
   // body so the set-state-in-effect rule stays quiet.
@@ -265,14 +272,25 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Templates that get sample content when a slide switches to them (like splash):
   // without it the slide keeps the previous product content (prices, menu rows) and
-  // the new layout looks broken/empty. The draft is not saved until Publish.
+  // the new layout looks broken/empty.
+  // The sample page is only loaded while the draft is still untouched (identical to
+  // what was last loaded/saved/applied). Once the user has typed anything into the
+  // slide, switching templates keeps their content — never overwrites it.
+  // The draft is not saved until Publish either way.
   const pickTemplate = (id: TemplateId) => {
     if (draft.template === id) return;
     const starter = TEMPLATE_STARTERS[id];
     if (!starter) { set("template", id as never); return; }
-    setDraft((d) => ({ ...d, ...starter.fields, template: id }));
-    setDirty(true);
-    flash(starter.flash);
+    if (JSON.stringify(draft) === draftBaseline.current) {
+      const next: Scene = { ...draft, ...starter.fields, template: id };
+      setDraft(next);
+      draftBaseline.current = JSON.stringify(next);
+      setDirty(true);
+      flash(starter.flash);
+    } else {
+      set("template", id as never);
+      flash("Template switched — your content was kept, nothing was overwritten");
+    }
   };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
@@ -283,11 +301,11 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       if (!draft.id || draft.id === "new" || draft.id.startsWith("demo-")) {
         const r = await fetch("/api/scenes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: undefined }) });
         const j = await r.json();
-        setSelId(j.scene.id); setDraft(j.scene); flash("Scene created — display picks it up within 30s");
+        setSelId(j.scene.id); adoptDraft(j.scene); flash("Scene created — display picks it up within 30s");
       } else {
         const r = await fetch(`/api/scenes/${draft.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
         const j = await r.json();
-        setDraft(j.scene); flash("Published — displays refresh automatically");
+        adoptDraft(j.scene); flash("Published — displays refresh automatically");
       }
       setDirty(false); load();
     } catch { flash("Save failed"); }
@@ -298,7 +316,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     if (!draft.id || draft.id === "new" || draft.id.startsWith("demo-")) { flash("Demo scenes can't be deleted — duplicate one first"); return; }
     if (!confirm("Delete this scene?")) return;
     await fetch(`/api/scenes/${draft.id}`, { method: "DELETE" });
-    setSelId(null); setDraft(emptyScene()); load(); flash("Scene deleted");
+    setSelId(null); adoptDraft(emptyScene()); load(); flash("Scene deleted");
   };
 
   const flushDuration = async (id: string, value: number) => {
@@ -334,7 +352,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const duplicate = async () => {
     const r = await fetch("/api/scenes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: undefined, name: `${draft.name} (copy)` }) });
-    const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
+    const j = await r.json(); setSelId(j.scene.id); adoptDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
   const seed = async (campaign: "retail" | "trade" | "value" | "corporate" = "retail") => {
@@ -394,11 +412,11 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-black tracking-widest text-white/50">SCENES ({scenes.length})</span>
-                <button onClick={() => { setSelId("new"); setDraft(emptyScene()); }} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ New</button>
+                <button onClick={() => { setSelId("new"); adoptDraft(emptyScene()); }} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ New</button>
               </div>
               <div className="sg-scroll max-h-[70vh] space-y-2 overflow-y-auto pr-1">
                 {scenes.map((s) => (
-                  <button key={s.id} onClick={() => { setSelId(s.id); setDraft(s); setDirty(false); setPreviewKey((k) => k + 1); }}
+                  <button key={s.id} onClick={() => { setSelId(s.id); adoptDraft(s); setDirty(false); setPreviewKey((k) => k + 1); }}
                     className={`w-full rounded-2xl p-3 text-left ring-1 ${selId === s.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-black">{s.name}</span>

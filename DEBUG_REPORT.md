@@ -378,3 +378,26 @@ registered and rendered, but:
 `node --test tests/*.mjs` → **115 pass, 0 fail** (was 88) · `next build` ✅ ·
 live `GET /api/selftest` → **pass: true, 137 checks** (was failing) ·
 asset delete live-tested end-to-end ✅
+
+## 12. Starter safety: template switching never overwrites user content (2026-10-22)
+
+Follow-up to §11's `TEMPLATE_STARTERS`: loading a sample page unconditionally
+would have clobbered anything the user had already typed into a slide. Now:
+
+- `draftBaseline` ref holds the draft's content as last **loaded / saved /
+  starter-applied** (a stable `adoptDraft()` sets it at every scene-adopting
+  site: initial load, scene-list pick, + New, delete, duplicate, save/create,
+  publish).
+- `pickTemplate` applies a template's sample page **only while the draft is
+  byte-identical to that baseline** (untouched). The moment the user has edited
+  anything, switching templates keeps all their content and only changes the
+  layout — with a flash confirming "your content was kept, nothing was
+  overwritten".
+- Applying a starter updates the baseline, so browsing several sample pages in
+  a row (without typing) shows a fresh sample per template; after a Publish,
+  the saved scene becomes the new baseline.
+
+Regression guards added to `tests/admin-wiring.test.mjs`: baseline ref +
+untouched check + preserve branch must exist, and no untracked wholesale
+`setDraft` call may remain (only `adoptDraft`, the per-field `set()` editor
+and the starter branch may call it).
