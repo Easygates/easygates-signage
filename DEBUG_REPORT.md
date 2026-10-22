@@ -190,3 +190,19 @@ Spot checks:
 - next.config.ts - *.supabase.co / *.supabase.com added to remotePatterns. OK
 
 No regressions found; nothing needed fixing. The previous agent's debugging was done correctly and is fully backward-compatible.
+
+## 7. Follow-up fixes — arena/c5ccc534-easygates-signage @ fa6898e (2026-10-22)
+
+Two issues reported after the original debug pass:
+
+### 🟡 P2 — Seasonal images not showing in assets or quick pick
+**Root cause:** `/api/assets` only returns DB rows. The 12 images in `public/seasonal/` (plus `public/retail/`, `public/trade/`) were never registered in the assets table, so they were absent from the AssetsPanel library and LibraryPicker quick-set.
+
+**Fix:** Added `src/app/api/public-assets/route.ts` — a GET endpoint that scans `public/seasonal/`, `public/retail/`, `public/trade/`, `public/uploads/` for image files and returns them as read-only assets. The admin page merges DB assets + public assets into `allAssets` and feeds them to LibraryPicker, AssetsPanel and BusinessPanel. Seasonal images now appear in the library and quick-set pickers without requiring a DB entry.
+
+### 🟡 P2 — No quick-set library picker for row-level "img URL"
+**Root cause:** `ItemsEditor` (scene editor rows for product-grid, brand-wall, deals-grid, top-sellers, clearance, multibuy) rendered the per-row image URL as a plain text input with no library picker — unlike scene-level `imageUrl`/`bgImageUrl` which had LibraryPicker quick-set.
+
+**Fix:** `ItemsEditor` now accepts an `assets` prop and shows a 📂 "pick from library" button next to each row's image input, plus an inline LibraryPicker that applies the chosen URL to that row. A "quick-set any row" picker is also available at the bottom.
+
+**Verification:** typecheck ✅, lint ✅, build ✅ (new `/api/public-assets` route included), 88/88 unit tests ✅.
