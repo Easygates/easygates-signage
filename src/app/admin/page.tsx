@@ -483,8 +483,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <input value={playlist.name} onChange={async (e) => { const v = e.target.value; setPlaylists((ps) => ps.map((p) => p.id === playlist.id ? { ...p, name: v } : p)); }} onBlur={async (e) => { await fetch(`/api/playlists/${playlist.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: e.target.value }) }); }} className="rounded-xl bg-transparent text-xl font-black outline-none ring-white/20 focus:ring-2" />
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Link href={`/display?playlistId=${playlist.id}`} target="_blank" className="rounded-full bg-red-500 px-4 py-2 text-xs font-black">▶ Play</Link>
+                      <Link href={`/export?playlistId=${playlist.id}`} target="_blank" className="rounded-full bg-sky-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-sky-300">↓ Export MP4</Link>
                       <button onClick={async () => { if (!confirm("Delete playlist?")) return; await fetch(`/api/playlists/${playlist.id}`, { method: "DELETE" }); setSelPlaylist(null); load(); }} className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-red-300 ring-1 ring-white/20">Delete</button>
                     </div>
                   </div>
