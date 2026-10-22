@@ -247,3 +247,58 @@ Field mapping in the scene editor:
 Registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` ("Social proof"),
 `ITEM_TEMPLATES`, and rendered in `SceneRenderer.tsx`.
 Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.
+
+## 10. Asset deletion + ambient backgrounds — arena/c5ccc534-easygates-signage @ 27271e2 (2026-10-22)
+
+### 10.1 Delete assets from the library
+- Assets tab: every library card now has a 🗑 button. Clicking it opens a
+  confirmation modal with a preview of the asset and the warning
+  "⚠️ This will be permanently deleted and cannot be undone… any scenes using
+  this image will lose it." — buttons: **Cancel** / **Delete permanently**.
+- DB (uploaded/registered) assets → `DELETE /api/assets?id=…` deletes the row
+  and best-effort removes the backing file: local `public/uploads/…` for
+  `/api/uploads/…` / `/uploads/…` URLs, or the Supabase Storage object when
+  Supabase storage is configured. External URLs only lose their library entry.
+  Returns 404 (unknown id) / 503 (DB unavailable), same conventions as the
+  existing routes.
+- Bundled/public images → `DELETE /api/public-assets?url=/<dir>/<file>`
+  removes the file from disk. Path safety: directory allowlist
+  (seasonal/retail/trade/ambient/uploads) + image-extension allowlist +
+  resolved-path containment check; anything else → 400, missing file → 404.
+- After a successful delete the library reloads (DB + public scan), so the
+  asset disappears from the Assets tab and all quick-set pickers.
+
+### 10.2 Three ambient backgrounds
+New folder `public/ambient/` (added to the `/api/public-assets` scan, so they
+appear in the library and quick-set pickers automatically):
+- `ambient-aurora.jpg` — indigo/violet/teal aurora waves on near-black
+- `ambient-amber-glow.jpg` — warm amber/copper glow on charcoal
+- `ambient-teal-silk.jpg` — deep teal/midnight silk waves
+All dark and text-friendly (~50–70 KB each, well within the Link's memory
+budget). Ideal with the `fullscreen-bg` template or as any scene background.
+
+### 10.3 Verification
+- typecheck ✅ · lint ✅ (0 errors/warnings) · build ✅ · 88/88 unit tests ✅
+- Runtime smoke test against a dev server: test image appeared in
+  `/api/public-assets` → `DELETE` → 200 and file gone from disk → repeat
+  `DELETE` → 404 → traversal attempt (`/../package.json`) → 400 → 3 ambient
+  backgrounds listed. DB-asset delete could not be exercised in the sandbox
+  (no `DATABASE_URL`; the whole `/api/assets` route errors at DB init in that
+  state — pre-existing behaviour, identical for GET/POST).
+
+---
+
+## Branch summary for review — arena/c5ccc534-easygates-signage vs main
+
+| Commit | Change |
+|---|---|
+| `0bac187` | docs: re-verification of previous debug work (§6) |
+| `fa6898e` | fix: seasonal/public images appear in library + quick-set pickers; quick-set library picker for item-row "img URL" fields (§7) |
+| `c8b6900` | docs note for the above |
+| `34df5b6` | feat: 5 corporate templates (company-values, team-intro, corporate-milestone, corporate-news, testimonial-quote) + `fullscreen-bg` background image/video template with no logo (§8) |
+| `6de7a4e` | docs note for the above |
+| `894c1db` | feat: Trustpilot Review template — rating, star breakdown, top reviews (§9) |
+| `27271e2` | feat: delete assets from library with permanent-delete warning + 3 ambient backgrounds (§10) |
+
+Every step verified: `tsc --noEmit`, `eslint .`, `next build`, 88/88 tests.
+Ready for review → merge into `main`.
