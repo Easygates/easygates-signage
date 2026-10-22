@@ -166,3 +166,139 @@ npm run build       # expect: ✓ Compiled successfully, ✓ Generating static p
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app_db npm run build
 npm start           # → http://localhost:3000, seed via /admin → ✨ Retail demo
 ```
+
+## 6. Re-verification - arena/c5ccc534-easygates-signage @ d6d53db (2026-10-22)
+
+Re-checked the previous agent's debugging (PR #8 / arena/5155fdcc) on this branch. Every claim in sections 2-4 was confirmed against the actual tree, and the full verification matrix passes again:
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Unit tests | node --test tests/*.mjs | 88 pass, 0 fail OK |
+| Lint | npm run lint | 0 errors, 0 warnings OK |
+| Typecheck | npm run typecheck | pass OK |
+| Build (no DATABASE_URL) | npm run build | success, all routes dynamic OK |
+
+Spot checks:
+- src/db/index.ts - placeholder DB config during NEXT_PHASE build phase; still throws at runtime if DATABASE_URL missing. OK
+- drizzle.config.ts - placeholder URL + warning, no build crash. OK
+- src/app/display/page.tsx - no render-phase setState; safeIndex derived from scenes, used for render/preload/auto-advance/navigation. OK
+- API routes - try/catch -> 503 { error: "db-unavailable" } on all GET and write handlers, incl. seed. OK
+- src/app/api/scenes/route.ts - template validated against TEMPLATES id set (400 on unknown). OK
+- src/app/api/playlist-items/route.ts - 400 unless playlistId and sceneId present. OK
+- src/components/SceneRenderer.tsx - cssUrl() escapes " and \ in url("..."). OK
+- src/components/BusinessPanel.tsx, src/components/scene/parts.tsx - file-level eslint-disable with justification; misplaced per-line disables removed. OK
+- next.config.ts - *.supabase.co / *.supabase.com added to remotePatterns. OK
+
+No regressions found; nothing needed fixing. The previous agent's debugging was done correctly and is fully backward-compatible.
+
+## 7. Follow-up fixes — arena/c5ccc534-easygates-signage @ fa6898e (2026-10-22)
+
+Two issues reported after the original debug pass:
+
+### 🟡 P2 — Seasonal images not showing in assets or quick pick
+**Root cause:** `/api/assets` only returns DB rows. The 12 images in `public/seasonal/` (plus `public/retail/`, `public/trade/`) were never registered in the assets table, so they were absent from the AssetsPanel library and LibraryPicker quick-set.
+
+**Fix:** Added `src/app/api/public-assets/route.ts` — a GET endpoint that scans `public/seasonal/`, `public/retail/`, `public/trade/`, `public/uploads/` for image files and returns them as read-only assets. The admin page merges DB assets + public assets into `allAssets` and feeds them to LibraryPicker, AssetsPanel and BusinessPanel. Seasonal images now appear in the library and quick-set pickers without requiring a DB entry.
+
+### 🟡 P2 — No quick-set library picker for row-level "img URL"
+**Root cause:** `ItemsEditor` (scene editor rows for product-grid, brand-wall, deals-grid, top-sellers, clearance, multibuy) rendered the per-row image URL as a plain text input with no library picker — unlike scene-level `imageUrl`/`bgImageUrl` which had LibraryPicker quick-set.
+
+**Fix:** `ItemsEditor` now accepts an `assets` prop and shows a 📂 "pick from library" button next to each row's image input, plus an inline LibraryPicker that applies the chosen URL to that row. A "quick-set any row" picker is also available at the bottom.
+
+**Verification:** typecheck ✅, lint ✅, build ✅ (new `/api/public-assets` route included), 88/88 unit tests ✅.
+
+## 8. New templates — arena/c5ccc534-easygates-signage @ 34df5b6 (2026-10-22)
+
+Added 5 corporate templates + 1 background-only template to the scene editor:
+
+| Template | Purpose | Key fields |
+|----------|---------|------------|
+| `company-values` | Mission statement + values list | headline, subheadline, items (name+desc), imageUrl |
+| `team-intro` | Meet the team photo grid | headline, subheadline, items (image+name+desc), ctaText |
+| `corporate-milestone` | Milestone / anniversary | headline (big number), subheadline, description, imageUrl, ctaText |
+| `corporate-news` | Company news / announcement | eyebrow, headline, description, tickerText, imageUrl, ctaText |
+| `testimonial-quote` | Testimonial / customer quote | headline (quote), description, productName (attribution), ctaText (role), imageUrl (photo), items |
+| `fullscreen-bg` | Full-screen image or video, no logo | bgImageUrl or videoUrl (+ imageUrl fallback), headline/subheadline/eyebrow/ctaText optional overlay |
+
+All registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` (new "Corporate" group), `ITEM_TEMPLATES` (company-values, team-intro, testimonial-quote) and rendered in `SceneRenderer.tsx`. The `fullscreen-bg` template supports `videoUrl` (autoplay muted loop) or `bgImageUrl`/`imageUrl` with Ken Burns, plus an optional darkened overlay and centered text — no logo is ever rendered.
+
+Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.
+
+## 9. Trustpilot Review template — arena/c5ccc534-easygates-signage
+
+Added `trustpilot-review` template ("Social proof" category) for showing the
+company's Trustpilot rating, star breakdown and top 5-star reviews on signage.
+Source profile: https://uk.trustpilot.com/review/easygates.co.uk
+
+How it works: data is entered manually in the scene editor (reliable on TVs —
+no internet dependency at display time, no fragile scraping; Trustpilot's
+official API needs a Trustpilot business account + API key and can be wired in
+later if live data is wanted).
+
+Field mapping in the scene editor:
+- `imageUrl` — Trustpilot logo (upload the logo asset or use library quick-set)
+- `headline` — big rating number, e.g. "4.8"
+- `subheadline` — e.g. "Excellent · based on 2,341 reviews"
+- `description` — optional summary/blurb card
+- `ctaText` — optional call to action, e.g. "Read our reviews on Trustpilot"
+- `items` rows — name = reviewer name, desc = review text, tag = stars
+  (e.g. "★★★★★", defaults to 5 stars), image = optional reviewer avatar
+
+Registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` ("Social proof"),
+`ITEM_TEMPLATES`, and rendered in `SceneRenderer.tsx`.
+Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.
+
+## 10. Asset deletion + ambient backgrounds — arena/c5ccc534-easygates-signage @ 27271e2 (2026-10-22)
+
+### 10.1 Delete assets from the library
+- Assets tab: every library card now has a 🗑 button. Clicking it opens a
+  confirmation modal with a preview of the asset and the warning
+  "⚠️ This will be permanently deleted and cannot be undone… any scenes using
+  this image will lose it." — buttons: **Cancel** / **Delete permanently**.
+- DB (uploaded/registered) assets → `DELETE /api/assets?id=…` deletes the row
+  and best-effort removes the backing file: local `public/uploads/…` for
+  `/api/uploads/…` / `/uploads/…` URLs, or the Supabase Storage object when
+  Supabase storage is configured. External URLs only lose their library entry.
+  Returns 404 (unknown id) / 503 (DB unavailable), same conventions as the
+  existing routes.
+- Bundled/public images → `DELETE /api/public-assets?url=/<dir>/<file>`
+  removes the file from disk. Path safety: directory allowlist
+  (seasonal/retail/trade/ambient/uploads) + image-extension allowlist +
+  resolved-path containment check; anything else → 400, missing file → 404.
+- After a successful delete the library reloads (DB + public scan), so the
+  asset disappears from the Assets tab and all quick-set pickers.
+
+### 10.2 Three ambient backgrounds
+New folder `public/ambient/` (added to the `/api/public-assets` scan, so they
+appear in the library and quick-set pickers automatically):
+- `ambient-aurora.jpg` — indigo/violet/teal aurora waves on near-black
+- `ambient-amber-glow.jpg` — warm amber/copper glow on charcoal
+- `ambient-teal-silk.jpg` — deep teal/midnight silk waves
+All dark and text-friendly (~50–70 KB each, well within the Link's memory
+budget). Ideal with the `fullscreen-bg` template or as any scene background.
+
+### 10.3 Verification
+- typecheck ✅ · lint ✅ (0 errors/warnings) · build ✅ · 88/88 unit tests ✅
+- Runtime smoke test against a dev server: test image appeared in
+  `/api/public-assets` → `DELETE` → 200 and file gone from disk → repeat
+  `DELETE` → 404 → traversal attempt (`/../package.json`) → 400 → 3 ambient
+  backgrounds listed. DB-asset delete could not be exercised in the sandbox
+  (no `DATABASE_URL`; the whole `/api/assets` route errors at DB init in that
+  state — pre-existing behaviour, identical for GET/POST).
+
+---
+
+## Branch summary for review — arena/c5ccc534-easygates-signage vs main
+
+| Commit | Change |
+|---|---|
+| `0bac187` | docs: re-verification of previous debug work (§6) |
+| `fa6898e` | fix: seasonal/public images appear in library + quick-set pickers; quick-set library picker for item-row "img URL" fields (§7) |
+| `c8b6900` | docs note for the above |
+| `34df5b6` | feat: 5 corporate templates (company-values, team-intro, corporate-milestone, corporate-news, testimonial-quote) + `fullscreen-bg` background image/video template with no logo (§8) |
+| `6de7a4e` | docs note for the above |
+| `894c1db` | feat: Trustpilot Review template — rating, star breakdown, top reviews (§9) |
+| `27271e2` | feat: delete assets from library with permanent-delete warning + 3 ambient backgrounds (§10) |
+
+Every step verified: `tsc --noEmit`, `eslint .`, `next build`, 88/88 tests.
+Ready for review → merge into `main`.

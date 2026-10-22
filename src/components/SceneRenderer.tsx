@@ -566,6 +566,295 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {/* 20 · SPLASH / WELCOME (logo + contact details) → src/components/scene/templates/Splash.tsx */}
       {t === "splash" && <SplashTemplate scene={scene} d={d} />}
 
+      {/* 21 · COMPANY VALUES (corporate) */}
+      {t === "company-values" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1600px] grid-cols-[1fr_1fr] items-center gap-10 px-[6%] py-[4%]">
+          <div className="space-y-6">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[80px] font-black">{scene.headline}</span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade-up text-[22px] leading-relaxed text-white/90" style={d.style(3)}>{scene.subheadline}</p>
+            )}
+          </div>
+          <div className="space-y-4">
+            {(scene.items || []).slice(0, 6).map((it, i) => (
+              <div key={i} className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] px-6 py-4 ring-1 ring-white/10" style={d.style(4 + i)}>
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: scene.accentColor }} />
+                <div className="mt-2 text-[24px] font-extrabold">{it.name}</div>
+                {it.desc && <p className="mt-1 text-[18px] leading-relaxed text-white/80">{it.desc}</p>}
+              </div>
+            ))}
+          </div>
+          {scene.imageUrl && (
+            <div className="sg-anim sg-scale-in overflow-hidden rounded-[32px] bg-white/5 ring-1 ring-white/20" style={d.style(11)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 22 · MEET THE TEAM (corporate) */}
+      {t === "team-intro" && (
+        <div className="relative z-10 mx-auto flex h-full max-w-[1700px] flex-col justify-center px-[6%] py-[3%]">
+          <div className="text-center mb-8">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask mt-2">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[56px] font-black">{scene.headline}</span>
+            </div>
+            {scene.subheadline && <p className="sg-anim sg-fade-up mx-auto mt-3 max-w-2xl text-[20px] leading-relaxed text-white/90" style={d.style(2)}>{scene.subheadline}</p>}
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4">
+            {(scene.items || []).slice(0, 8).map((it, i) => (
+              <div key={i} className="sg-anim sg-scale-in overflow-hidden rounded-[26px] bg-white/[0.06] p-5 ring-1 ring-white/10 flex flex-col items-center" style={d.style(4 + i)}>
+                {it.image && (
+                  <div className="mb-4 shrink-0 h-28 w-28 rounded-full overflow-hidden bg-white/10 ring-2 ring-white/20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={it.image} alt={it.name} className="h-full w-full object-cover" draggable={false} />
+                  </div>
+                )}
+                <div className="text-center">
+                  <div className="text-[20px] font-extrabold">{it.name}</div>
+                  {it.desc && <div className="mt-1 text-[16px] text-white/80">{it.desc}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {scene.ctaText && (
+            <div className="mt-8 sg-anim sg-pop text-center" style={d.style(13)}>
+              <span className="inline-block rounded-full border border-white/40 px-6 py-2 text-[18px] font-black text-white">{scene.ctaText}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 23 · MILESTONE / ANNIVERSARY (corporate) */}
+      {t === "corporate-milestone" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1600px] grid-cols-[1fr_1fr] items-center gap-10 px-[6%] py-[4%]">
+          <div className="space-y-6">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[140px] font-black tracking-tighter">{scene.headline}</span>
+            </div>
+            {scene.subheadline && (
+              <p className="sg-anim sg-fade-up text-[22px] leading-relaxed text-white/90" style={d.style(3)}>{scene.subheadline}</p>
+            )}
+            {scene.description && (
+              <p className="sg-anim sg-fade-up mt-4 text-[18px] leading-relaxed text-white/80" style={d.style(4)}>{scene.description}</p>
+            )}
+          </div>
+          {scene.imageUrl && (
+            <div className="sg-anim sg-scale-in overflow-hidden rounded-[32px] bg-white/5 ring-1 ring-white/20" style={d.style(6)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+            </div>
+          )}
+          {scene.ctaText && (
+            <div className="sg-anim sg-pop mt-8" style={d.style(8)}>
+              <span className="inline-block rounded-full px-7 py-3 text-[20px] font-black text-white" style={{ background: scene.accentColor }}>{scene.ctaText}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 24 · COMPANY NEWS (corporate) */}
+      {t === "corporate-news" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1600px] grid-cols-[1.1fr_0.9fr] items-center gap-8 px-[6%] py-[4%]">
+          <div className="space-y-5">
+            <Eyebrow scene={scene} d={d} />
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[72px] font-black">{scene.headline}</span>
+            </div>
+            {scene.description && (
+              <p className="sg-anim sg-fade-up text-[20px] leading-relaxed text-white/90" style={d.style(3)}>{scene.description}</p>
+            )}
+            <div className="mt-6 flex items-center gap-4 text-[18px] font-black text-white/90">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full" style={{ background: scene.accentColor }} />
+                {scene.tickerText || scene.subheadline}
+              </span>
+            </div>
+          </div>
+          {scene.imageUrl && (
+            <div className="sg-anim sg-scale-in overflow-hidden rounded-[26px] bg-white/5 ring-1 ring-white/20" style={d.style(5)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+            </div>
+          )}
+          {scene.ctaText && (
+            <div className="sg-anim sg-pop" style={d.style(7)}>
+              <span className="inline-block rounded-full border border-white/40 px-6 py-2 text-[18px] font-black text-white">{scene.ctaText}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 25 · TESTIMONIAL / QUOTE (corporate) */}
+      {t === "testimonial-quote" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1600px] grid-cols-[1fr_1fr] items-center gap-10 px-[6%] py-[4%]">
+          <div className="space-y-6">
+            <div className="sg-anim sg-scale-in flex items-center gap-2" style={d.style(0)}>
+              <span className="text-[40px] font-black" style={{ color: scene.accentColor }}>“</span>
+              <span className="text-[40px] font-black text-white/60">”</span>
+            </div>
+            <div className="sg-mask">
+              <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[64px] font-extrabold leading-tight">{scene.headline}</span>
+            </div>
+            {scene.description && (
+              <p className="sg-anim sg-fade-up text-[20px] leading-relaxed text-white/90 italic" style={d.style(2)}>{scene.description}</p>
+            )}
+          </div>
+          <div className="space-y-4">
+            <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] px-6 py-4 ring-1 ring-white/10" style={d.style(4)}>
+              <div className="flex items-center gap-3">
+                {scene.imageUrl && (
+                  <div className="shrink-0 h-14 w-14 rounded-full overflow-hidden bg-white/10 ring-2 ring-white/20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={scene.imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+                  </div>
+                )}
+                <div>
+                  <div className="text-[20px] font-extrabold">{scene.productName || scene.subheadline || "Customer"}</div>
+                  {scene.ctaText && <div className="text-[16px] text-white/70">{scene.ctaText}</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+          {(scene.items || []).slice(0, 2).map((it, i) => (
+            <div key={i} className="sg-anim sg-fade-up rounded-2xl bg-white/[0.04] px-6 py-4 ring-1 ring-white/5" style={d.style(6 + i)}>
+              <div className="text-[18px] italic text-white/80">{it.desc}</div>
+              {it.name && <div className="mt-2 text-[16px] font-black text-white/90">{it.name}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 26 · FULLSCREEN BACKGROUND (image or video, no logo) */}
+      {t === "fullscreen-bg" && (
+        <div className="relative z-10 h-full overflow-hidden">
+          {scene.videoUrl ? (
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              src={scene.videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={scene.imageUrl || undefined}
+            />
+          ) : null}
+          {scene.bgImageUrl || scene.imageUrl && (
+            <div
+              className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}
+              style={{ backgroundImage: `url("${cssUrl(scene.bgImageUrl || scene.imageUrl!)}")`, backgroundSize: "cover", backgroundPosition: scene.imagePosition || "center", backgroundRepeat: "no-repeat" }}
+            />
+          )}
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 100%)` }} />
+          {(scene.headline || scene.eyebrow || scene.subheadline || scene.ctaText) && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-[6%] py-[4%] text-center text-white">
+              {scene.eyebrow && <Eyebrow scene={scene} d={d} />}
+              {scene.headline && (
+                <div className="sg-mask mt-2">
+                  <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[72px] font-black">{scene.headline}</span>
+                </div>
+              )}
+              {scene.subheadline && <p className="sg-anim sg-fade-up mt-4 max-w-2xl text-[20px] leading-relaxed text-white/90" style={d.style(3)}>{scene.subheadline}</p>}
+              {scene.ctaText && (
+                <div className="sg-anim sg-pop mt-8" style={d.style(5)}>
+                  <span className="inline-block rounded-full border border-white/40 px-7 py-3 text-[18px] font-black text-white">{scene.ctaText}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 27 · TRUSTPILOT REVIEW (social proof) */}
+      {t === "trustpilot-review" && (
+        <div className="relative z-10 mx-auto grid h-full max-w-[1700px] grid-cols-[1fr_1.2fr] gap-10 px-[6%] py-[4%] items-center">
+          {/* Left column: rating + logo */}
+          <div className="space-y-6">
+            {scene.eyebrow && <Eyebrow scene={scene} d={d} />}
+            <div className="flex items-center gap-4">
+              {scene.imageUrl && (
+                <div className="shrink-0 h-12 w-auto object-contain">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={scene.imageUrl} alt="Trustpilot" className="h-full w-auto" draggable={false} />
+                </div>
+              )}
+              <div>
+                <div className="sg-mask">
+                  <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[96px] font-black tracking-tighter">{scene.headline}</span>
+                </div>
+                {scene.subheadline && (
+                  <p className="sg-anim sg-fade-up mt-2 text-[24px] font-black text-white/90" style={d.style(2)}>{scene.subheadline}</p>
+                )}
+              </div>
+            </div>
+            {scene.description && (
+              <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] px-6 py-5 ring-1 ring-white/10" style={d.style(3)}>
+                <p className="text-[18px] leading-relaxed text-white/90">{scene.description}</p>
+              </div>
+            )}
+            {scene.ctaText && (
+              <div className="sg-anim sg-pop mt-6" style={d.style(4)}>
+                <span className="inline-block rounded-full border border-white/40 px-7 py-3 text-[18px] font-black text-white">{scene.ctaText}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right column: star breakdown + top reviews */}
+          <div className="space-y-4">
+            <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10" style={d.style(5)}>
+              <div className="mb-3 flex items-center gap-2 text-xs font-black text-white/70">
+                <span>★ Trustpilot</span>
+                <span className="ml-auto text-[14px]">{scene.items?.length || 0} reviews</span>
+              </div>
+              <div className="space-y-2">
+                {[5, 4, 3, 2, 1].map((star) => (
+                  <div key={star} className="flex items-center gap-2" style={d.style(6 + star)}>
+                    <span className="w-8 text-xs font-mono">{star}</span>
+                    <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-white" style={{ width: "70%" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {(scene.items || []).slice(0, 3).map((it, i) => (
+                <div key={i} className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10" style={d.style(12 + i)}>
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 h-10 w-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                      {it.image && (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={it.image} alt={it.name} className="h-full w-full object-cover" draggable={false} />
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <div className="text-[18px] font-black">{it.name}</div>
+                        <div className="text-[14px] font-mono text-white/70">{it.tag || "★★★★★"}</div>
+                      </div>
+                      {it.desc && <p className="text-[16px] leading-relaxed text-white/90">{it.desc}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(scene.items || []).length === 0 && (
+                <div className="sg-anim sg-fade-up rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/10 text-center text-xs text-white/60">
+                  Add reviews in the scene editor (Author + review text + star tag).
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />
     </div>
