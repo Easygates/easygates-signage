@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.scenes (
   text_color text DEFAULT '#ffffff',
   muted_color text DEFAULT '#c7cede',
   card_color text DEFAULT '#141b33',
+  highlight_color text,
   animation_preset text DEFAULT 'launch',
   duration_sec integer DEFAULT 10,
   transition text DEFAULT 'fade',
@@ -119,6 +120,7 @@ CREATE INDEX IF NOT EXISTS idx_schedules_enabled ON public.schedules (enabled, p
 -- ───────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS bg_image_url text;
 ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS theme text DEFAULT 'none';
+ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS highlight_color text;
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Lock the tables away from Supabase's public Data API (REST / GraphQL).

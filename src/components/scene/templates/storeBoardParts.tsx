@@ -58,7 +58,11 @@ export function palette(scene: Scene): Pal {
   const { solid, ink } = solidFor(accent);
   let onWhite = accent;
   for (let t = 0; t <= 1.0001 && contrast(onWhite, "#ffffff") < 7; t += 0.05) onWhite = mixHex(accent, INK, t);
-  return { accent, solid, solidInk: ink, onWhite, navy: INK, pop: "#ffd60a", popDeep: "#e0a800", popInk: INK };
+  // the second colour: sale yellow unless the slide has its own highlight colour
+  const custom = scene.highlightColor ? hexToRgb(scene.highlightColor) : null;
+  const pop = custom ? rgbToHex(custom[0], custom[1], custom[2]) : "#ffd60a";
+  const popInk = contrast(pop, INK) >= contrast(pop, "#ffffff") ? INK : "#ffffff";
+  return { accent, solid, solidInk: ink, onWhite, navy: INK, pop, popDeep: custom ? mixHex(pop, "#000000", 0.2) : "#e0a800", popInk };
 }
 
 // ───────────────────────── animation wrapper ─────────────────────────

@@ -31,7 +31,7 @@ const BOTTOM = 70;
 const TAPE = 18;
 
 export default function ClearanceTemplate({ scene, d }: TemplateProps) {
-  const p = discountPalette(scene.accentColor, COLOURS);
+  const p = discountPalette(scene.accentColor, COLOURS, scene.highlightColor);
   const eyebrow = clean(scene.eyebrow);
   const headline = clean(scene.headline);
   const sub = clean(scene.subheadline);

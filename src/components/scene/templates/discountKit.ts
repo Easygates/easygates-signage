@@ -79,15 +79,17 @@ export interface DiscountPalette {
   popInk: string;
 }
 
-export function discountPalette(accent: string, c: ColourFns): DiscountPalette {
+export function discountPalette(accent: string, c: ColourFns, highlight?: string): DiscountPalette {
   const { bg, ink } = solidFor(accent, 7, c);
   const lightMain = c.luminance(bg) > 0.35;
+  // A valid highlight colour chosen by the user replaces the automatic yellow/navy.
+  const pop = highlight && HEX.test(highlight) ? highlight : lightMain ? NAVY : YELLOW;
   return {
     main: bg,
     mainInk: ink,
     deep: c.mixHex(bg, "#000000", 0.3),
-    pop: lightMain ? NAVY : YELLOW,
-    popInk: lightMain ? WHITE : INK,
+    pop,
+    popInk: c.contrast(pop, INK) >= c.contrast(pop, WHITE) ? INK : WHITE,
   };
 }
 

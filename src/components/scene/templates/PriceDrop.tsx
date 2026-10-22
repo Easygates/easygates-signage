@@ -33,7 +33,7 @@ const TOP = 112;
 const BOTTOM = 70;
 
 export default function PriceDropTemplate({ scene, d }: TemplateProps) {
-  const p = discountPalette(scene.accentColor, COLOURS);
+  const p = discountPalette(scene.accentColor, COLOURS, scene.highlightColor);
   const eyebrow = clean(scene.eyebrow);
   const flagText = clean(scene.subheadline) || "PRICE DROP";
   const headline = clean(scene.headline);
