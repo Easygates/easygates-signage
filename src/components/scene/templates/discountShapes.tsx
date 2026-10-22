@@ -79,14 +79,25 @@ export function Burst({
   );
 }
 
-/** Shopping trolley, drawn as a stroke icon. */
-export function TrolleyIcon({ size = 120, color = "#0f172a" }: { size?: number; color?: string }) {
+/**
+ * Starburst sticker with a shopping trolley drawn in it. It fills the height of its parent (up to
+ * 232px) and stays square, so it can sit beside a banner of any height.
+ */
+export function TrolleySticker({ fill, ink, rim = "#ffffff", spikes = 16, rotate = 6 }: { fill: string; ink: string; rim?: string; spikes?: number; rotate?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 9h8l7 29h28l6-21H15" />
-      <path d="M24 17l2 21M34 17l1 21M44 17l-1 21" strokeWidth="3.5" />
-      <circle cx="24" cy="51" r="4.5" fill={color} />
-      <circle cx="42" cy="51" r="4.5" fill={color} />
+    <svg
+      viewBox="0 0 300 300"
+      aria-hidden
+      style={{ display: "block", height: "100%", maxHeight: 232, width: "auto", aspectRatio: "1 / 1", filter: "drop-shadow(0 14px 18px rgba(15,23,42,0.35))" }}
+    >
+      <polygon points={burstPoints(150, 150, 146, 128, spikes, rotate)} fill={fill} stroke={rim} strokeWidth={7} strokeLinejoin="round" />
+      <circle cx="150" cy="150" r="112" fill="none" stroke={ink} strokeOpacity="0.28" strokeWidth="3" strokeDasharray="4 9" strokeLinecap="round" />
+      <g transform="translate(63 62) scale(2.7)" fill="none" stroke={ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 9h8l7 29h28l6-21H15" />
+        <path d="M24 17l2 21M34 17l1 21M44 17l-1 21" strokeWidth="3.5" />
+        <circle cx="24" cy="51" r="4.5" fill={ink} />
+        <circle cx="42" cy="51" r="4.5" fill={ink} />
+      </g>
     </svg>
   );
 }

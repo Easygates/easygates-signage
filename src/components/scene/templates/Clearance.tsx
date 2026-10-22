@@ -1,9 +1,8 @@
 import { useRef } from "react";
-import { kbClass } from "../parts";
 import type { TemplateProps } from "../parts";
 import { contrast, luminance, mixHex } from "@/lib/color";
 import { Chevrons, TagArt, useFitShrink } from "./discountShapes";
-import { INK, INK_SOFT, WHITE, cardWidth, discountPalette, fitBlock, fitLine, lineCount, pickScale, scaleSizes, stepScale } from "./discountKit";
+import { INK, INK_SOFT, WHITE, cardWidth, clean, discountPalette, fitBlock, fitLine, lineCount, pickScale, scaleSizes, stepScale } from "./discountKit";
 
 /**
  * Template "clearance": a red-and-yellow clearance banner above one to four price-tag cards, each led
@@ -20,7 +19,6 @@ import { INK, INK_SOFT, WHITE, cardWidth, discountPalette, fitBlock, fitLine, li
  *      items[].price = optional price on a yellow tag (over the picture, or under the name when there are no pictures); hidden if empty
  *      items[].image = optional product photo, shown whole (never cropped); if none of the items has one, the cards have no picture area
  *  - ctaText = the call-to-action strip at the bottom, e.g. "IN STORE NOW"
- *  - kenBurns = slow zoom on the product photos ("static" keeps them still)
  *  - accentColor = the banner and tag colour (any colour works; text colours are chosen to stay readable)
  *  - bgFrom / bgTo / bgImageUrl / theme = only visible around the cards, never behind any text
  */
@@ -34,28 +32,28 @@ const TAPE = 18;
 
 export default function ClearanceTemplate({ scene, d }: TemplateProps) {
   const p = discountPalette(scene.accentColor, COLOURS);
-  const eyebrow = scene.eyebrow?.trim();
-  const headline = scene.headline?.trim();
-  const sub = scene.subheadline?.trim();
-  const cta = scene.ctaText?.trim();
-  const items = (scene.items || []).filter((it) => it && (it.name?.trim() || it.tag?.trim() || it.image?.trim() || it.desc?.trim())).slice(0, 4);
+  const eyebrow = clean(scene.eyebrow);
+  const headline = clean(scene.headline);
+  const sub = clean(scene.subheadline);
+  const cta = clean(scene.ctaText);
+  const items = (scene.items || []).filter((it) => it && (clean(it.name) || clean(it.tag) || clean(it.image) || clean(it.desc))).slice(0, 4);
   const n = items.length;
-  const anyImage = items.some((it) => it.image?.trim());
-  const anyTag = items.some((it) => it.tag?.trim());
-  const anyDesc = items.some((it) => it.desc?.trim());
-  const anyPrice = items.some((it) => it.price?.trim());
+  const anyImage = items.some((it) => clean(it.image));
+  const anyTag = items.some((it) => clean(it.tag));
+  const anyDesc = items.some((it) => clean(it.desc));
+  const anyPrice = items.some((it) => clean(it.price));
 
   const w = cardWidth(n, ROOM, GAP, n === 1 ? 760 : n === 2 ? 640 : n === 3 ? 540 : 430);
   const inner = w - 52;
   const tape = p.mainInk === WHITE ? INK : WHITE;
 
   // ── how big can everything be? (estimated heights; shrinks step by step until it fits) ──
-  const ctaFit = fitBlock(cta || "", { width: 1480, maxLines: 2, sizes: [38, 34, 30, 26] });
+  const ctaFit = fitBlock(cta || "", { width: 1480, maxLines: 2, sizes: [38, 34, 30, 26], tracking: 0.06 });
   const ctaH = cta ? Math.max(78, Math.ceil(ctaFit.lines * ctaFit.size * 1.1) + 20) : 0;
   const plan = (k: number) => {
-    const headFit = fitBlock(headline || "", { width: 1560, maxLines: 2, maxHeight: 150, sizes: scaleSizes(anyImage ? [128, 120, 112, 104, 96, 88, 80, 72, 64] : [150, 140, 128, 116, 104, 96, 88, 80, 72, 64], k, 64), lineHeight: 0.98 });
+    const headFit = fitBlock(headline || "", { width: 1560, maxLines: 2, maxHeight: 150, sizes: scaleSizes(anyImage ? [128, 120, 112, 104, 96, 88, 80, 72, 64] : [150, 140, 128, 116, 104, 96, 88, 80, 72, 64], k, 64), lineHeight: 0.98, tracking: -0.04 });
     const subFit = fitBlock(sub || "", { width: 1320, maxLines: 2, sizes: scaleSizes([42, 38, 34, 30, 28], k, 28) });
-    const eyeH = eyebrow ? lineCount(eyebrow, 35, 1640) * 31 + 14 : 0;
+    const eyeH = eyebrow ? lineCount(eyebrow, 26, 1640, 0.2) * 31 + 14 : 0;
     const subH = sub ? Math.ceil(subFit.lines * subFit.size * 1.12) + 20 : 0;
     const headH = headline ? headFit.height : 0;
     const padBottom = sub ? Math.round(subH / 2) + 22 : 24;
@@ -63,32 +61,33 @@ export default function ClearanceTemplate({ scene, d }: TemplateProps) {
     const cardsTop = sub ? Math.max(34, Math.round(subH / 2) + 14) : 34;
     const avail = 1080 - BOTTOM - (cta ? ctaH + 26 : 0) - bannerBottom - cardsTop;
 
-    const tagFits = items.filter((it) => it.tag?.trim()).map((it) => fitBlock(it.tag!.trim(), { width: inner, maxLines: 2, maxHeight: (anyImage ? 150 : 210), sizes: scaleSizes(anyImage ? [150, 132, 116, 100, 88, 76, 64] : [190, 168, 148, 128, 112, 96, 80, 64], k, 52), lineHeight: 0.95 }));
-    const tagSize = tagFits.length ? Math.min(...tagFits.map((f) => f.size)) : 0;
-    const tagLines = tagFits.length ? Math.max(...tagFits.map((f) => f.lines)) : 0;
-    const nameFits = items.map((it) => fitBlock(it.name || "", { width: inner, maxLines: 2, sizes: scaleSizes([anyImage ? 36 : 44, 34, 31, 28, 26], k, 26) }));
+    // each tag is as big as its own card allows; every header is as tall as the tallest tag needs
+    const tagFit = (text: string) => fitBlock(text, { width: inner, maxLines: 2, maxHeight: anyImage ? 150 : 210, sizes: scaleSizes(anyImage ? [150, 132, 116, 100, 88, 76, 64] : [190, 168, 148, 128, 112, 96, 80, 64], k, 52), lineHeight: 0.95, tracking: -0.05 });
+    const tagFits = items.map((it) => (clean(it.tag) ? tagFit(clean(it.tag)) : null));
+    const tagLinesH = Math.max(0, ...tagFits.map((f) => (f ? Math.ceil(f.lines * f.size * 0.95) : 0)));
+    const nameFits = items.map((it) => fitBlock(it.name || "", { width: inner, maxLines: 2, sizes: scaleSizes([anyImage ? 36 : 44, 34, 31, 28, 26], k, 26), tracking: -0.02 }));
     const nameSize = Math.min(...nameFits.map((f) => f.size), 44);
     const nameLines = Math.max(...nameFits.map((f) => f.lines), 0);
     const descFits = items.map((it) => fitBlock(it.desc || "", { width: inner, maxLines: 2, sizes: scaleSizes([anyImage ? 24 : 28, 26, 24, 22, 20], k, 20) }));
     const descSize = Math.min(...descFits.map((f) => f.size), 28);
     const descLines = Math.max(...descFits.map((f) => f.lines), 0);
-    const priceSize = Math.min(...items.map((it) => fitLine(it.price || "", inner - 48, anyImage ? (n >= 4 ? 44 : 56) : 68, 36)), 68);
+    const priceSize = Math.min(...items.map((it) => fitLine(it.price || "", inner - 48, anyImage ? (n >= 4 ? 44 : 56) : 68, 36, -0.04)), 68);
 
-    const tagBlockH = anyTag ? Math.ceil(tagLines * tagSize * 0.95) + 42 + 16 + 9 : 0;
+    const tagBlockH = anyTag ? tagLinesH + 42 + 16 + 9 : 0;
     const tagH = tagBlockH;
     const bodyH =
       (anyImage ? 6 + 24 : (anyTag ? 26 : 56) + 28) +
       Math.ceil(nameLines * nameSize * 1.08) +
       (anyDesc ? Math.ceil(descLines * descSize * 1.25) + 8 : 0) +
       (!anyImage && anyPrice ? 14 + priceSize + 14 : 0);
-    return { headFit, subFit, subH, tagSize, tagBlockH, nameSize, descSize, priceSize, padBottom, cardsTop, need: tagH + (anyImage ? 120 : 0) + bodyH, avail };
+    return { headFit, subFit, subH, tagFits, tagBlockH, nameSize, descSize, priceSize, padBottom, cardsTop, need: tagH + (anyImage ? 120 : 0) + bodyH, avail };
   };
   const rootRef = useRef<HTMLDivElement>(null);
   const step = useFitShrink(rootRef, JSON.stringify([scene.id, eyebrow, headline, sub, cta, items]));
   const P = plan(stepScale(pickScale((kk) => plan(kk).need - plan(kk).avail, 0), step));
 
   return (
-    <div ref={rootRef} data-fit className="absolute inset-0 z-10 flex flex-col">
+    <div ref={rootRef} data-fit data-fit-step={step} className="absolute inset-0 z-10 flex flex-col">
       {/* ── banner ── */}
       <div className="sg-anim sg-fade-down relative z-10 flex-none" style={d.style(0)}>
         <div style={{ background: p.main, padding: `${TOP}px 72px ${P.padBottom}px`, textAlign: "center", boxShadow: "0 14px 40px rgba(15,23,42,0.35)" }}>
@@ -121,13 +120,13 @@ export default function ClearanceTemplate({ scene, d }: TemplateProps) {
 
       {/* ── price tags ── */}
       <div className="flex min-h-0 flex-1 items-center justify-center" style={{ padding: `${P.cardsTop}px 72px 0` }}>
-        <div className="flex justify-center" style={{ gap: GAP, height: anyImage ? "100%" : "min(100%, 560px)", alignItems: "stretch" }}>
+        <div className="flex justify-center" style={{ gap: GAP, height: anyImage ? "100%" : anyTag ? "min(100%, 560px)" : undefined, alignItems: "stretch" }}>
           {items.map((it, i) => {
-            const tag = it.tag?.trim();
-            const name = it.name?.trim();
-            const desc = it.desc?.trim();
-            const price = it.price?.trim();
-            const image = it.image?.trim();
+            const tag = clean(it.tag);
+            const name = clean(it.name);
+            const desc = clean(it.desc);
+            const price = clean(it.price);
+            const image = clean(it.image);
             const chip = price && (
               <div className="font-black" style={{ background: p.pop, color: p.popInk, fontSize: P.priceSize, lineHeight: 1, letterSpacing: "-0.04em", padding: "6px 20px 8px", borderRadius: 14, whiteSpace: "nowrap", boxShadow: "0 7px 0 rgba(0,0,0,0.25)" }}>
                 {price}
@@ -139,7 +138,7 @@ export default function ClearanceTemplate({ scene, d }: TemplateProps) {
                   <div data-fit className="relative flex min-h-0 flex-1 flex-col bg-white" style={{ clipPath: "polygon(0 46px, 46px 0, calc(100% - 46px) 0, 100% 46px, 100% 100%, 0 100%)" }}>
                     {tag && (
                       <div className="flex items-center justify-center text-center font-black" style={{ background: p.main, color: p.mainInk, padding: "42px 20px 16px", borderBottom: `9px solid ${p.pop}`, minHeight: P.tagBlockH, flex: anyImage ? "none" : "1 1 auto" }}>
-                        <span style={{ fontSize: P.tagSize, lineHeight: 0.95, letterSpacing: "-0.05em", textWrap: "balance", overflowWrap: "anywhere", textShadow: "0 5px 0 rgba(0,0,0,0.2)" }}>{tag}</span>
+                        <span style={{ fontSize: P.tagFits[i]?.size, lineHeight: 0.95, letterSpacing: "-0.05em", textWrap: "balance", overflowWrap: "anywhere", textShadow: "0 5px 0 rgba(0,0,0,0.2)" }}>{tag}</span>
                       </div>
                     )}
                     {/* eyelet */}
@@ -147,7 +146,7 @@ export default function ClearanceTemplate({ scene, d }: TemplateProps) {
                     {anyImage && (
                       <div className="relative min-h-[120px] flex-1" style={{ marginTop: anyTag && !tag ? 0 : tag ? 0 : 24 }}>
                         {image ? (
-                          <div className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}>
+                          <div className="absolute inset-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={image}

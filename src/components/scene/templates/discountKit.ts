@@ -91,45 +91,46 @@ export function discountPalette(accent: string, c: ColourFns): DiscountPalette {
   };
 }
 
-// ── Text measuring ───────────────────────────────────────────────────────────
-// Widths in em for a heavy (800-900) Inter-like face with the tight tracking the slides use, about 7%
-// wider than measured so a slightly wider system font still fits. Wider fonts than that are caught at
-// run time by useFitShrink (discountShapes.tsx), which steps the sizes down if the slide overflows.
+/** A slide field as trimmed text: "" for empty, null or missing, and numbers are tolerated. */
+export function clean(v: unknown): string {
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  return "";
+}
 
-const WIDTH_FUDGE = 0.94;
+// ── Text measuring ───────────────────────────────────────────────────────────
+// Advance widths in em of Inter Black (weight 900), the widest weight the slides use, measured in the
+// browser, plus a 5% margin so a slightly wider system font still fits. Letter-spacing is passed in
+// separately (`tracking`, in em per character). Fonts much wider than Inter are caught at run time by
+// useFitShrink (discountShapes.tsx), which steps the sizes down if the slide overflows.
+
+const WIDTH_FUDGE = 1.05;
+const FALLBACK_EM = 0.66;
+const EM_CHARS = "0123456789!\"#$%&'()*+,-./:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~£€·–—’‘“”…×½ ";
+const EM_WIDTHS = [0.711, 0.452, 0.646, 0.669, 0.702, 0.666, 0.675, 0.595, 0.679, 0.675, 0.381, 0.625, 0.662, 0.666, 1.044, 0.695, 0.372, 0.388, 0.388, 0.608, 0.693, 0.373, 0.475, 0.373, 0.412, 0.373, 0.378, 0.693, 0.693, 0.693, 0.601, 1.059, 0.795, 0.668, 0.748, 0.723, 0.613, 0.584, 0.754, 0.75, 0.291, 0.596, 0.759, 0.565, 0.956, 0.77, 0.775, 0.656, 0.787, 0.668, 0.666, 0.687, 0.722, 0.795, 1.082, 0.786, 0.775, 0.694, 0.388, 0.412, 0.388, 0.5, 0.493, 0.401, 0.597, 0.646, 0.603, 0.646, 0.606, 0.422, 0.647, 0.649, 0.296, 0.296, 0.606, 0.296, 0.943, 0.649, 0.625, 0.646, 0.646, 0.434, 0.588, 0.399, 0.649, 0.632, 0.877, 0.609, 0.636, 0.59, 0.505, 0.405, 0.505, 0.693, 0.662, 0.7, 0.373, 0.5, 1, 0.353, 0.353, 0.625, 0.61, 1.119, 0.693, 0.91, 0.199];
+const EM = new Map<string, number>(Array.from(EM_CHARS).map((c, i) => [c, EM_WIDTHS[i]]));
 
 export function charEm(ch: string): number {
-  return WIDTH_FUDGE * rawEm(ch);
+  return WIDTH_FUDGE * (EM.get(ch) ?? FALLBACK_EM);
 }
 
-function rawEm(ch: string): number {
-  if (ch === " ") return 0.3;
-  if (ch === "%") return 1.08;
-  if (ch === "£" || ch === "$" || ch === "€") return 0.68;
-  if (/[0-9]/.test(ch)) return 0.67;
-  if (/[A-Z]/.test(ch)) return ch === "I" ? 0.4 : ch === "W" || ch === "M" ? 0.92 : 0.74;
-  if (/[a-z]/.test(ch)) return ch === "i" || ch === "l" || ch === "j" ? 0.34 : ch === "m" || ch === "w" ? 0.92 : 0.6;
-  if (/[.,:;!'’|]/.test(ch)) return 0.36;
-  return 0.66;
-}
-
-/** Width of `text` in em on a single line. */
-export function textEm(text: string): number {
+/** Width of `text` in em on a single line, with `tracking` em of letter-spacing per character. */
+export function textEm(text: string, tracking = 0): number {
   let w = 0;
-  for (const ch of text) w += charEm(ch);
+  for (const ch of text) w += charEm(ch) + tracking;
   return w;
 }
 
 /** How many lines `text` takes at `size` px inside `width` px (greedy word wrap). */
-export function lineCount(text: string, size: number, width: number): number {
+export function lineCount(text: string, size: number, width: number, tracking = 0): number {
   const t = (text || "").trim();
   if (!t) return 0;
   const room = Math.max(1, width / size);
-  const space = charEm(" ");
+  const space = charEm(" ") + tracking;
   let lines = 1;
   let used = 0;
   for (const word of t.split(/\s+/)) {
-    const w = textEm(word);
+    const w = textEm(word, tracking);
     if (w > room) {
       // a word wider than the box gets broken over several lines
       const extra = Math.ceil(w / room);
@@ -160,13 +161,13 @@ export interface Fit {
  */
 export function fitBlock(
   text: string,
-  o: { width: number; maxHeight?: number; maxLines?: number; sizes: number[]; lineHeight?: number }
+  o: { width: number; maxHeight?: number; maxLines?: number; sizes: number[]; lineHeight?: number; tracking?: number }
 ): Fit {
   const lh = o.lineHeight ?? 1;
   const sizes = [...o.sizes].sort((a, b) => b - a);
   let last: Fit = { size: sizes[sizes.length - 1], lines: 0, height: 0 };
   for (const size of sizes) {
-    const lines = lineCount(text, size, o.width);
+    const lines = lineCount(text, size, o.width, o.tracking ?? 0);
     last = { size, lines, height: Math.ceil(lines * size * lh) };
     if (lines <= (o.maxLines ?? 99) && last.height <= (o.maxHeight ?? Infinity)) return last;
   }
@@ -174,8 +175,8 @@ export function fitBlock(
 }
 
 /** Biggest single-line size (px) for `text` inside `width`, clamped to [min, max]. */
-export function fitLine(text: string, width: number, max: number, min: number): number {
-  const em = textEm((text || "").trim());
+export function fitLine(text: string, width: number, max: number, min: number, tracking = 0): number {
+  const em = textEm((text || "").trim(), tracking);
   if (em <= 0) return max;
   return Math.max(min, Math.min(max, Math.floor(width / em)));
 }
@@ -216,11 +217,12 @@ export interface BurstLine {
  * `box` px wide, `height` px tall area. Picks the split whose smallest line is as big as possible,
  * and gives the numeric line the most weight.
  */
-export function burstLines(text: string, box = 220, height = 190): BurstLine[] {
+export function burstLines(text: string, box = 232, height = 196): BurstLine[] {
   const words = (text || "").trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [];
   const MAX = 112;
-  const MIN = 30;
+  const MIN = 30; // smallest size we like; below this a layout only wins if nothing better fits
+  const HARD_MIN = 20;
   const emphasise = (s: string) => /[0-9£$€%]/.test(s);
   const n = words.length;
   // every way of cutting the words into 1-3 consecutive lines
@@ -233,14 +235,19 @@ export function burstLines(text: string, box = 220, height = 190): BurstLine[] {
   for (const cuts of cutSets) {
     const edges = [0, ...cuts, n];
     const lines: BurstLine[] = [];
+    let smallest = Infinity;
     for (let i = 0; i < edges.length - 1; i++) {
       const part = words.slice(edges[i], edges[i + 1]).join(" ");
-      const cap = emphasise(part) ? MAX : 76;
-      lines.push({ text: part, size: Math.max(MIN, Math.min(cap, Math.floor(box / textEm(part)))) });
+      const raw = Math.floor(box / textEm(part, -0.03));
+      smallest = Math.min(smallest, raw);
+      lines.push({ text: part, size: Math.max(HARD_MIN, Math.min(emphasise(part) ? MAX : 76, raw)) });
     }
-    const total = lines.reduce((s, l) => s + l.size * 0.95, 0);
-    let score = Math.min(...lines.map((l) => l.size));
+    const total = lines.reduce((sum, l) => sum + l.size * 0.95, 0);
+    // biggest smallest-line wins, but fewer lines are better and a stranded little word ("TO") is ugly
+    const orphans = lines.filter((l) => !emphasise(l.text) && l.text.length <= 2).length;
+    let score = Math.min(...lines.map((l) => l.size)) - 8 * (lines.length - 1) - 12 * orphans;
     if (total > height) score -= (total - height) * 2;
+    if (smallest < MIN) score -= 1000 - smallest; // spills out of the sticker: last resort only
     if (!best || score > best.score + 0.5) best = { lines, score };
   }
   return best ? best.lines : [];

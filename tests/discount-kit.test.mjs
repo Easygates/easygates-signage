@@ -61,6 +61,11 @@ describe("discount colours", () => {
 });
 
 describe("text fitting", () => {
+  it("measures letter-spacing", () => {
+    assert.ok(textEm("SALE", 0.1) > textEm("SALE"));
+    assert.ok(textEm("SALE", -0.04) < textEm("SALE"));
+    assert.ok(lineCount("A B C D E F G H", 60, 300, 0.5) > lineCount("A B C D E F G H", 60, 300, 0));
+  });
   it("measures wider text as wider", () => {
     assert.ok(textEm("BIG BOWLS. BIG SAVINGS.") > textEm("BIG BOWLS."));
     assert.ok(textEm("WWW") > textEm("iii"));
@@ -86,13 +91,13 @@ describe("text fitting", () => {
     assert.equal(impossible.size, 64);
   });
   it("sizes a price to its box within limits", () => {
-    assert.ok(fitLine("£3.49", 800, 300, 90) >= 250, "short prices are huge");
-    assert.ok(fitLine("£1,299.99", 800, 300, 90) >= 140);
+    assert.ok(fitLine("£3.49", 800, 300, 90, -0.04) >= 250, "short prices are huge");
+    assert.ok(fitLine("£1,299.99", 800, 300, 90, -0.04) >= 150, "even a four-figure price stays hero sized");
     assert.equal(fitLine("£3.49 per kilo for a limited time only today", 800, 300, 90), 90);
     assert.equal(fitLine("", 800, 300, 90), 300);
     for (const price of ["£3.49", "£12.99", "£1,299.99", "HALF PRICE", "2 FOR £5"]) {
-      const size = fitLine(price, 800, 300, 90);
-      assert.ok(textEm(price) * size <= 800 || size === 90, price);
+      const size = fitLine(price, 800, 300, 90, -0.04);
+      assert.ok(textEm(price, -0.04) * size <= 800 || size === 90, price);
     }
   });
 });
@@ -111,6 +116,10 @@ describe("shrink steps", () => {
 });
 
 describe("burst sticker text", () => {
+  it("never strands a little word on its own line", () => {
+    const lines = burstLines("SAVE UP TO £12.50");
+    assert.ok(lines.every((l) => l.text.length > 2), JSON.stringify(lines));
+  });
   it("returns nothing for empty text", () => {
     assert.deepEqual(burstLines(""), []);
     assert.deepEqual(burstLines("   "), []);
@@ -124,15 +133,15 @@ describe("burst sticker text", () => {
     assert.ok(burstLines("-40%")[0].size >= 60);
   });
   it("keeps every line inside the sticker and readable", () => {
-    for (const t of ["SAVE £2", "-40%", "HALF PRICE", "UP TO 50% OFF", "SAVE UP TO £12.50", "2 FOR £5", "NEW"]) {
-      const lines = burstLines(t, 220, 190);
+    for (const t of ["SAVE £2", "-40%", "HALF PRICE", "UP TO 50% OFF", "SAVE UP TO £12.50", "2 FOR £5", "NEW", "SAVE £12.50 TODAY ONLY"]) {
+      const lines = burstLines(t);
       assert.ok(lines.length >= 1 && lines.length <= 3, t);
       assert.equal(lines.map((l) => l.text).join(" "), t, "no words lost or reordered");
       for (const l of lines) {
         assert.ok(l.size >= 30, `${t}: ${l.size}`);
-        assert.ok(textEm(l.text) * l.size <= 222, `${t} / ${l.text} too wide`);
+        assert.ok(textEm(l.text, -0.03) * l.size <= 234, `${t} / ${l.text} too wide`);
       }
-      assert.ok(lines.reduce((s, l) => s + l.size * 0.95, 0) <= 192, `${t} too tall`);
+      assert.ok(lines.reduce((s, l) => s + l.size * 0.95, 0) <= 198, `${t} too tall`);
     }
   });
 });

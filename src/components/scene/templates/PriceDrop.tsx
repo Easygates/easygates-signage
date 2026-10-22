@@ -3,7 +3,7 @@ import type { TemplateProps } from "../parts";
 import { kbClass } from "../parts";
 import { contrast, luminance, mixHex } from "@/lib/color";
 import { Burst, Chevrons, DropArrow, TagArt, useFitShrink } from "./discountShapes";
-import { INK, INK_SOFT, WHITE, discountPalette, fitBlock, fitLine, lineCount, pickScale, scaleSizes, stepScale } from "./discountKit";
+import { INK, INK_SOFT, WHITE, clean, discountPalette, fitBlock, fitLine, lineCount, pickScale, scaleSizes, stepScale } from "./discountKit";
 
 /**
  * Template "price-drop": one hero product, a huge new price and a "SAVE" sticker, laid out on the
@@ -34,32 +34,32 @@ const BOTTOM = 70;
 
 export default function PriceDropTemplate({ scene, d }: TemplateProps) {
   const p = discountPalette(scene.accentColor, COLOURS);
-  const eyebrow = scene.eyebrow?.trim();
-  const flagText = scene.subheadline?.trim() || "PRICE DROP";
-  const headline = scene.headline?.trim();
-  const name = scene.productName?.trim();
-  const desc = scene.description?.trim();
-  const promo = scene.promoPrice?.trim();
-  const orig = scene.originalPrice?.trim();
+  const eyebrow = clean(scene.eyebrow);
+  const flagText = clean(scene.subheadline) || "PRICE DROP";
+  const headline = clean(scene.headline);
+  const name = clean(scene.productName);
+  const desc = clean(scene.description);
+  const promo = clean(scene.promoPrice);
+  const orig = clean(scene.originalPrice);
   const price = promo || orig || "";
   const was = promo && orig ? orig : "";
-  const badge = scene.discountBadge?.trim();
-  const cta = scene.ctaText?.trim();
-  const image = scene.imageUrl?.trim();
+  const badge = clean(scene.discountBadge);
+  const cta = clean(scene.ctaText);
+  const image = clean(scene.imageUrl);
   const hasCaption = Boolean(name || desc);
 
   // ── how big can everything be? (estimated heights; shrinks step by step until it fits) ──
-  const ctaFit = fitBlock(cta || "", { width: 1480, maxLines: 2, sizes: [38, 34, 30, 26] });
+  const ctaFit = fitBlock(cta || "", { width: 1480, maxLines: 2, sizes: [38, 34, 30, 26], tracking: 0.06 });
   const ctaH = cta ? Math.max(78, Math.ceil(ctaFit.lines * ctaFit.size * 1.1) + 20) : 0;
   const rowH = 1080 - TOP - BOTTOM - (cta ? ctaH + 28 : 0);
   const plan = (k: number) => {
-    const headFit = fitBlock(headline || "", { width: LEFT_W, maxLines: 3, maxHeight: 300, sizes: scaleSizes([104, 98, 92, 86, 80, 74, 68, 64], k, 64), lineHeight: 1 });
-    const flagFit = fitBlock(flagText, { width: LEFT_W - 170, maxLines: 2, sizes: scaleSizes([40, 36, 32, 28], k, 28) });
-    const priceSize = fitLine(price, PRICE_BOX, Math.max(150, Math.round(300 * k)), 90);
-    const wasSize = fitLine(was, 520, Math.max(44, Math.round(64 * k)), 40);
-    const nameFit = fitBlock(name || "", { width: 700, maxLines: 2, sizes: scaleSizes([54, 48, 44, 40, 36], k, 32) });
+    const headFit = fitBlock(headline || "", { width: LEFT_W, maxLines: 3, maxHeight: 300, sizes: scaleSizes([104, 98, 92, 86, 80, 74, 68, 64], k, 64), lineHeight: 1, tracking: -0.03 });
+    const flagFit = fitBlock(flagText, { width: LEFT_W - 170, maxLines: 2, sizes: scaleSizes([40, 36, 32, 28], k, 28), tracking: 0.03 });
+    const priceSize = fitLine(price, PRICE_BOX, Math.max(150, Math.round(300 * k)), 90, -0.04);
+    const wasSize = fitLine(was, 520, Math.max(44, Math.round(64 * k)), 40, -0.02);
+    const nameFit = fitBlock(name || "", { width: 700, maxLines: 2, sizes: scaleSizes([54, 48, 44, 40, 36], k, 32), tracking: -0.02 });
     const descFit = fitBlock(desc || "", { width: 700, maxLines: 4, sizes: scaleSizes([30, 28, 26], k, 26) });
-    const eyeH = eyebrow ? lineCount(eyebrow, 31, LEFT_W - 64) * 31 + 22 : 0;
+    const eyeH = eyebrow ? lineCount(eyebrow, 26, LEFT_W - 64, 0.16) * 31 + 22 : 0;
     const flagH = Math.ceil(flagFit.lines * flagFit.size * 1.05) + 32;
     const priceH = price ? (was ? Math.round(wasSize * 1.1) + 6 : 0) + Math.round(priceSize * 1.2) + 14 : 0;
     const topH = eyeH + flagH + (headline ? 22 + headFit.height : 0);
@@ -73,7 +73,7 @@ export default function PriceDropTemplate({ scene, d }: TemplateProps) {
   const centred = !headline && !eyebrow;
 
   return (
-    <div ref={rootRef} className="absolute inset-0 z-10">
+    <div ref={rootRef} data-fit-step={step} className="absolute inset-0 z-10">
       {/* solid colour block + yellow edge: every word on the left sits on this, whatever the background */}
       <svg className="sg-anim sg-fade absolute inset-0" style={d.style(0)} width="1920" height="1080" viewBox="0 0 1920 1080" aria-hidden>
         <polygon points="0,0 1012,0 932,1080 0,1080" fill={p.main} />
@@ -172,14 +172,17 @@ export default function PriceDropTemplate({ scene, d }: TemplateProps) {
               <div className="relative min-h-[150px] flex-1">
                 {image ? (
                   <div className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={image}
-                      alt={name || "product"}
-                      className="absolute inset-0 h-full w-full object-contain"
-                      style={{ objectPosition: scene.imagePosition || "center", padding: "28px 32px", filter: "contrast(1.12) brightness(1.07)" }}
-                      draggable={false}
-                    />
+                    {/* the photo box is inset so that even the biggest Ken Burns zoom (1.18x) never pushes the product past the stage */}
+                    <div className="absolute" style={{ inset: "8.5% 7%" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image}
+                        alt={name || "product"}
+                        className="h-full w-full object-contain"
+                        style={{ objectPosition: scene.imagePosition || "center", filter: "contrast(1.12) brightness(1.07)" }}
+                        draggable={false}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -203,7 +206,7 @@ export default function PriceDropTemplate({ scene, d }: TemplateProps) {
               )}
             </div>
             {badge && (
-              <div className="sg-float absolute z-20" style={{ right: -38, top: -2 }}>
+              <div className="sg-float absolute z-20" style={{ right: -38, top: 6 }}>
                 <div className="sg-anim sg-pop" style={{ ...d.style(6), animationDuration: "650ms" }}>
                   <div style={{ transform: "rotate(-8deg)" }}>
                     <Burst size={300} fill={p.pop} ink={p.popInk} text={badge} rotate={4} />
