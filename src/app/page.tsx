@@ -32,7 +32,7 @@ export default function Home() {
               <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" /> 8-SCENE DEMO · 7 TEMPLATES · RUNNING NOW
             </div>
             <h1 className="sg-display mt-5 text-[clamp(2.8rem,6.5vw,5.2rem)]">
-              Broadcast-grade signage for the <span className="text-red-500">original Steam&nbsp;Link.</span>
+              Broadcast-grade signage for the <span className="text-red-500">every screen in your shop.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/70">
               A McDonald&apos;s-grade menu-board engine: staged animation timelines, price-pop choreography, tickers, playlists, schedules and multi-display control — with the CMS on your laptop and the player on any HDMI screen.
@@ -110,7 +110,7 @@ export default function Home() {
           <div className="rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6">
             <div className="text-sm font-bold tracking-widest opacity-80">PLAYER HARDWARE</div>
             <div className="mt-2 text-xl font-black leading-snug">One small PC or Raspberry Pi per TV.</div>
-            <div className="mt-2 text-sm opacity-90">The CMS runs on your computer; each screen opens its own kiosk URL and picks up edits within 30 seconds. The Steam Link is a dead end — see the hardware guide.</div>
+            <div className="mt-2 text-sm opacity-90">The CMS runs on your computer; each screen opens its own kiosk URL and picks up edits within 30 seconds. See the hardware guide for what to plug into each TV.</div>
             <Link href="/docs" className="mt-4 inline-block rounded-xl bg-black/70 px-5 py-2.5 text-sm font-black">READ THE GUIDE →</Link>
           </div>
         </div>

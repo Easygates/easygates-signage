@@ -16,6 +16,8 @@ export type TemplateId =
   | "aisle-guide"
   | "top-sellers"
   | "store-services"
+  // ── brand ──
+  | "splash"
   // ── trade templates (electrical / smart home / gate automation) ──
   | "service-offer"
   | "price-list"
@@ -89,6 +91,9 @@ export interface Scene {
   bgImageUrl?: string;
   /** Render-time only (brand mode): tints the background-image overlay instead of black. Never persisted. */
   overlayColor?: string;
+  /** Render-time only: the business logo and name from Business settings (used by the splash template). Never persisted. */
+  brandLogoUrl?: string;
+  brandName?: string;
   bgFrom: string;
   bgTo: string;
   bgAngle: number;
@@ -130,6 +135,8 @@ export const TEMPLATES: {
   { id: "aisle-guide", name: "Aisle Guide", blurb: "Department name, giant aisle circle number, arrow, sub-category list", bestFor: "Store wayfinding" },
   { id: "top-sellers", name: "Top Sellers", blurb: "Numbered top-5 list with thumbnails and prices; rank numbers are the hero", bestFor: "Bestseller charts" },
   { id: "store-services", name: "Store Services", blurb: "Click & collect, returns, opening hours table, customer services with icons", bestFor: "Customer information boards" },
+  // ── brand ──
+  { id: "splash", name: "Splash / Welcome", blurb: "Logo on a white plate, tagline and a row of contact details (phone, hours, address)", bestFor: "Welcome screens & contact info" },
   // ── trade ──
   { id: "service-offer", name: "Service & Installation", blurb: "What you fit, ticked list, from-price, call to action", bestFor: "Gate automation & electrical services" },
   { id: "price-list", name: "Trade Price List", blurb: "Two-column rate card, dotted leaders, VAT footnote", bestFor: "Upfront job pricing" },
@@ -143,6 +150,7 @@ export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: Templat
   { id: "retail", name: "Retail & promo", templates: ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo"] },
   { id: "value", name: "Value store · deals", templates: ["price-drop", "deals-grid", "multibuy", "clearance", "top-sellers"] },
   { id: "store-info", name: "Value store · in-store info", templates: ["aisle-guide", "store-services"] },
+  { id: "brand", name: "Brand & welcome", templates: ["splash"] },
   { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
 ];
 
@@ -700,6 +708,34 @@ export const TRADE_DEMO_SCENES: Scene[] = [
     overlayOpacity: 60,
     layoutVariant: "A",
   },
+  {
+    id: "trade-7",
+    name: "07 · Welcome — Logo & Contact Details",
+    template: "splash",
+    eyebrow: "WELCOME",
+    headline: "Gates · Automation · Electrical",
+    subheadline: "Supply, fit and repair — all makes, all sizes",
+    ctaText: "FREE SITE SURVEY",
+    items: [
+      { name: "Call us", desc: "{phone}" },
+      { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
+      { name: "Find us", desc: "Add your address in the editor" },
+    ],
+    bgFrom: "#061019",
+    bgTo: "#123250",
+    bgAngle: 135,
+    accentColor: "#f5a623",
+    textColor: "#ffffff",
+    mutedColor: "#c2d2e6",
+    cardColor: "#0e1f34",
+    animationPreset: "smooth",
+    durationSec: 10,
+    transition: "fade",
+    staggerMs: 120,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+  },
 ];
 
 export function tradeDemoPlaylist() {
@@ -1132,18 +1168,3 @@ export function valueDemoPlaylist() {
     scenes: VALUE_DEMO_SCENES,
   };
 }
-
-// Steam Link hardware profile (researched, documented in /docs)
-export const STEAM_LINK_PROFILE = {
-  device: "Valve Steam Link (Model 1003, 2015–2018)",
-  soc: "Marvell DE3005-A1 / ARMADA 1500 Mini — single-core ARMv7 Cortex-A9 @ 1.0 GHz + NEON",
-  gpu: "Vivante GC1000, OpenGL ES 2.0",
-  ram: "~512 MB total (approx. 256 MB available to custom apps)",
-  storage: "4 GB NAND flash (~500 MB–1 GB usable for apps)",
-  video: "HDMI up to 1080p60, hardware H.264 decode",
-  network: "100 Mbit Ethernet, 802.11ac 2×2 MIMO Wi-Fi, BT 4.0",
-  os: "Custom Valve Linux (kernel 3.8/3.18 lineage)",
-  sdk: "Valve steamlink-sdk — SDL 2.0, Qt 5.4, OpenGL ES 2.0, GCC ARM toolchain",
-  browserNote:
-    "No modern evergreen browser. Rendering strategy: lightweight kiosk page (Chromium/Firefox on a Pi-class substitute) OR native SDL/OpenGL ES app; CMS stays on a separate powerful machine.",
-};

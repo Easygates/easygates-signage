@@ -11,6 +11,7 @@ import ClearanceTemplate from "./scene/templates/Clearance";
 import AisleGuideTemplate from "./scene/templates/AisleGuide";
 import TopSellersTemplate from "./scene/templates/TopSellers";
 import StoreServicesTemplate from "./scene/templates/StoreServices";
+import SplashTemplate from "./scene/templates/Splash";
 
 interface Props {
   scene: Scene;
@@ -556,6 +557,9 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
 
       {/* 19 · STORE SERVICES (value retail) → src/components/scene/templates/StoreServices.tsx */}
       {t === "store-services" && <StoreServicesTemplate scene={scene} d={d} />}
+
+      {/* 20 · SPLASH / WELCOME (logo + contact details) → src/components/scene/templates/Splash.tsx */}
+      {t === "splash" && <SplashTemplate scene={scene} d={d} />}
 
       {/* vignette */}
       <div className="pointer-events-none absolute inset-0 z-20" style={{ boxShadow: "inset 0 0 180px rgba(0,0,0,0.45)" }} />

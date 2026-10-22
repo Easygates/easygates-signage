@@ -713,7 +713,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label className="lbl">{label}</label>{children}</div>;
 }
 
-const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services"];
+const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "splash"];
 
 /** Every picture in the media library as a scrollable grid (videos can't be images or backgrounds). */
 function LibraryPicker({ title, assets, onPick }: { title: string; assets: { id: string; name: string; url: string; type: string }[]; onPick: (url: string) => void }) {
@@ -760,6 +760,7 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "top-sellers": "Up to 5 ranked items — name / price / tag (rank number) + image",
   "multibuy": "Up to 3 products in the offer — name / price + image",
   "aisle-guide": "Up to 6 sub-categories for this aisle — name + optional note",
+  "splash": "Up to 4 contact cards — name = label (Call us), detail = the value ({phone} works). The icon is picked from the words. Put a logo URL in the slide's Image URL to override the Business logo.",
   "store-services": "Up to 6 service cards — name = title, detail = lines such as opening hours, tag = icon word (collect, returns, hours, help, delivery)",
 };
 

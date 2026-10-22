@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { STEAM_LINK_PROFILE } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
 
@@ -30,33 +29,14 @@ export default function DocsPage() {
           </div>
         </section>
 
-        <Doc title="1 · Why not the Steam Link (the device we started from)" body={
-          <>
-            <SpecTable rows={[
-              ["Device", STEAM_LINK_PROFILE.device],
-              ["SoC / CPU", STEAM_LINK_PROFILE.soc],
-              ["GPU", STEAM_LINK_PROFILE.gpu],
-              ["RAM", STEAM_LINK_PROFILE.ram],
-              ["Storage", STEAM_LINK_PROFILE.storage],
-              ["Video", STEAM_LINK_PROFILE.video],
-              ["Network", STEAM_LINK_PROFILE.network],
-              ["OS", STEAM_LINK_PROFILE.os],
-              ["SDK", STEAM_LINK_PROFILE.sdk],
-            ]} />
-            <p className="mt-3">Sources: Valve steamlink-sdk README, Marvell/Valve announcement, iFixit &amp; community teardowns, Wikipedia. Key constraint: a single 1 GHz ARMv7 core and roughly 256 MB of app-usable RAM — there is no evergreen Chromium, no heavy JS framework budget, and no guarantee of GPU-composited CSS on the stock firmware.</p>
-            <p className="mt-3 rounded-2xl bg-amber-400/10 p-4 text-sm ring-1 ring-amber-300/30"><b>Verdict:</b> don&apos;t deploy on this. Valve discontinued the hardware in 2018 and stopped firmware updates; it has no browser, so the only way to show a web player is Steam Remote Play (one host stream per TV, sessions that drop, overlays over your content). A £65 Android TV box running Fully Kiosk, or a mini PC, is cheaper to run and far more reliable. Specs above are kept because they explain the performance budget in section 3.</p>
-          </>
-        } />
-
-        <Doc title="2 · Rendering decision" body={
+        <Doc title="1 · Rendering decision" body={
           <>
             <p><b>Player (this repo): HTML/CSS/JS at <code>/display</code>.</b> One DOM scene at a time, transform/opacity-only animation, pre-sized images (≤1920px), 30 s poll for CMS pushes. Runs in kiosk mode on a PC, a Raspberry Pi, or an Android TV box — anything with a modern browser.</p>
             <p className="mt-2"><b>On Android:</b> Fully Kiosk renders the same page inside the system WebView, so keep <b>Android System WebView</b> updated from the Play Store — a stale WebView is the usual cause of broken animations. The player uses only transform/opacity animations, so a 2020-era box is enough.</p>
-            <p className="mt-2 text-white/60">Legacy only: the SDL/GLES sample in <code>native/</code> exists so the same API could be rendered natively on Valve hardware if you ever wanted to. It is not part of the recommended deployment.</p>
           </>
         } />
 
-        <Doc title="3 · Performance budget (low-power safe)" body={
+        <Doc title="2 · Performance budget (low-power safe)" body={
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Max 1 scene in DOM; images pre-sized to 1920×1080, &lt; 400 KB each; preload only next scene.</li>
             <li>Animate <code>transform</code> + <code>opacity</code> only — no animated blur/backdrop, no video backgrounds on low-power players.</li>
@@ -67,7 +47,7 @@ export default function DocsPage() {
           </ul>
         } />
 
-        <Doc title="4 · Editing content remotely" body={
+        <Doc title="3 · Editing content remotely" body={
           <ol className="list-decimal space-y-1.5 pl-5">
             <li>Run this app on a PC/NAS: <code>npm install && npx drizzle-kit push && npm run build && npm start</code> (or Docker — see README).</li>
             <li>Find the PC&apos;s LAN IP (<code>ipconfig / ifconfig</code>), open <code>http://&lt;pc-ip&gt;:3000/admin</code> from a tablet/laptop. For editing from outside the shop, put the PC on <b>Tailscale</b> (free) and use its private <code>https://…ts.net</code> address — do not port-forward the CMS. Cloudflare Tunnel + Access is the alternative for a public URL.</li>
@@ -79,7 +59,7 @@ export default function DocsPage() {
           </ol>
         } />
 
-        <Doc title="5 · Multi-display architecture" body={
+        <Doc title="4 · Multi-display architecture" body={
           <>
             <p>CMS (Next.js + Postgres) is the single source of truth. Each display is stateless: it polls <code>/api/player</code>, which resolves <b>schedule override → display playlist → first playlist → offline demo</b>. Heartbeats (<code>PUT /api/displays/:id {"{heartbeat:true}"}</code>) drive the green ON-LINE dots in the CMS. Add a player behind each TV rather than re-broadcasting one screen — content is per display and managed centrally.</p>
             <pre className="mt-3 overflow-x-auto rounded-2xl bg-black/50 p-4 font-mono text-xs text-green-300 ring-1 ring-white/10">{`[ CMS on your PC :3000 ] ──LAN──▶ [ TV #1 · Fully @ :2323 ?displayId=A ] → "Showroom window"
@@ -88,17 +68,16 @@ export default function DocsPage() {
           </>
         } />
 
-        <Doc title="6 · Deploying the player (PC, Pi or Android box)" body={
+        <Doc title="5 · Deploying the player (PC, Pi or Android box)" body={
           <ol className="list-decimal space-y-1.5 pl-5">
             <li><b>PC / mini PC:</b> dedicated standard Windows user, auto sign-in, Chrome <code>--kiosk &quot;http://&lt;cms&gt;:3000/display?displayId=…&quot;</code> in <code>shell:startup</code> inside a <code>start /wait</code> loop so it restarts if closed. Disable sleep, set Windows Update active hours, reboot nightly at 03:00. Full steps in <code>HARDWARE.md</code>.</li>
             <li><b>Raspberry Pi:</b> run <code>deploy/pi-kiosk.sh &quot;http://&lt;cms&gt;:3000/display?displayId=…&quot; --watchdog --nightly</code> — installs Chromium, autostarts it fullscreen, disables blanking.</li>
             <li><b>Android TV box (recommended):</b> Fully Kiosk Browser (1.61+) with the PLUS licence. Start URL <code>http://&lt;cms&gt;:3000/display?displayId=…&amp;poll=10</code>, launch on boot, keep screen on, kiosk PIN. Then enable <b>Remote Administration</b>, set a password and allow local network — paste the <code>http://&lt;box-ip&gt;:2323</code> address into <b>Admin → Displays → Player device</b> to get Reload / Wake / Restart / Screenshot buttons per screen. Note the Home button can still escape on consumer boxes without device-owner provisioning.</li>
             <li>Validate with <code>/api/selftest</code> + the CMS timeline inspector; run a 24 h soak (player RSS must stay flat).</li>
-            <li><b>Steam Link:</b> not recommended in 2026 — discontinued hardware, no browser, firmware support ended. The legacy SDL/GLES sample in <code>native/</code> and the Valve SDK route remain in the repo only for completeness.</li>
           </ol>
         } />
 
-        <Doc title="6A · Controlling the players remotely (Fully Kiosk)" body={
+        <Doc title="5A · Controlling the players remotely (Fully Kiosk)" body={
           <>
             <p>Fully Kiosk&apos;s <b>Remote Administration</b> (a one-time PLUS licence, ~€8.90 per device) exposes a REST interface on <code>http://&lt;box-ip&gt;:2323</code>. The CMS proxies it so you get buttons per screen in <b>Admin → Displays → Player device</b> — no CORS, no password in the browser, LAN-only targets.</p>
             <div className="mt-3 overflow-x-auto rounded-2xl bg-black/40 ring-1 ring-white/10">
@@ -130,7 +109,7 @@ export default function DocsPage() {
           </>
         } />
 
-        <Doc title="6B · Connecting to Supabase PostgreSQL (.env)" body={
+        <Doc title="5B · Connecting to Supabase PostgreSQL (.env)" body={
           <>
             <p>NovaSign works out of the box with both local PostgreSQL and <b>Supabase Cloud PostgreSQL</b> (including automatic TLS + Supavisor pooler support for <code>pg@8.20</code>). You can also use the interactive builder in <Link href="/admin?tab=database" className="font-bold text-emerald-300 underline">/admin → Database / Supabase</Link>.</p>
             <ol className="mt-3 list-decimal space-y-1.5 pl-5">
@@ -149,6 +128,27 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
           </>
         } />
 
+        <Doc title="6 · Keeping the server address stable" body={
+          <>
+            <p>Every screen opens an address like <code>http://192.168.0.178:3000/display?displayId=…</code>. The number is your PC&apos;s <b>local IP address</b>, handed out by your router. Restarting the app does not change it, but the router can give the PC a different one later. If it changes, every screen&apos;s saved address stops working until you retype it. A screen that is already playing keeps showing its last playlist, but it cannot pick up edits.</p>
+            <p className="mt-3 font-bold text-white/85">When the address can change</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>The router restarts or loses power, and the PC asks for an address again.</li>
+              <li>The PC is switched off for a few days and the router hands its address to another device.</li>
+              <li>The PC reconnects to Wi-Fi, switches between Wi-Fi and a network cable, or the router or Wi-Fi settings change. A new router changes it for certain.</li>
+              <li>A busy network with many phones and guest devices makes it more likely.</li>
+            </ul>
+            <p className="mt-3 font-bold text-white/85">How to stop it (cheapest first)</p>
+            <ol className="mt-1 list-decimal space-y-1.5 pl-5">
+              <li><b>Reserve the address in the router.</b> Log in to the router, find <i>DHCP reservation</i> or <i>address reservation</i>, and tie the PC&apos;s address to the PC. Free, about five minutes, and the best first step.</li>
+              <li><b>Set a fixed address on the PC</b> in Windows network settings. Use it only if the router has no reservation option, and pick a number outside the router&apos;s automatic range so two devices never clash.</li>
+              <li><b>Host the app online</b> (for example on Vercel). The address never changes and the screens don&apos;t depend on a PC being on. Best long-term choice for shop screens; the database is already online.</li>
+              <li><b>Use the PC&apos;s name</b> (<code>http://MYPC:3000</code>) instead of the number. Many TV browsers and streaming sticks cannot look these up reliably, so don&apos;t depend on it.</li>
+            </ol>
+            <p className="mt-3 text-white/60">Also switch off sleep on the PC while screens depend on it. In <b>Admin → Displays</b> the server address box fills in automatically from the address you opened the admin on, so after a change you can copy the new URLs from there.</p>
+          </>
+        } />
+
         <Doc title="7 · Tests & verification" body={
           <>
             <p><code>GET /api/selftest</code> checks: all 12 templates covered by the demo campaigns, every timeline ordered with an exit step, durations in range, images present. Node tests live in <code>tests/</code> and run with <code>node --test</code>. Full gate before finishing:</p>
@@ -158,7 +158,7 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 
         <Doc title="8 · Trade-offs" body={
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>Web player on consumer Android boxes (cheap, remote-manageable, one codebase) over native players or a Steam Link (fast to iterate, no SDK hardware loop).</li>
+            <li>Web player on consumer Android boxes (cheap, remote-manageable, one codebase) over native players (fast to iterate, no SDK hardware loop).</li>
             <li>Deterministic CSS timelines over a JS animation library — smaller, predictable on weak CPUs, but fewer exotic effects.</li>
             <li>Polling (10–30 s) over websockets — simpler and firewall-proof on shop LANs, at the cost of a few seconds&apos; push latency. <code>&amp;poll=10</code> on the screen URL tightens it.</li>
             <li>Fictional “Nova Mart” content + Pexels photography so every asset is replaceable via the CMS.</li>
@@ -175,18 +175,5 @@ function Doc({ title, body }: { title: string; body: React.ReactNode }) {
       <h2 className="text-2xl font-black">{title}</h2>
       <div className="mt-3 leading-relaxed text-white/70">{body}</div>
     </section>
-  );
-}
-
-function SpecTable({ rows }: { rows: [string, string][] }) {
-  return (
-    <div className="overflow-hidden rounded-2xl ring-1 ring-white/10">
-      {rows.map(([k, v], i) => (
-        <div key={k} className={`grid grid-cols-[160px_1fr] gap-3 px-4 py-2.5 text-sm ${i % 2 ? "bg-white/[0.03]" : "bg-white/[0.06]"}`}>
-          <span className="font-black tracking-wide text-white/45">{k.toUpperCase()}</span>
-          <span className="font-mono text-[13px]">{v}</span>
-        </div>
-      ))}
-    </div>
   );
 }

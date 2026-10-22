@@ -1,11 +1,11 @@
-# NovaSign — Professional Animated Signage for the Original Steam Link
+# NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 19 art-directed templates (12 retail/value + 7 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 20 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
 Three fictional demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
-- **APEX · Electrical, Smart Home & Gates** — 6 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out) plus 5 pre-registered screens.
+- **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
 
 ## Templates
@@ -21,6 +21,7 @@ Three fictional demo campaigns, all loadable from `/admin`:
 | Aisle Guide | Store wayfinding — department name, giant aisle circle, arrow, sub-categories |
 | Top Sellers | Bestseller charts — numbered top-5 list, rank numbers are the hero |
 | Store Services | Customer information — click & collect, returns, opening hours, services desk |
+| Splash / Welcome | Logo on a white plate, tagline and contact-detail cards — the logo follows Business settings |
 | Retail Promotion | Hero deals & price drops (original) |
 | Food Menu Board | QSR / café menu boards (original) |
 | Product Showcase | Flagship launches (original) |
@@ -136,7 +137,7 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 | `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`) |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline |
 | `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
-| `/docs` | Hardware research + Supabase & Steam Link deploy guide |
+| `/docs` | Hardware research, deploy guide and Supabase setup |
 | `/api/db-status` | Live DB health, latency, pooler mode & table row counts |
 | `/api/selftest` | Automated checks (JSON) |
 | `/api/player?displayId=…` | What a screen should play right now (`&poll=` is a player-side refresh hint) |
@@ -152,10 +153,19 @@ npx next typegen && npm exec tsc -- --noEmit && npm run build
 
 ## Choosing player hardware
 
-The Steam Link is a 2015 device and is no longer a sensible target. See **[HARDWARE.md](HARDWARE.md)** for the 2026 recommendation (Raspberry Pi kiosk, Android box + Fully Kiosk, HDMI splitter for identical content), UK pricing, and a one-command Pi installer in [`deploy/pi-kiosk.sh`](deploy/pi-kiosk.sh).
+See **[HARDWARE.md](HARDWARE.md)** for the 2026 recommendation (Raspberry Pi kiosk, Android box + Fully Kiosk, HDMI splitter for identical content), UK pricing, and a one-command Pi installer in [`deploy/pi-kiosk.sh`](deploy/pi-kiosk.sh).
 
-## Steam Link reality (researched)
+## Keeping the server address stable
 
-Marvell DE3005-A1 (ARMADA 1500 Mini), single-core ARMv7 Cortex-A9 @ 1 GHz + NEON · Vivante GC1000 (OpenGL ES 2.0) · ~512 MB RAM (≈256 MB usable by apps) · 4 GB NAND (≈500 MB–1 GB for apps) · HDMI 1080p60 with H.264 decode · 100 MbE + 802.11ac · custom Valve Linux · `ValveSoftware/steamlink-sdk` (SDL 2.0, Qt 5.4, GLES2).
+Each screen opens `http://<pc-ip>:3000/display?displayId=…`. The PC's local IP address comes from your router and can change after a router restart or power cut, a long time switched off, or a change of network. When it does, every screen's saved address stops working until retyped (a screen that is already playing keeps its last playlist but gets no updates). To prevent it:
 
-**Strategy:** CMS runs on a capable PC/NAS or cloud host backed by PostgreSQL / Supabase. Each screen (Link or substitute) is a stateless renderer that polls `GET /api/player`.
+1. **Reserve the address in the router** (look for "DHCP reservation" / "address reservation") — free, about five minutes, best first step.
+2. **Set a fixed address on the PC** in Windows network settings, outside the router's automatic range, only if the router can't reserve.
+3. **Host the app online** (e.g. Vercel) — the address never changes and no PC has to stay on.
+4. Using the PC's name (`http://MYPC:3000`) sometimes works, but many TV browsers and sticks can't resolve it.
+
+Also turn off sleep on the PC while screens depend on it. The Displays tab fills in the server address automatically and shows each screen's full URL. The same guidance is in `/docs` (section 6).
+
+## How it fits together
+
+The CMS runs on a capable PC/NAS or cloud host backed by PostgreSQL / Supabase. Each screen is a stateless renderer that polls `GET /api/player`, and keeps its last good playlist if the server is unreachable.
