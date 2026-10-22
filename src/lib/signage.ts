@@ -23,7 +23,15 @@ export type TemplateId =
   | "price-list"
   | "brand-wall"
   | "product-spec"
-  | "callout-emergency";
+  | "callout-emergency"
+  // ── corporate templates ──
+  | "company-values"
+  | "team-intro"
+  | "corporate-milestone"
+  | "corporate-news"
+  | "testimonial-quote"
+  // ── background only ──
+  | "fullscreen-bg";
 
 /** Templates that read the `items` array */
 export const ITEM_TEMPLATES: TemplateId[] = [
@@ -41,6 +49,9 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "multibuy",
   "aisle-guide",
   "store-services",
+  "company-values",
+  "team-intro",
+  "testimonial-quote",
 ];
 
 export type AnimationPresetId =
@@ -143,6 +154,14 @@ export const TEMPLATES: {
   { id: "brand-wall", name: "Brands & Ecosystems", blurb: "Typographic wall of the systems you install", bestFor: "Smart home showrooms" },
   { id: "product-spec", name: "Product Spec Sheet", blurb: "Hero product beside a label/value specification table", bestFor: "Motors, kits & panels" },
   { id: "callout-emergency", name: "Emergency Call-Out", blurb: "Oversized phone number, response promise, fault types", bestFor: "24/7 electricians & gate engineers" },
+  // ── corporate templates ──
+  { id: "company-values", name: "Company Values", blurb: "Mission statement + a list of values or principles", bestFor: "Reception & office screens" },
+  { id: "team-intro", name: "Meet the Team", blurb: "Team photo grid with names and roles", bestFor: "Staff introductions" },
+  { id: "corporate-milestone", name: "Milestone / Anniversary", blurb: "Big number headline + celebratory message", bestFor: "Years in business & awards" },
+  { id: "corporate-news", name: "Company News", blurb: "Headline, story and date — news ticker style", bestFor: "Internal comms & announcements" },
+  { id: "testimonial-quote", name: "Testimonial / Quote", blurb: "Large quote with attribution and optional customer photo", bestFor: "Customer praise & reviews" },
+  // ── background only ──
+  { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video with optional overlay text — no logo", bestFor: "Ambient & mood screens" },
 ];
 
 /** Groups for the template picker in the admin. Any template not listed lands in "Other". */
@@ -152,6 +171,7 @@ export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: Templat
   { id: "store-info", name: "Value store · in-store info", templates: ["aisle-guide", "store-services"] },
   { id: "brand", name: "Brand & welcome", templates: ["splash"] },
   { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
+  { id: "corporate", name: "Corporate", templates: ["company-values", "team-intro", "corporate-milestone", "corporate-news", "testimonial-quote", "fullscreen-bg"] },
 ];
 
 export function templateCategory(id: string): string {
