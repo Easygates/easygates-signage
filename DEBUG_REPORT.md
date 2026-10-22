@@ -206,3 +206,20 @@ Two issues reported after the original debug pass:
 **Fix:** `ItemsEditor` now accepts an `assets` prop and shows a 📂 "pick from library" button next to each row's image input, plus an inline LibraryPicker that applies the chosen URL to that row. A "quick-set any row" picker is also available at the bottom.
 
 **Verification:** typecheck ✅, lint ✅, build ✅ (new `/api/public-assets` route included), 88/88 unit tests ✅.
+
+## 8. New templates — arena/c5ccc534-easygates-signage @ 34df5b6 (2026-10-22)
+
+Added 5 corporate templates + 1 background-only template to the scene editor:
+
+| Template | Purpose | Key fields |
+|----------|---------|------------|
+| `company-values` | Mission statement + values list | headline, subheadline, items (name+desc), imageUrl |
+| `team-intro` | Meet the team photo grid | headline, subheadline, items (image+name+desc), ctaText |
+| `corporate-milestone` | Milestone / anniversary | headline (big number), subheadline, description, imageUrl, ctaText |
+| `corporate-news` | Company news / announcement | eyebrow, headline, description, tickerText, imageUrl, ctaText |
+| `testimonial-quote` | Testimonial / customer quote | headline (quote), description, productName (attribution), ctaText (role), imageUrl (photo), items |
+| `fullscreen-bg` | Full-screen image or video, no logo | bgImageUrl or videoUrl (+ imageUrl fallback), headline/subheadline/eyebrow/ctaText optional overlay |
+
+All registered in `TemplateId`, `TEMPLATES`, `TEMPLATE_CATEGORIES` (new "Corporate" group), `ITEM_TEMPLATES` (company-values, team-intro, testimonial-quote) and rendered in `SceneRenderer.tsx`. The `fullscreen-bg` template supports `videoUrl` (autoplay muted loop) or `bgImageUrl`/`imageUrl` with Ken Burns, plus an optional darkened overlay and centered text — no logo is ever rendered.
+
+Verification: typecheck ✅, lint ✅, build ✅, 88/88 unit tests ✅.
