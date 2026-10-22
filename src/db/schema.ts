@@ -43,6 +43,8 @@ export const scenes = pgTable("scenes", {
   imageFit: text("image_fit").default("cover"),
   imagePosition: text("image_position").default("center"),
   videoUrl: text("video_url"),
+  bgImageUrl: text("bg_image_url"),
+  theme: text("theme").default("none"),
   // Style
   bgFrom: text("bg_from").default("#0b1020"),
   bgTo: text("bg_to").default("#1e2a5a"),

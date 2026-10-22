@@ -20,3 +20,7 @@ dist/
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*
+
+# local test-app scratch files (helper scripts)
+.app-*
+.tmp/

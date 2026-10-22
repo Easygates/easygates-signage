@@ -66,7 +66,7 @@ export function Ticker({ text, color }: { text?: string; color: string }) {
   const line = `${text} `.repeat(4);
   return (
     <div className="absolute bottom-1.5 left-0 right-0 z-30 overflow-hidden border-t border-white/10 bg-black/55 py-2 backdrop-blur">
-      <div className="flex w-max whitespace-nowrap text-[13px] font-bold tracking-[0.18em]" style={{ animation: "sg-ticker 28s linear infinite" }}>
+      <div className="flex w-max whitespace-nowrap text-[20px] font-bold tracking-[0.18em]" style={{ animation: "sg-ticker 28s linear infinite" }}>
         <span className="pr-8">{line}</span>
         <span className="pr-8" style={{ color }}>{line}</span>
       </div>

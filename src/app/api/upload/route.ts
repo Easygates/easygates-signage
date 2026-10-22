@@ -86,7 +86,10 @@ export async function POST(req: Request) {
     const dir = path.join(process.cwd(), "public", "uploads");
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, safe), buf);
-    url = `/uploads/${safe}`;
+    // next start only serves files that existed at build time, so runtime
+    // uploads are served through /api/uploads/[...path] (which reads disk per
+    // request) — or via Supabase Storage when configured.
+    url = `/api/uploads/${safe}`;
   }
 
   try {

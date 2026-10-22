@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import PlayerControls from "@/components/PlayerControls";
-import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, type Scene, type TemplateId } from "@/lib/signage";
+import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TRANSITIONS, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
@@ -30,11 +31,16 @@ const emptyScene = (): Scene => ({
   bgFrom: "#0b1020", bgTo: "#2a3a8c", bgAngle: 135,
   accentColor: "#ff3b30", textColor: "#ffffff", mutedColor: "#c7cede", cardColor: "#141b33",
   animationPreset: "launch", durationSec: 10, transition: "fade", staggerMs: 120,
-  kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null,
+  kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null, theme: "none",
 });
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<Tab>("scenes");
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "scenes";
+    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    return TABS.find((x) => x === t) ?? "scenes";
+  });
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
@@ -46,17 +52,19 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [selPlaylist, setSelPlaylist] = useState<string | null>(null);
+  // load() is memoised, so it reads the current selection through refs (otherwise it always sees
+  // the first-render values and every reload jumps back to the first slide and playlist)
+  const selIdRef = useRef<string | null>(null);
+  const selPlRef = useRef<string | null>(null);
+  useEffect(() => { selIdRef.current = selId; selPlRef.current = selPlaylist; });
   const [reduced, setReduced] = useState(false);
+const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
   const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
   const [brandDraft, setBrandDraft] = useState<BrandSettings>(DEFAULT_BRAND);
   const [brandReady, setBrandReady] = useState(true);
   const [brandSaving, setBrandSaving] = useState(false);
   const savedBrandRef = useRef<BrandSettings>(DEFAULT_BRAND);
-  const selIdRef = useRef<string | null>(null);
-  const selPlRef = useRef<string | null>(null);
-  selIdRef.current = selId;
-  selPlRef.current = selPlaylist;
 
   const load = useCallback(async () => {
     const [s, p, a, d, sch, st] = await Promise.all([
@@ -82,17 +90,16 @@ export default function AdminPage() {
       setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
       setBrandReady(st.ready !== false);
     }
-    if (!selIdRef.current && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
-    if (!selPlRef.current && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
-  }, []);
+    if (selIdRef.current === null && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
+    if (selPlRef.current === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
+  }, [setBrandDraft]);
 
-  useEffect(() => { load(); }, [load]);
+  // load() only touches state after awaiting, but keep it out of the effect
+  // body so the set-state-in-effect rule stays quiet.
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
-    if (t && TABS.includes(t)) {
-      setTab(t);
-    }
-  }, []);
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 3000); };
 
@@ -140,19 +147,52 @@ export default function AdminPage() {
     setSelId(null); setDraft(emptyScene()); load(); flash("Scene deleted");
   };
 
+  const flushDuration = async (id: string, value: number) => {
+    if (!value || value < 6) return;
+    await fetch("/api/playlist-items", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, durationOverride: value }),
+    });
+    load();
+  };
+
+  const saveDuration = (id: string, value: number, immediate = false) => {
+    if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
+    if (immediate) { void flushDuration(id, value); return; }
+    saveTimers.current[id] = setTimeout(() => { delete saveTimers.current[id]; void flushDuration(id, value); }, 500);
+  };
+
+  const reorderPlaylist = async (draggedId: string, targetId: string) => {
+    const order = playlist?.items.map((x) => x.id) ?? [];
+    const from = order.indexOf(draggedId);
+    const to = order.indexOf(targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = order.filter((id) => id !== draggedId);
+    next.splice(to, 0, draggedId);
+    await fetch("/api/playlist-items", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlistId: playlist!.id, order: next }),
+    });
+    load();
+  };
+
   const duplicate = async () => {
     const r = await fetch("/api/scenes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, id: undefined, name: `${draft.name} (copy)` }) });
     const j = await r.json(); setSelId(j.scene.id); setDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
-  const seed = async (campaign: "retail" | "trade" = "retail") => {
+  const seed = async (campaign: "retail" | "trade" | "value" = "retail") => {
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
     load();
     flash(
       campaign === "trade"
         ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
-        : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+        : campaign === "value"
+          ? `Value demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+          : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
     );
   };
 
@@ -176,8 +216,10 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
             <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
             <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
+            <button onClick={() => seed("value")} className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
+            <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
             {msg && <span className="rounded-full bg-green-500/20 px-4 py-2 text-green-300 ring-1 ring-green-400/40">{msg}</span>}
           </div>
         </div>
@@ -191,7 +233,7 @@ export default function AdminPage() {
       <div className="mx-auto max-w-[1500px] px-5 py-6">
         {/* ── SCENES ── */}
         {tab === "scenes" && (
-          <div className="grid gap-5 lg:grid-cols-[300px_1fr_520px]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr_520px]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-black tracking-widest text-white/50">SCENES ({scenes.length})</span>
@@ -256,6 +298,70 @@ export default function AdminPage() {
                   {draft.imageUrl && <button onClick={() => set("imageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
                 </div>
               </Field>
+              <Field label="Background image (full-bleed behind the slide)">
+                <div className="flex gap-2">
+                  <input value={draft.bgImageUrl || ""} onChange={(e) => set("bgImageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
+                  {draft.bgImageUrl && <button onClick={() => set("bgImageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+                </div>
+                {[
+                  "product-showcase",
+                  "fullscreen-campaign",
+                  "split-promo",
+                  "callout-emergency",
+                ].includes(draft.template) && (
+                  <p className="mt-1 text-[11px] text-white/40">
+                    On this template the background image replaces the main photo.
+                  </p>
+                )}
+              </Field>
+              <Field label="Video URL (muted, looping hero background)">
+                <div className="flex gap-2">
+                  <input value={draft.videoUrl || ""} onChange={(e) => set("videoUrl", e.target.value as never)} className="inp" placeholder="https://…" />
+                  {draft.videoUrl && <button onClick={() => set("videoUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+                </div>
+              </Field>
+              <div>
+                <label className="lbl">Season / theme</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: "none", label: "None", color: "#0f172a" },
+                    { id: "christmas", label: "Christmas", color: "#dc2626" },
+                    { id: "easter", label: "Easter", color: "#ec4899" },
+                    { id: "halloween", label: "Halloween", color: "#f97316" },
+                    { id: "spring", label: "Spring", color: "#16a34a" },
+                    { id: "summer", label: "Summer", color: "#0ea5e9" },
+                    { id: "autumn", label: "Autumn", color: "#d97706" },
+                    { id: "winter", label: "Winter", color: "#0ea5e9" },
+                  ].map((th) => {
+                    const active = draft.theme === th.id;
+                    return (
+                      <button
+                        key={th.id}
+                        onClick={() => set("theme", th.id as never)}
+                        className={`flex flex-col items-center gap-1 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                      >
+                        <div className={`h-6 w-6 rounded-full ${active ? "ring-2 ring-white" : ""}`} style={{ background: th.color }} />
+                        <span>{th.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">Theme decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).</p>
+              </div>
+              <Field label="Darken background">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={draft.overlayOpacity ?? 45}
+                    onChange={(e) => set("overlayOpacity", Number(e.target.value) as never)}
+                    className="w-full accent-red-500"
+                  />
+                  <span className="text-xs font-mono text-white/50">{draft.overlayOpacity ?? 45}%</span>
+                </div>
+                <p className="mt-1 text-[11px] text-white/40">Darkens the background image so slide text stays readable.</p>
+              </Field>
               <div className="grid grid-cols-4 gap-3">
                 <Color label="Background from" v={draft.bgFrom} onChange={(v) => set("bgFrom", v as never)} />
                 <Color label="Background to" v={draft.bgTo} onChange={(v) => set("bgTo", v as never)} />
@@ -293,6 +399,16 @@ export default function AdminPage() {
                   <Field label="Image position"><input value={draft.imagePosition || "center"} onChange={(e) => set("imagePosition", e.target.value as never)} className="inp" placeholder="center / top / 30% 60%" /></Field>
                 </div>
               </div>
+              {draft.template === "aisle-guide" && (
+                <Field label="Arrow direction">
+                  <select value={["left", "right"].includes((draft.layoutVariant || "").toLowerCase()) ? draft.layoutVariant.toLowerCase() : "ahead"} onChange={(e) => set("layoutVariant", e.target.value as never)} className="inp bg-[#141b33]">
+                    <option value="ahead">Ahead</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                  <p className="mt-1 text-[11px] text-white/40">Put the aisle number in “Product name” and the department in “Headline”.</p>
+                </Field>
+              )}
               {ITEM_TEMPLATES.includes(draft.template) && (
                 <ItemsEditor
                   items={(draft.items as Scene["items"]) || []}
@@ -329,13 +445,24 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+              {assets.length > 0 && (
+                <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+                  <div className="mb-2 text-[11px] font-black tracking-widest text-white/50">QUICK-SET BACKGROUND FROM LIBRARY</div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {assets.slice(0, 12).map((a) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={a.id} src={a.url} alt="" onClick={() => set("bgImageUrl", a.url as never)} className="h-14 w-20 cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* ── PLAYLISTS ── */}
         {tab === "playlists" && (
-          <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_1fr]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-black tracking-widest text-white/50">PLAYLISTS</span>
@@ -372,11 +499,17 @@ export default function AdminPage() {
                           <div className="truncate text-sm font-black">{s.name}</div>
                           <div className="text-xs text-white/50">{s.template} · {s._durationOverride || s.durationSec}s · {s._transitionOverride || s.transition}</div>
                         </div>
-                        <input type="number" min={6} max={30} value={s._durationOverride || s.durationSec} title="Duration override"
-                          onChange={async (e) => { await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s._itemId, durationOverride: Number(e.target.value) }) }); load(); }}
+                        <input type="number" min={6} max={30} defaultValue={s._durationOverride || s.durationSec} title="Duration override"
+                          onChange={(e) => saveDuration(s._itemId!, Number(e.target.value))}
+                          onBlur={(e) => saveDuration(s._itemId!, Number(e.target.value), true)}
                           className="w-16 rounded-lg bg-black/40 px-2 py-1.5 text-center text-sm font-bold ring-1 ring-white/15" />
-                        <button onClick={async () => { const order = playlist.items.map((x) => x.id); const pos = order.indexOf(s._itemId!); if (pos > 0) { [order[pos - 1], order[pos]] = [order[pos], order[pos - 1]]; await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlistId: playlist.id, order }) }); load(); } }} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black">↑</button>
-                        <button onClick={async () => { const order = playlist.items.map((x) => x.id); const pos = order.indexOf(s._itemId!); if (pos < order.length - 1) { [order[pos + 1], order[pos]] = [order[pos], order[pos + 1]]; await fetch("/api/playlist-items", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlistId: playlist.id, order }) }); load(); } }} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black">↓</button>
+                        <div draggable={true}
+                          onDragStart={(e) => { e.dataTransfer.setData("text/plain", s._itemId!); e.dataTransfer.effectAllowed = "move"; }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={async (e) => { const id = e.dataTransfer.getData("text/plain"); if (id && id !== s._itemId) await reorderPlaylist(id, s._itemId!); }}
+                          className="rounded-lg bg-white/10 px-2.5 py-1.5 font-black text-[14px] cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                          ⠇
+                        </div>
                         <button onClick={async () => { await fetch(`/api/playlist-items?id=${s._itemId}`, { method: "DELETE" }); load(); }} className="rounded-lg bg-white/10 px-2.5 py-1.5 text-red-300">✕</button>
                       </div>
                     ))}
@@ -445,7 +578,7 @@ export default function AdminPage() {
         {tab === "schedules" && (
           <div className="rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-black">Campaign schedules <span className="text-sm font-normal text-white/50">— time windows override a display&apos;s default playlist</span></h3>
+              <h3 className="font-black">Campaign schedules <span className="text-sm font-normal text-white/50">— time windows override a display&apos;s default playlist; if schedules overlap, the higher number wins</span></h3>
               <button onClick={async () => { if (!playlists[0]) { flash("Create a playlist first"); return; } await fetch("/api/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `Schedule ${schedules.length + 1}`, playlistId: playlists[0].id }) }); load(); }} className="rounded-full bg-white px-4 py-2 text-xs font-black text-black">+ New schedule</button>
             </div>
             <div className="mt-4 space-y-2">
@@ -463,7 +596,33 @@ export default function AdminPage() {
                   <input type="time" value={s.startTime} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, startTime: e.target.value }) }); load(); }} className="rounded-lg bg-black/40 px-2 py-1.5 text-sm ring-1 ring-white/15" />
                   <span className="text-white/40">→</span>
                   <input type="time" value={s.endTime} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, endTime: e.target.value }) }); load(); }} className="rounded-lg bg-black/40 px-2 py-1.5 text-sm ring-1 ring-white/15" />
-                  <span className="text-xs text-white/40">prio</span>
+                  <div className="flex items-center gap-1">
+                    {([["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]] as [string, number][]).map(([label, value]) => {
+                      // an empty / missing days value means "every day"
+                      const stored = (s.days ?? "").split(",").filter((d) => d !== "").map(Number);
+                      const cur = stored.length ? stored : [1, 2, 3, 4, 5, 6, 0];
+                      const active = cur.includes(value);
+                      return (
+                        <button
+                          key={label}
+                          onClick={async () => {
+                            const next = active ? cur.filter((d) => d !== value) : [...cur, value];
+                            if (next.length === 0) { flash("A schedule needs at least one day"); return; }
+                            await fetch("/api/schedules", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: s.id, days: next.join(",") }),
+                            });
+                            load();
+                          }}
+                          className={`rounded px-2 py-1 text-[12px] font-black ${active ? "bg-white text-black" : "bg-white/10 text-white/50 ring-1 ring-white/20 hover:bg-white/20"}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[11px] text-white/40" title="If schedules overlap, higher number wins">priority</span>
                   <input type="number" value={s.priority} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, priority: Number(e.target.value) }) }); load(); }} className="w-14 rounded-lg bg-black/40 px-2 py-1.5 text-center text-sm ring-1 ring-white/15" />
                   <button onClick={async () => { await fetch(`/api/schedules?id=${s.id}`, { method: "DELETE" }); load(); }} className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-xs text-red-300">Delete</button>
                 </div>
@@ -563,14 +722,26 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "brand-wall": "Up to 8 brand tiles — name + short descriptor, optional logo image (shown instead of the name)",
   "product-spec": "Up to 6 spec rows — name = label, detail = value",
   "callout-emergency": "Up to 3 job types — name + detail",
+  "deals-grid": "Up to 6 deal tiles — name / price / tag + image",
+  "clearance": "Up to 4 clearance items — name + tag (% off) + detail (stock count)",
+  "top-sellers": "Up to 5 ranked items — name / price / tag (rank number) + image",
+  "multibuy": "Up to 3 products in the offer — name / price + image",
+  "aisle-guide": "Up to 6 sub-categories for this aisle — name + optional note",
+  "store-services": "Up to 6 service cards — name = title, detail = lines such as opening hours, tag = icon word (collect, returns, hours, help, delivery)",
 };
 
 function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {
   const list = items || [];
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
-  const showPrice = template === "food-menu" || template === "product-grid" || template === "price-list";
+  const showPrice =
+    template === "food-menu" ||
+    template === "product-grid" ||
+    template === "price-list" ||
+    template === "deals-grid" ||
+    template === "clearance" ||
+    template === "top-sellers";
   // only these layouts draw a picture per row
-  const showImage = template === "product-grid" || template === "brand-wall";
+  const showImage = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy"].includes(template);
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">

@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { DEMO_SCENES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-type Campaign = "retail" | "trade";
+type Campaign = "retail" | "trade" | "value";
 
 const CAMPAIGNS = {
   retail: {
@@ -33,14 +33,24 @@ const CAMPAIGNS = {
       { name: "05 · Workshop", location: "Workshop / loading bay", pairingCode: "WORK" },
     ],
   },
-} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
+  value: {
+    scenes: VALUE_DEMO_SCENES,
+    playlistName: "Value Store · Seasonal Savings",
+    description: "12-scene value retail campaign covering all 7 templates with seasonal themes",
+    scheduleName: "Daytime trading",
+    displays: [
+      { name: "Value Store · Entrance TV", location: "Store entrance", pairingCode: "VALU" },
+      { name: "Value Store · Aisle Sign", location: "Aisle end-cap", pairingCode: "VCAF" },
+    ],
+  },
+} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
 
 async function campaignFrom(req: Request): Promise<Campaign> {
   const q = new URL(req.url).searchParams.get("campaign");
-  if (q === "trade" || q === "retail") return q;
+  if (q === "trade" || q === "retail" || q === "value") return q;
   try {
     const body = await req.json();
-    if (body?.campaign === "trade" || body?.campaign === "retail") return body.campaign;
+    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value") return body.campaign;
   } catch {
     /* no body */
   }

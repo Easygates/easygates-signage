@@ -70,4 +70,11 @@ describe("business branding", () => {
     assert.equal(n.phone, DEFAULT_BRAND.phone);
     assert.deepEqual(normalizeBrand(null), DEFAULT_BRAND);
   });
+
+  it("validates the time zone and defaults to Europe/London", () => {
+    assert.equal(normalizeBrand({ timezone: "Europe/London" }).timezone, "Europe/London");
+    assert.equal(normalizeBrand({ timezone: "Bogus" }).timezone, DEFAULT_BRAND.timezone);
+    assert.equal(normalizeBrand({ timezone: "America/New_York" }).timezone, "America/New_York");
+    assert.equal(normalizeBrand({}).timezone, DEFAULT_BRAND.timezone);
+  });
 });
