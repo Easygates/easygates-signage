@@ -55,6 +55,9 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "team-intro",
   "testimonial-quote",
   "trustpilot-review",
+  // splash draws its contact cards from items[] — it was missing here, so the
+  // editor never offered the rows and the cards could not be changed in the CMS.
+  "splash",
 ];
 
 export type AnimationPresetId =
@@ -164,7 +167,7 @@ export const TEMPLATES: {
   { id: "corporate-news", name: "Company News", blurb: "Headline, story and date — news ticker style", bestFor: "Internal comms & announcements" },
   { id: "testimonial-quote", name: "Testimonial / Quote", blurb: "Large quote with attribution and optional customer photo", bestFor: "Customer praise & reviews" },
   // ── background only ──
-  { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video with optional overlay text — no logo", bestFor: "Ambient & mood screens" },
+  { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video only — no text, logo or ticker", bestFor: "Ambient & mood screens" },
   // ── social proof ──
   { id: "trustpilot-review", name: "Trustpilot Review", blurb: "Trustpilot rating, star breakdown and top reviews — social proof for reception screens", bestFor: "Customer trust & reputation" },
 ];
@@ -184,16 +187,72 @@ export function templateCategory(id: string): string {
   return TEMPLATE_CATEGORIES.find((c) => (c.templates as string[]).includes(id))?.id ?? "other";
 }
 
+/**
+ * An animation preset is the *entrance language* of a slide. Three things make
+ * it distinct, and all three are applied to every element the template animates:
+ *
+ *   baseMs / staggerMs — timing (how long, how far apart)
+ *   easing             — the curve (snappy vs. calm)
+ *   rise / scaleFrom / popFrom — the geometry (how far it travels, how small it
+ *                        starts). These are published as CSS variables on the
+ *                        slide root and consumed by the sg-* keyframes, so the
+ *                        same template really does enter differently.
+ *
+ * Before the geometry existed, "Cinematic" and "Elegant Fade" differed only in
+ * millisecond counts, while their names promised choreography. They now differ
+ * in shape as well.
+ */
 export const ANIMATION_PRESETS: Record<
   AnimationPresetId,
-  { name: string; blurb: string; baseMs: number; staggerMs: number; easing: string }
+  {
+    name: string;
+    blurb: string;
+    baseMs: number;
+    staggerMs: number;
+    easing: string;
+    /** how far elements travel up on entry (px) */
+    rise: number;
+    /** scale elements start from (1 = no scale) */
+    scaleFrom: number;
+    /** scale used by the springy “pop” treatment */
+    popFrom: number;
+  }
 > = {
-  launch: { name: "Launch Pop", blurb: "Bold scale + rise. High-energy retail.", baseMs: 700, staggerMs: 120, easing: "cubic-bezier(0.16,1,0.3,1)" },
-  smooth: { name: "Smooth Rise", blurb: "Soft fade-up cascade. Safe default.", baseMs: 800, staggerMs: 140, easing: "cubic-bezier(0.22,1,0.36,1)" },
-  cinematic: { name: "Cinematic", blurb: "Slow zoom, masked reveals. Flagship.", baseMs: 1100, staggerMs: 180, easing: "cubic-bezier(0.25,1,0.4,1)" },
-  snap: { name: "Retail Snap", blurb: "Fast, punchy. For price grids.", baseMs: 500, staggerMs: 80, easing: "cubic-bezier(0.34,1.3,0.64,1)" },
-  elegant: { name: "Elegant Fade", blurb: "Minimal drift. Premium & calm.", baseMs: 1000, staggerMs: 160, easing: "ease-out" },
+  launch: {
+    name: "Launch Pop", blurb: "Big rise, bold scale. High-energy retail.",
+    baseMs: 700, staggerMs: 120, easing: "cubic-bezier(0.16,1,0.3,1)",
+    rise: 56, scaleFrom: 0.78, popFrom: 0.4,
+  },
+  smooth: {
+    name: "Smooth Rise", blurb: "Gentle fade-up cascade. Safe default.",
+    baseMs: 800, staggerMs: 140, easing: "cubic-bezier(0.22,1,0.36,1)",
+    rise: 28, scaleFrom: 0.94, popFrom: 0.8,
+  },
+  cinematic: {
+    name: "Cinematic", blurb: "Long, wide settle from slight over-scale. Flagship.",
+    baseMs: 1100, staggerMs: 180, easing: "cubic-bezier(0.25,1,0.4,1)",
+    rise: 12, scaleFrom: 1.06, popFrom: 0.9,
+  },
+  snap: {
+    name: "Retail Snap", blurb: "Tight, quick, price-grid friendly.",
+    baseMs: 500, staggerMs: 80, easing: "cubic-bezier(0.34,1.3,0.64,1)",
+    rise: 10, scaleFrom: 0.86, popFrom: 0.55,
+  },
+  elegant: {
+    name: "Elegant Fade", blurb: "Almost no travel — a calm fade. Premium.",
+    baseMs: 1000, staggerMs: 160, easing: "ease-out",
+    rise: 6, scaleFrom: 1, popFrom: 0.96,
+  },
 };
+
+/** CSS custom properties that carry a preset's entrance geometry into the slide. */
+export function presetVars(preset: (typeof ANIMATION_PRESETS)[AnimationPresetId]): Record<string, string> {
+  return {
+    "--sg-rise": `${preset.rise}px`,
+    "--sg-scale-from": String(preset.scaleFrom),
+    "--sg-pop-from": String(preset.popFrom),
+  };
+}
 
 export const TRANSITIONS: { id: TransitionId; name: string; blurb: string }[] = [
   { id: "fade", name: "Crossfade", blurb: "Soft opacity blend" },
@@ -225,7 +284,7 @@ export interface TimelineStep {
  */
 export function buildTimeline(scene: Scene): TimelineStep[] {
   const preset = ANIMATION_PRESETS[scene.animationPreset] ?? ANIMATION_PRESETS.smooth;
-  const stagger = scene.staggerMs || preset.staggerMs;
+  const stagger = scene.staggerMs ?? preset.staggerMs;
   const b = preset.baseMs;
   const steps: TimelineStep[] = [
     { key: "bg", label: "Background animates in", atMs: 0, durMs: 900, effect: "gradient pan + shapes" },
@@ -1352,7 +1411,8 @@ export const CORPORATE_DEMO_SCENES: Scene[] = [
     id: "corp-6",
     name: "06 · Ambient — Fullscreen Background",
     template: "fullscreen-bg",
-    headline: "EASYGATES",
+    // media only — the slide draws the background image and nothing else
+    headline: "",
     subheadline: "",
     bgImageUrl: CORPORATE_IMG.ambientAurora,
     bgFrom: "#05070f",
@@ -1401,3 +1461,30 @@ export const CORPORATE_DEMO_SCENES: Scene[] = [
     ],
   },
 ];
+
+/**
+ * Every built-in demo slide, in pack order (retail, trade, value, corporate).
+ * Used by the landing page so “built-in demo scenes” is a count of what is
+ * actually shipped rather than a number in the copy that goes stale.
+ */
+export const ALL_DEMO_SCENES: Scene[] = [
+  ...DEMO_SCENES,
+  ...TRADE_DEMO_SCENES,
+  ...VALUE_DEMO_SCENES,
+  ...CORPORATE_DEMO_SCENES,
+];
+
+/**
+ * The offline failsafe pack: the built-in scenes whose media ships in `public/`.
+ *
+ * Everything here plays with no internet, no database and no cached playlist. It
+ * is the whole qualifying library rather than one campaign — a screen that falls
+ * back for a week should not repeat the same eight slides forever.
+ *
+ * The eight retail demo scenes are excluded on purpose: their photography is
+ * hosted, so during an outage they would render a headline over a broken image.
+ * Media-free templates (brand wall, splash, fullscreen background) are included.
+ */
+export const FAILSAFE_SCENES: Scene[] = ALL_DEMO_SCENES.filter(
+  (s) => !s.imageUrl || s.imageUrl.startsWith("/") || s.imageUrl.startsWith("data:")
+);

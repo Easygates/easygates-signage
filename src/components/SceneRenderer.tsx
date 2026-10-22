@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { Scene } from "@/lib/signage";
+import { ANIMATION_PRESETS, presetVars, type Scene } from "@/lib/signage";
 import { delays, HeadlineLines, Eyebrow, PriceBlock, Cta, ProductImage, HeroMedia, kbClass } from "./scene/parts";
 import { ThemeDecor } from "./scene/ThemeDecor";
 import PriceDropTemplate from "./scene/templates/PriceDrop";
@@ -59,7 +59,7 @@ function Background({ scene }: { scene: Scene }) {
           className="absolute inset-0"
           style={{
             backgroundImage: `url("${cssUrl(scene.bgImageUrl!)}")`,
-            backgroundSize: "cover",
+            backgroundSize: scene.imageFit === "contain" ? "contain" : "cover",
             backgroundPosition: scene.imagePosition || "center",
             backgroundRepeat: "no-repeat",
           }}
@@ -76,7 +76,13 @@ function Background({ scene }: { scene: Scene }) {
 export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: Props) {
   const d = delays(scene);
   const t = scene.template;
-  const fg = { color: scene.textColor };
+  // The preset's easing used to be listed in the admin but never applied — every
+  // slide ran on the global --sg-ease. Publishing it as a CSS variable on the
+  // slide root lets every entrance/exit inside inherit the preset's curve.
+  const preset = ANIMATION_PRESETS[scene.animationPreset] ?? ANIMATION_PRESETS.smooth;
+  // Easing + entrance geometry both come from the preset, so the same template
+  // travels differently under "Launch Pop" and "Elegant Fade".
+  const fg = { color: scene.textColor, "--sg-ease": preset.easing, ...presetVars(preset) } as CSSProperties;
   const scale = mini ? "pointer-events-none select-none" : "";
 
   return (
@@ -731,9 +737,12 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
         </div>
       )}
 
-      {/* 26 · FULLSCREEN BACKGROUND (image or video, no logo) */}
+      {/* 26 · FULLSCREEN BACKGROUND — media only.
+          No headline, no text overlay, no dark scrim: the point of this template is
+          an ambient picture or video. ScreenView also suppresses the brand bar
+          (logo/name/clock) and the ticker for media-only templates. */}
       {t === "fullscreen-bg" && (
-        <div className="relative z-10 h-full overflow-hidden">
+        <div className="relative z-10 h-full overflow-hidden bg-black">
           {scene.videoUrl ? (
             <video
               className="absolute inset-0 h-full w-full object-cover"
@@ -742,32 +751,14 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
               muted
               loop
               playsInline
-              poster={scene.imageUrl || undefined}
+              poster={scene.bgImageUrl || scene.imageUrl || undefined}
             />
-          ) : null}
-          {scene.bgImageUrl || scene.imageUrl && (
+          ) : scene.bgImageUrl || scene.imageUrl ? (
             <div
               className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}
               style={{ backgroundImage: `url("${cssUrl(scene.bgImageUrl || scene.imageUrl!)}")`, backgroundSize: "cover", backgroundPosition: scene.imagePosition || "center", backgroundRepeat: "no-repeat" }}
             />
-          )}
-          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 100%)` }} />
-          {(scene.headline || scene.eyebrow || scene.subheadline || scene.ctaText) && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-[6%] py-[4%] text-center text-white">
-              {scene.eyebrow && <Eyebrow scene={scene} d={d} />}
-              {scene.headline && (
-                <div className="sg-mask mt-2">
-                  <span style={{ animationDelay: `${150 + d.s}ms` }} className="sg-display text-[72px] font-black">{scene.headline}</span>
-                </div>
-              )}
-              {scene.subheadline && <p className="sg-anim sg-fade-up mt-4 max-w-2xl text-[20px] leading-relaxed text-white/90" style={d.style(3)}>{scene.subheadline}</p>}
-              {scene.ctaText && (
-                <div className="sg-anim sg-pop mt-8" style={d.style(5)}>
-                  <span className="inline-block rounded-full border border-white/40 px-7 py-3 text-[18px] font-black text-white">{scene.ctaText}</span>
-                </div>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
       )}
 

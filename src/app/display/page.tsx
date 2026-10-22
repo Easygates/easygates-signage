@@ -4,7 +4,8 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import ScreenView from "@/components/ScreenView";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
-import { DEMO_SCENES, type Scene } from "@/lib/signage";
+import { DEMO_SCENES, FAILSAFE_SCENES, type Scene } from "@/lib/signage";
+import { DEFAULT_FAILSAFE, FAILSAFE_MODES, normalizeFailsafe, resolveFailsafe, type FailsafeMode, type FailsafeSettings } from "@/lib/failsafe";
 import { transitionClass } from "@/lib/signage";
 
 function useQuery() {
@@ -12,11 +13,18 @@ function useQuery() {
   // ?poll=10 → check the CMS every 10s (min 5s, max 5min). Default 30s.
   const rawPoll = Number(sp.get("poll"));
   const pollSec = Number.isFinite(rawPoll) && rawPoll > 0 ? Math.min(300, Math.max(5, rawPoll)) : 30;
-  return { playlistId: sp.get("playlistId"), displayId: sp.get("displayId"), pollSec };
+  return {
+    playlistId: sp.get("playlistId"),
+    displayId: sp.get("displayId"),
+    pollSec,
+    // ?offline=1 pretends the CMS is unreachable, so the failsafe can be checked
+    // without unplugging the router.
+    offline: sp.get("offline") === "1",
+  };
 }
 
 function DisplayInner() {
-  const { playlistId, displayId, pollSec } = useQuery();
+  const { playlistId, displayId, pollSec, offline } = useQuery();
   const [scenes, setScenes] = useState<Scene[]>(DEMO_SCENES);
   const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
   const [index, setIndex] = useState(0);
@@ -32,6 +40,18 @@ function DisplayInner() {
   // offline never flashes the demo before showing its last playlist
   const [ready, setReady] = useState(false);
   const cacheKey = `sg_player_${displayId || playlistId || "default"}`;
+  // Separate key on purpose: the pinned copy must not overwrite "the last thing
+  // this screen actually played", which is itself a failsafe option.
+  const failsafeKey = `sg_failsafe_${displayId || playlistId || "default"}`;
+  // The setting itself is a ref: it is read inside load(), and putting it in state
+  // would re-create load() on every poll and restart the interval.
+  const failsafeRef = useRef<FailsafeSettings>(DEFAULT_FAILSAFE);
+  // mode mirrored in state only for the ?offline=1 badge (React bails out when the
+  // value is unchanged, so this cannot drive the polling loop).
+  const [failsafeMode, setFailsafeMode] = useState<FailsafeMode>(DEFAULT_FAILSAFE.mode);
+  // what is on screen right now came from … (only shown in the ?offline=1 test view)
+  const [source, setSource] = useState<"live" | "offline" | "install-pack">("live");
+  const lastDownload = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clamp derived index so we never render out-of-bounds when CMS playlist shrinks.
@@ -61,6 +81,48 @@ function DisplayInner() {
     }
   }, [cacheKey]);
 
+  /**
+   * Show the failsafe content. Reads both browser copies and lets lib/failsafe
+   * decide, so the player and the tests agree on the order:
+   * pinned playlist → last played → the pack bundled with the app.
+   */
+  const applyFailsafe = useCallback((settings: FailsafeSettings) => {
+    const read = <T,>(key: string): T | null => {
+      try {
+        return JSON.parse(localStorage.getItem(key) || "null") as T | null;
+      } catch {
+        return null;
+      }
+    };
+    const lastPlayed = read<{ scenes?: Scene[] }>(cacheKey)?.scenes ?? null;
+    const pinned = read<{ playlistId?: string; scenes?: Scene[] }>(failsafeKey);
+    const result = resolveFailsafe(settings, {
+      lastPlayed,
+      pinned: pinned?.scenes?.length ? { playlistId: pinned.playlistId, scenes: pinned.scenes } : null,
+      installPack: FAILSAFE_SCENES,
+    });
+    if (result.scenes.length) setScenes(result.scenes);
+    setSource(result.source === "install-pack" ? "install-pack" : "offline");
+    setFailsafeMode(normalizeFailsafe(settings).mode);
+    return result;
+  }, [cacheKey, failsafeKey]);
+
+  /** Refresh the pre-downloaded copy of the pinned playlist (at most every 5 min). */
+  const cachePinned = useCallback(async (settings: FailsafeSettings) => {
+    if (settings.mode !== "playlist" || !settings.playlistId) return;
+    if (Date.now() - lastDownload.current < 5 * 60_000) return;
+    lastDownload.current = Date.now();
+    try {
+      const r = await fetch(`/api/player?playlistId=${encodeURIComponent(settings.playlistId)}`, { cache: "no-store" });
+      const j = await r.json();
+      if (r.ok && j.scenes?.length) {
+        localStorage.setItem(failsafeKey, JSON.stringify({ playlistId: settings.playlistId, scenes: j.scenes, savedAt: Date.now() }));
+      }
+    } catch {
+      /* the previous copy stays; a failed download must never clear it */
+    }
+  }, [failsafeKey]);
+
   const load = useCallback(async () => {
     try {
       const q = new URLSearchParams();
@@ -69,34 +131,52 @@ function DisplayInner() {
       const r = await fetch(`/api/player?${q.toString()}`, { cache: "no-store" });
       const j = await r.json();
       if (r.ok && j.scenes?.length) {
+        const fs = normalizeFailsafe(j.failsafe);
+        failsafeRef.current = fs;
+        setFailsafeMode(fs.mode);
         setScenes(j.scenes);
+        setSource("live");
         if (j.brand) setBrand(normalizeBrand(j.brand));
         try { localStorage.setItem(cacheKey, JSON.stringify({ scenes: j.scenes, brand: j.brand })); } catch { /* storage full or blocked */ }
-      } else if (j.brand) {
-        setBrand(normalizeBrand(j.brand));
+        // keep the chosen failsafe playlist on this device while the CMS is reachable
+        void cachePinned(fs);
+      } else {
+        if (j.brand) setBrand(normalizeBrand(j.brand));
+        applyFailsafe(normalizeFailsafe(j.failsafe ?? failsafeRef.current));
       }
     } catch {
-      /* keep whatever is on screen (saved copy, or demo if this screen has never loaded) */
+      // CMS unreachable: this is exactly what the failsafe setting is for.
+      applyFailsafe(failsafeRef.current);
     } finally {
       setReady(true);
     }
-  }, [playlistId, displayId, cacheKey]);
+  }, [playlistId, displayId, cacheKey, cachePinned, applyFailsafe]);
 
   useEffect(() => {
+    if (offline) {
+      // Test mode: pretend the CMS is gone so the fallback can be inspected on a
+      // normal network. Nothing is fetched, nothing is overwritten.
+      const t = setTimeout(() => {
+        applyFailsafe(failsafeRef.current);
+        setReady(true);
+      }, 0);
+      return () => clearTimeout(t);
+    }
     const first = setTimeout(() => void load(), 0);
     const poll = setInterval(() => void load(), pollSec * 1000); // pick up CMS pushes
     const giveUp = setTimeout(() => setReady(true), 6000); // a hung request must not leave the screen black
     return () => { clearTimeout(first); clearInterval(poll); clearTimeout(giveUp); };
-  }, [load, pollSec]);
+  }, [load, pollSec, offline, applyFailsafe]);
 
   // heartbeat for multi-display status
   useEffect(() => {
-    if (!displayId) return;
+    // No heartbeat in the offline preview — that mode must make no requests at all.
+    if (!displayId || offline) return;
     const beat = () => fetch(`/api/displays/${displayId}/heartbeat`, { method: "POST" }).catch(() => {});
     beat();
     const i = setInterval(beat, 20000);
     return () => clearInterval(i);
-  }, [displayId]);
+  }, [displayId, offline]);
 
   // preload next image (memory-light: only next 1)
   useEffect(() => {
@@ -175,6 +255,20 @@ function DisplayInner() {
         reducedMotion={reduced}
         progressKey={paused ? undefined : `${scene.id}-${safeIndex}`}
       />
+
+      {/* ?offline=1 — the admin's “test the failsafe” view. No requests are made, so
+          what you see is exactly what a screen shows with the CMS switched off. */}
+      {offline && (
+        <div className="pointer-events-none absolute bottom-16 left-3 z-40 rounded-xl bg-black/80 px-3 py-2 font-mono text-[11px] leading-relaxed text-amber-200 ring-1 ring-amber-300/40">
+          FAILSAFE PREVIEW · no requests made
+          <div className="text-white/70">
+            mode: {FAILSAFE_MODES.find((m) => m.id === failsafeMode)?.name ?? "last playlist"}
+            {" · showing: "}
+            {source === "install-pack" ? "built-in demo pack" : "saved copy"}
+            {` · ${scenes.length} slides`}
+          </div>
+        </div>
+      )}
 
       {paused && (
         <div className="absolute inset-0 z-40 grid place-items-center bg-black/60 backdrop-blur-sm">

@@ -2,6 +2,23 @@
 // Client-safe (no DB imports): the player, admin previews and API all share it.
 
 import type { Scene, SceneItem } from "./signage";
+import { themePalette } from "./themes.ts";
+
+/**
+ * Ticker sizes. The bar lives on the 1920×1080 canvas, so the numbers are canvas
+ * pixels: "md" is what the ticker has always been. `speed` keeps the text moving
+ * at a constant pixels-per-second when the type gets bigger — a 26 px ticker on
+ * the same 28 s loop reads much faster than a 16 px one.
+ */
+export type TickerSize = "sm" | "md" | "lg";
+
+export const TICKER_SIZES: Record<TickerSize, { name: string; blurb: string; fontSize: number; padY: number; tracking: number }> = {
+  sm: { name: "Small", blurb: "Quiet — a footnote under the slide", fontSize: 16, padY: 6, tracking: 0.16 },
+  md: { name: "Standard", blurb: "The default news-ticker strip", fontSize: 20, padY: 8, tracking: 0.18 },
+  lg: { name: "Large", blurb: "Readable across a shop floor", fontSize: 28, padY: 11, tracking: 0.14 },
+};
+
+export const TICKER_SIZE_IDS = Object.keys(TICKER_SIZES) as TickerSize[];
 
 export interface BrandSettings {
   businessName: string;
@@ -23,6 +40,8 @@ export interface BrandSettings {
   tickerText: string;
   /** replace slide tickers; otherwise only fills slides without one */
   tickerOnAll: boolean;
+  /** how big the scrolling strip is drawn */
+  tickerSize: TickerSize;
   showBrandBar: boolean;
   showClock: boolean;
 }
@@ -40,6 +59,7 @@ export const DEFAULT_BRAND: BrandSettings = {
   applyColors: false,
   tickerText: "",
   tickerOnAll: false,
+  tickerSize: "md",
   showBrandBar: true,
   showClock: true,
 };
@@ -53,6 +73,8 @@ export function normalizeBrand(input: unknown): BrandSettings {
     typeof v[k] === "string" ? (v[k] as string).trim().slice(0, max) : (DEFAULT_BRAND[k] as string);
   const bool = (k: keyof BrandSettings) =>
     typeof v[k] === "boolean" ? (v[k] as boolean) : (DEFAULT_BRAND[k] as boolean);
+  const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
   const hex = (k: keyof BrandSettings) =>
     typeof v[k] === "string" && HEX.test(v[k] as string) ? (v[k] as string).toLowerCase() : (DEFAULT_BRAND[k] as string);
   const tz = (k: keyof BrandSettings) => {
@@ -77,6 +99,7 @@ export function normalizeBrand(input: unknown): BrandSettings {
     applyColors: bool("applyColors"),
     tickerText: str("tickerText", 300),
     tickerOnAll: bool("tickerOnAll"),
+    tickerSize: oneOf(v.tickerSize, TICKER_SIZE_IDS, DEFAULT_BRAND.tickerSize),
     showBrandBar: bool("showBrandBar"),
     showClock: bool("showClock"),
   };
@@ -140,6 +163,10 @@ export function brandScene(scene: Scene, brand: BrandSettings): Scene {
     if (scene.theme && scene.theme !== "none") {
       const tp = themePalette(scene.theme);
       out.accentColor = tp.accent;
+      // highlightColor drives price plates, stickers and tags (storeBoardParts.palette).
+      // It used to be left untouched here, so every theme fell back to the stock
+      // yellow #ffd60a and plates ignored the theme's own second accent.
+      out.highlightColor = tp.accent2;
       out.bgFrom = tp.bgFrom;
       out.bgTo = tp.bgTo;
       out.textColor = tp.text;
@@ -152,25 +179,12 @@ export function brandScene(scene: Scene, brand: BrandSettings): Scene {
       out.textColor = "#ffffff";
       out.mutedColor = mix("#ffffff", brand.accentColor, 0.18);
       out.cardColor = mix(brand.backgroundColor, "#ffffff", 0.06);
+      out.highlightColor = brand.accentColor;
     }
     // Keep a background image, but tint its dark overlay with the brand colour.
     if (scene.bgImageUrl) out.overlayColor = brand.backgroundColor;
   }
   return out;
-}
-
-function themePalette(theme: string): { accent: string; bgFrom: string; bgTo: string; text: string; muted: string } {
-  const palettes: Record<string, { accent: string; bgFrom: string; bgTo: string; text: string; muted: string }> = {
-    christmas: { accent: "#dc2626", bgFrom: "#ffffff", bgTo: "#fef2f2", text: "#7f1d1d", muted: "#991b1b" },
-    easter: { accent: "#ec4899", bgFrom: "#ffffff", bgTo: "#fce7f3", text: "#881337", muted: "#be185d" },
-    halloween: { accent: "#f97316", bgFrom: "#fef2f2", bgTo: "#fecaca", text: "#7c2d12", muted: "#c2410c" },
-    spring: { accent: "#16a34a", bgFrom: "#f0fdf4", bgTo: "#dcfce7", text: "#14532d", muted: "#15803d" },
-    summer: { accent: "#0ea5e9", bgFrom: "#ffffff", bgTo: "#dbeafe", text: "#0c4a6e", muted: "#0369a1" },
-    autumn: { accent: "#d97706", bgFrom: "#fffbeb", bgTo: "#fef3c7", text: "#78350f", muted: "#a16207" },
-    winter: { accent: "#0ea5e9", bgFrom: "#ffffff", bgTo: "#eff6ff", text: "#0c4a6e", muted: "#0369a1" },
-    none: { accent: "#ff3b30", bgFrom: "#0b1020", bgTo: "#1e2a5a", text: "#ffffff", muted: "#c7cede" },
-  };
-  return palettes[theme] ?? palettes.none;
 }
 
 /** Ticker for a slide: the business ticker replaces or fills in for the slide's own. */

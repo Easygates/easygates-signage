@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
+import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
+import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
+import { THEMES, themeDef } from "@/lib/themes";
 
-type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
-const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "database"];
+type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "failsafe" | "database";
+const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "failsafe", "database"];
 
 const sameBrand = (a: BrandSettings, b: BrandSettings) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -132,7 +135,8 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
   "fullscreen-bg": {
     fields: {
       eyebrow: "",
-      headline: "{business}",
+      // media only — nothing is drawn over the picture
+      headline: "",
       subheadline: "",
       description: "",
       ctaText: "",
@@ -142,7 +146,7 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
       kenBurns: "zoom-in",
       items: null,
     },
-    flash: "Background sample loaded — swap the background via Quick-set or Image URL",
+    flash: "Background sample loaded — pick an image or video; nothing is drawn over it",
   },
   "trustpilot-review": {
     fields: {
@@ -176,6 +180,7 @@ export default function AdminPage() {
   const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
+  const [sceneQuery, setSceneQuery] = useState("");
   const [draft, setDraft] = useState<Scene>(emptyScene());
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -198,6 +203,9 @@ export default function AdminPage() {
   const [catPick, setCatPick] = useState<{ forId: string | null; cat: string }>({ forId: null, cat: "all" });
   const tplCat = catPick.forId === selId && catPick.cat ? catPick.cat : templateCategory(draft.template) === "other" ? "all" : templateCategory(draft.template);
   const [reduced, setReduced] = useState(false);
+  // Fields the chosen template doesn't draw are hidden by default (see lib/templateFields);
+  // this lets the editor reveal them anyway, e.g. while re-purposing a scene.
+  const [showAllFields, setShowAllFields] = useState(false);
 const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
   const [brand, setBrand] = useState<BrandSettings>(DEFAULT_BRAND);
@@ -294,6 +302,56 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   };
 
   const isDemo = selId?.startsWith("demo-") && !scenes.some((s) => s.id === selId && !(s as { _demo?: boolean })._demo);
+  // How this template draws the slide image, how it draws its rows and which
+  // slide fields it reads — all from src/lib/templateFields.ts, the single table
+  // shared with the row editor and the tests.
+  const imageMode = templateImageMode(draft.template);
+  // Logo templates draw the image whole, so the picker should not crop it.
+  const imageIsLogo = imageMode === "logo";
+  // "Background image / video": the renderer draws the media only. Headline and
+  // ticker are hidden here too, because that template shows neither.
+  const mediaOnly = templateIsMediaOnly(draft.template);
+  // "none" = the renderer never draws the slide-level image (rows carry the pictures).
+  const imageUnused = imageMode === "none";
+  const rowFields = templateRows(draft.template);
+  const tplUses = (f: SceneTextField) => templateUses(draft.template, f);
+  const fieldVisible = (f: SceneTextField) => showAllFields || tplUses(f);
+  const hiddenFieldCount = SCENE_TEXT_FIELDS.filter((f) => !tplUses(f)).length;
+  /** One labelled editor field, hidden (or dimmed) when the template ignores it. */
+  const sceneField = (key: SceneTextField, label: string, node: React.ReactNode) =>
+    fieldVisible(key) ? (
+      <div key={key} className={tplUses(key) ? undefined : "opacity-60"}>
+        <label className="lbl">
+          {label}
+          {!tplUses(key) && <span className="ml-1 font-normal normal-case tracking-normal text-amber-300/80">· not used by this template</span>}
+        </label>
+        {node}
+      </div>
+    ) : null;
+
+  /**
+   * Upload one file to the media library and return its URL. Used by the field
+   * drop targets and by the asset pickers, so "add a picture" works from
+   * anywhere in the editor instead of only from the Assets tab.
+   */
+  const uploadToLibrary = async (file: File): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await fetch("/api/upload", { method: "POST", body: fd }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok || j.error) {
+      flash(j.error || `Upload failed${r ? ` (${r.status})` : ""}`);
+      return null;
+    }
+    const url: string = j.asset?.url || j.url || "";
+    if (!url) {
+      flash("Upload failed — the server returned no file address");
+      return null;
+    }
+    flash("Uploaded to the media library");
+    void load();
+    return url;
+  };
 
   const save = async () => {
     setSaving(true);
@@ -355,22 +413,38 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const j = await r.json(); setSelId(j.scene.id); adoptDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
+  // Load a demo campaign and go straight to the playlist it builds. The endpoint
+  // creates the scenes, the playlist, the screens and a schedule; before this the
+  // only feedback was a toast, so it looked like the button had done nothing.
   const seed = async (campaign: "retail" | "trade" | "value" | "corporate" = "retail") => {
+    const label = campaign === "trade" ? "Trade" : campaign === "value" ? "Value" : campaign === "corporate" ? "Corporate" : "Retail";
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
-    load();
+    if (!r.ok || !j.playlistId) {
+      // Keep the technical detail out of the toast: the API's db-unavailable text is
+      // aimed at whoever installed the CMS, not at the person clicking a demo pack.
+      const reason = String(j.error || "").startsWith("db-unavailable")
+        ? "the database isn't reachable — check DATABASE_URL and load supabase/schema.sql"
+        : j.error || "the database isn't reachable";
+      flash(`${label} demo not loaded — ${reason}`);
+      return;
+    }
+    await load();
+    setSelPlaylist(j.playlistId);
+    setTab("playlists");
     flash(
-      campaign === "trade"
-        ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
-        : campaign === "value"
-          ? `Value demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
-          : campaign === "corporate"
-            ? `Corporate demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
-            : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+      `${label} demo ready — playlist “${j.playlistName}” with ${j.scenes ?? "?"} slides` +
+        (j.created ? ` (${j.created} new scene${j.created === 1 ? "" : "s"})` : "") +
+        ` and ${j.displays ?? "?"} screens. Press ▶ Play to preview it.`
     );
   };
 
   const timeline = useMemo(() => buildTimeline(draft), [draft]);
+  // Scene list filter: name, template id, product name and headline all match.
+  const sceneFilter = sceneQuery.trim().toLowerCase();
+  const shownScenes = sceneFilter
+    ? scenes.filter((s) => [s.name, s.template, s.productName, s.headline].some((v) => (v || "").toLowerCase().includes(sceneFilter)))
+    : scenes;
   const playlist = playlists.find((p) => p.id === selPlaylist);
 
   return (
@@ -388,10 +462,10 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-            <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
-            <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
-            <button onClick={() => seed("value")} className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
-            <button onClick={() => seed("corporate")} className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
+            <button onClick={() => seed("retail")} title="8 retail slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
+            <button onClick={() => seed("trade")} title="7 trade slides + a playlist + 5 screens, then opens the playlist" className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
+            <button onClick={() => seed("value")} title="12 value-store slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
+            <button onClick={() => seed("corporate")} title="7 corporate slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -411,11 +485,23 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr_520px]">
             <div className="rounded-3xl bg-white/[0.04] p-4 ring-1 ring-white/10">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-black tracking-widest text-white/50">SCENES ({scenes.length})</span>
+                <span className="text-xs font-black tracking-widest text-white/50">
+                  SCENES ({shownScenes.length}{shownScenes.length !== scenes.length ? ` / ${scenes.length}` : ""})
+                </span>
                 <button onClick={() => { setSelId("new"); adoptDraft(emptyScene()); }} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ New</button>
               </div>
+              <div className="mb-2">
+                <input
+                  type="search"
+                  value={sceneQuery}
+                  onChange={(e) => setSceneQuery(e.target.value)}
+                  placeholder="Search scenes by name, template, product…"
+                  aria-label="Search scenes"
+                  className="inp !py-1.5 text-xs"
+                />
+              </div>
               <div className="sg-scroll max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-                {scenes.map((s) => (
+                {shownScenes.map((s) => (
                   <button key={s.id} onClick={() => { setSelId(s.id); adoptDraft(s); setDirty(false); setPreviewKey((k) => k + 1); }}
                     className={`w-full rounded-2xl p-3 text-left ring-1 ${selId === s.id ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}>
                     <div className="flex items-center justify-between gap-2">
@@ -425,6 +511,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                     <div className={`mt-0.5 truncate text-xs ${selId === s.id ? "text-black/60" : "text-white/50"}`}>{s.productName || s.headline} · {s.promoPrice || ""}</div>
                   </button>
                 ))}
+                {shownScenes.length === 0 && (
+                  <p className="px-1 py-3 text-xs text-white/40">No scenes match “{sceneQuery}”.</p>
+                )}
               </div>
             </div>
 
@@ -456,78 +545,149 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Eyebrow / kicker"><input value={draft.eyebrow || ""} onChange={(e) => set("eyebrow", e.target.value as never)} className="inp" /></Field>
-                <Field label="Headline"><input value={draft.headline || ""} onChange={(e) => set("headline", e.target.value as never)} className="inp" /></Field>
-                <Field label="Product name"><input value={draft.productName || ""} onChange={(e) => set("productName", e.target.value as never)} className="inp" /></Field>
-                <Field label="Subheadline"><input value={draft.subheadline || ""} onChange={(e) => set("subheadline", e.target.value as never)} className="inp" /></Field>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2 ring-1 ring-white/10">
+                <span className="text-[11px] text-white/50">
+                  {mediaOnly
+                    ? "This template draws only its image or video — no text, logo, clock or ticker."
+                    : hiddenFieldCount === 0
+                      ? "Every field below is drawn by this template."
+                      : `${hiddenFieldCount} field${hiddenFieldCount === 1 ? "" : "s"} hidden — this template doesn't draw ${hiddenFieldCount === 1 ? "it" : "them"}.`}
+                </span>
+                {hiddenFieldCount > 0 && (
+                  <button
+                    onClick={() => setShowAllFields((v) => !v)}
+                    aria-pressed={showAllFields}
+                    className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black ring-1 ring-white/15 hover:bg-white/20"
+                  >
+                    {showAllFields ? "Hide unused fields" : "Show unused fields"}
+                  </button>
+                )}
               </div>
-              <Field label="Description"><textarea value={draft.description || ""} onChange={(e) => set("description", e.target.value as never)} rows={2} className="inp" /></Field>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Was price"><input value={draft.originalPrice || ""} onChange={(e) => set("originalPrice", e.target.value as never)} className="inp" /></Field>
-                <Field label="Promo price"><input value={draft.promoPrice || ""} onChange={(e) => set("promoPrice", e.target.value as never)} className="inp" /></Field>
-                <Field label="Badge"><input value={draft.discountBadge || ""} onChange={(e) => set("discountBadge", e.target.value as never)} className="inp" /></Field>
-              </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="CTA"><input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" /></Field>
-                <Field label="Ticker"><input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" /></Field>
+                {sceneField("eyebrow", "Eyebrow / kicker", <input value={draft.eyebrow || ""} onChange={(e) => set("eyebrow", e.target.value as never)} className="inp" />)}
+                {(showAllFields || !mediaOnly) && (
+                  <div className={mediaOnly ? "opacity-60" : undefined}>
+                    <Field label="Headline">
+                      <input value={draft.headline || ""} onChange={(e) => set("headline", e.target.value as never)} className="inp" />
+                    </Field>
+                    {mediaOnly && <p className="mt-1 text-[11px] text-amber-300/80">· not used by this template</p>}
+                  </div>
+                )}
+                {sceneField("productName", "Product name", <input value={draft.productName || ""} onChange={(e) => set("productName", e.target.value as never)} className="inp" />)}
+                {sceneField("subheadline", "Subheadline", <input value={draft.subheadline || ""} onChange={(e) => set("subheadline", e.target.value as never)} className="inp" />)}
+              </div>
+              {fieldVisible("description") && (
+                <Field label="Description"><textarea value={draft.description || ""} onChange={(e) => set("description", e.target.value as never)} rows={2} className="inp" /></Field>
+              )}
+              {(["originalPrice", "promoPrice", "discountBadge"] as SceneTextField[]).some(fieldVisible) && (
+                <div className="grid grid-cols-3 gap-3">
+                  {sceneField("originalPrice", "Was price", <input value={draft.originalPrice || ""} onChange={(e) => set("originalPrice", e.target.value as never)} className="inp" />)}
+                  {sceneField("promoPrice", "Promo price", <input value={draft.promoPrice || ""} onChange={(e) => set("promoPrice", e.target.value as never)} className="inp" />)}
+                  {sceneField("discountBadge", "Badge", <input value={draft.discountBadge || ""} onChange={(e) => set("discountBadge", e.target.value as never)} className="inp" />)}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                {sceneField("ctaText", "CTA", <input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" />)}
+                {(showAllFields || !mediaOnly) && (
+                  <div className={mediaOnly ? "opacity-60" : undefined}>
+                    <Field label="Ticker">
+                      <input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" />
+                    </Field>
+                    {mediaOnly && <p className="mt-1 text-[11px] text-amber-300/80">· not used by this template (no ticker on ambient screens)</p>}
+                  </div>
+                )}
               </div>
               <p className="text-[11px] text-white/40">Tip: type <code className="text-white/70">{"{phone}"}</code> or <code className="text-white/70">{"{business}"}</code> in any text and the screen shows the details from the <button onClick={() => setTab("business")} className="underline">Business</button> tab.</p>
-              <Field label="Image URL (or pick from Assets → click to copy)">
-                <div className="flex gap-2">
-                  <input value={draft.imageUrl || ""} onChange={(e) => set("imageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.imageUrl && <button onClick={() => set("imageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+              {imageUnused && !showAllFields ? (
+                <p className="rounded-xl bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200/90 ring-1 ring-amber-300/25">
+                  This template doesn&apos;t draw a slide image —{" "}
+                  {rowFields.includes("image") ? "set a picture on each row below" : "it has no picture area"}, or add a background image.
+                  {" "}<button onClick={() => setShowAllFields(true)} className="underline">Show the field anyway</button>
+                </p>
+              ) : (
+                <div className={imageUnused ? "opacity-60" : undefined}>
+                  <MediaField
+                    label={imageIsLogo ? "Logo image URL (overrides the Business logo)" : "Image URL"}
+                    value={draft.imageUrl || ""}
+                    onChange={(v) => set("imageUrl", v as never)}
+                    assets={allAssets}
+                    onUpload={uploadToLibrary}
+                    fit={imageIsLogo ? "contain" : "cover"}
+                    hint={
+                      <>
+                        <p className="mt-1 text-[11px] text-white/40">Type or paste an address, press “Library” to pick one, or drop a file here to upload it.</p>
+                        {imageUnused && (
+                          <p className="mt-1 text-[11px] text-amber-300/90">This template doesn&apos;t draw the slide image.</p>
+                        )}
+                      </>
+                    }
+                  />
                 </div>
-              </Field>
-              <Field label="Background image (full-bleed behind the slide)">
-                <div className="flex gap-2">
-                  <input value={draft.bgImageUrl || ""} onChange={(e) => set("bgImageUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.bgImageUrl && <button onClick={() => set("bgImageUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
-                </div>
-                {[
+              )}
+              <MediaField
+                label="Background image (full-bleed behind the slide)"
+                value={draft.bgImageUrl || ""}
+                onChange={(v) => set("bgImageUrl", v as never)}
+                assets={allAssets}
+                onUpload={uploadToLibrary}
+                hint={[
                   "product-showcase",
                   "fullscreen-campaign",
                   "split-promo",
                   "callout-emergency",
-                ].includes(draft.template) && (
+                ].includes(draft.template) ? (
                   <p className="mt-1 text-[11px] text-white/40">
                     On this template the background image replaces the main photo.
                   </p>
-                )}
-              </Field>
-              <Field label="Video URL (muted, looping hero background)">
-                <div className="flex gap-2">
-                  <input value={draft.videoUrl || ""} onChange={(e) => set("videoUrl", e.target.value as never)} className="inp" placeholder="https://…" />
-                  {draft.videoUrl && <button onClick={() => set("videoUrl", "" as never)} className="rounded-xl bg-white/10 px-3 text-xs font-bold">✕</button>}
+                ) : undefined}
+              />
+              {fieldVisible("videoUrl") && (
+                <div className={tplUses("videoUrl") ? undefined : "opacity-60"}>
+                  <MediaField
+                    label="Video URL (muted, looping hero background)"
+                    value={draft.videoUrl || ""}
+                    onChange={(v) => set("videoUrl", v as never)}
+                    assets={allAssets}
+                    onUpload={uploadToLibrary}
+                    media="video"
+                    placeholder="https://…/clip.mp4"
+                  />
                 </div>
-              </Field>
+              )}
               <div>
-                <label className="lbl">Season / theme</label>
+                <div className="flex items-end justify-between gap-3">
+                  <label className="lbl">Season / theme</label>
+                  <span className="mb-1.5 text-[11px] text-white/40">{themeDef(draft.theme).decor}</span>
+                </div>
                 <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { id: "none", label: "None", color: "#0f172a" },
-                    { id: "christmas", label: "Christmas", color: "#dc2626" },
-                    { id: "easter", label: "Easter", color: "#ec4899" },
-                    { id: "halloween", label: "Halloween", color: "#f97316" },
-                    { id: "spring", label: "Spring", color: "#16a34a" },
-                    { id: "summer", label: "Summer", color: "#0ea5e9" },
-                    { id: "autumn", label: "Autumn", color: "#d97706" },
-                    { id: "winter", label: "Winter", color: "#0ea5e9" },
-                  ].map((th) => {
-                    const active = draft.theme === th.id;
+                  {THEMES.map((th) => {
+                    const active = (draft.theme || "none") === th.id;
                     return (
                       <button
                         key={th.id}
                         onClick={() => set("theme", th.id as never)}
-                        className={`flex flex-col items-center gap-1 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                        aria-pressed={active}
+                        title={`${th.name} — ${th.blurb}`}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl p-2 ring-2 text-xs font-bold ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
                       >
-                        <div className={`h-6 w-6 rounded-full ${active ? "ring-2 ring-white" : ""}`} style={{ background: th.color }} />
-                        <span>{th.label}</span>
+                        {/* two-tone swatch: background gradient with the accent + second accent as dots */}
+                        <span
+                          className={`relative grid h-8 w-full place-items-center overflow-hidden rounded-lg ring-1 ${active ? "ring-black/20" : "ring-white/15"}`}
+                          style={{ background: `linear-gradient(135deg, ${th.palette.bgFrom}, ${th.palette.bgTo})` }}
+                        >
+                          <span className="absolute left-1.5 top-1.5 h-2 w-2 rounded-full" style={{ background: th.palette.accent }} />
+                          <span className="absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full" style={{ background: th.palette.accent2 }} />
+                          <span className="text-[10px] font-black" style={{ color: th.palette.text }}>{th.id === "none" ? "—" : th.name.slice(0, 2).toUpperCase()}</span>
+                        </span>
+                        <span>{th.name}</span>
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-1 text-[11px] text-white/40">Theme decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).</p>
+                <p className="mt-1 text-[11px] text-white/40">
+                  Decorations always show. Theme colours only apply when &quot;Use brand colours on every slide&quot; is on (Business tab).
+                  {" "}{themeDef(draft.theme).blurb}.
+                </p>
               </div>
               <Field label="Darken background">
                 <div className="flex items-center gap-2">
@@ -549,7 +709,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <Color label="Accent" v={draft.accentColor} onChange={(v) => set("accentColor", v as never)} />
                 <Color label="Text" v={draft.textColor} onChange={(v) => set("textColor", v as never)} />
               </div>
-              {HIGHLIGHT_TEMPLATES.includes(draft.template) && (
+              {fieldVisible("highlightColor") && (
                 <div className="flex items-end gap-3">
                   <div className="w-1/4 min-w-[120px]">
                     <Color label="Highlight (yellow)" v={draft.highlightColor || "#ffd60a"} onChange={(v) => set("highlightColor", v as never)} />
@@ -560,13 +720,19 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="lbl">Animation preset</label>
+                  <label className="lbl">Animation feel</label>
                   <div className="space-y-1.5">
-                    {(Object.keys(ANIMATION_PRESETS) as (keyof typeof ANIMATION_PRESETS)[]).map((k) => (
-                      <button key={k} onClick={() => { set("animationPreset", k as never); }} className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold ring-1 ${draft.animationPreset === k ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
-                        {ANIMATION_PRESETS[k].name} — <span className="font-normal opacity-70">{ANIMATION_PRESETS[k].blurb}</span>
-                      </button>
-                    ))}
+                    {(Object.keys(ANIMATION_PRESETS) as (keyof typeof ANIMATION_PRESETS)[]).map((k) => {
+                      const pr = ANIMATION_PRESETS[k];
+                      return (
+                        <button key={k} onClick={() => { set("animationPreset", k as never); }} className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold ring-1 ${draft.animationPreset === k ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
+                          {pr.name} — <span className="font-normal opacity-70">{pr.blurb}</span>
+                          <span className="mt-0.5 block font-mono text-[10px] opacity-60">
+                            {pr.baseMs} ms · {pr.staggerMs} ms stagger · enters from {pr.rise} px / {pr.scaleFrom}×
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -586,7 +752,12 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                       {(["zoom-in", "zoom-out", "pan-left", "pan-right", "static"] as const).map((k) => <option key={k} value={k}>{k}</option>)}
                     </select>
                   </div>
-                  <Field label="Image position"><input value={draft.imagePosition || "center"} onChange={(e) => set("imagePosition", e.target.value as never)} className="inp" placeholder="center / top / 30% 60%" /></Field>
+                  <FocalPicker
+                    value={draft.imagePosition || "center"}
+                    onChange={(v) => set("imagePosition", v as never)}
+                    fit={draft.imageFit || "cover"}
+                    onFit={(v) => set("imageFit", v as never)}
+                  />
                 </div>
               </div>
               {draft.template === "aisle-guide" && (
@@ -604,6 +775,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   items={(draft.items as Scene["items"]) || []}
                   template={draft.template}
                   assets={allAssets}
+                  onUpload={uploadToLibrary}
                   onChange={(v) => set("items", v as never)}
                 />
               )}
@@ -625,8 +797,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <button onClick={save} className="rounded-xl bg-green-500/20 p-3 font-black text-green-300 ring-1 ring-green-400/40">⬆ Publish<br />to displays</button>
                 <button onClick={() => setTab("timeline")} className="rounded-xl bg-white/10 p-3 font-bold ring-1 ring-white/15">◷ View<br />timeline</button>
               </div>
-              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={allAssets} onPick={(url) => set("imageUrl", url as never)} />
-              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={allAssets} onPick={(url) => set("bgImageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={allAssets} current={draft.imageUrl || ""} onPick={(url) => set("imageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={allAssets} current={draft.bgImageUrl || ""} onPick={(url) => set("bgImageUrl", url as never)} />
             </div>
           </div>
         )}
@@ -643,10 +815,15 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 {playlists.map((p) => (
                   <button key={p.id} onClick={() => setSelPlaylist(p.id)} className={`w-full rounded-2xl p-3 text-left ring-1 ${selPlaylist === p.id ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
                     <div className="text-sm font-black">{p.name}</div>
-                    <div className={`text-xs ${selPlaylist === p.id ? "text-black/60" : "text-white/50"}`}>{p.scenes?.length || 0} scenes</div>
+                    <div className={`text-xs ${selPlaylist === p.id ? "text-black/60" : "text-white/50"}`}>{p.scenes?.length || 0} scene{p.scenes?.length === 1 ? "" : "s"}</div>
                   </button>
                 ))}
-                {playlists.length === 0 && <p className="text-sm text-white/50">No playlists yet — click “Load demo”.</p>}
+                {playlists.length === 0 && (
+                  <p className="text-sm text-white/50">
+                    No playlists yet. The demo packs in the header (Retail / Trade / Value / Corporate) build a
+                    playlist, screens and a schedule, then open the playlist here.
+                  </p>
+                )}
               </div>
             </div>
             <div className="rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
@@ -837,7 +1014,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 })}
               </div>
               <div className="mt-4 flex gap-2 text-xs">
-                <span className="rounded-full bg-white/10 px-3 py-1.5">Preset: {draft.animationPreset}</span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5">Feel: {ANIMATION_PRESETS[draft.animationPreset]?.name ?? draft.animationPreset}</span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5">Easing: {ANIMATION_PRESETS[draft.animationPreset]?.easing}</span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5">Exit: {draft.transition}</span>
               </div>
@@ -869,14 +1046,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         )}
 
         {/* ── DATABASE / SUPABASE ── */}
+        {tab === "failsafe" && <FailsafePanel playlists={playlists} onFlash={flash} />}
         {tab === "database" && <DatabasePanel onFlash={flash} onSeed={seed} />}
       </div>
-
-      <style jsx global>{`
-        .lbl { display:block; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.5); margin-bottom:6px; }
-        .inp { width:100%; border-radius:12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; font-size:14px; color:#fff; outline:none; }
-        .inp:focus { border-color:#fff; }
-      `}</style>
     </main>
   );
 }
@@ -885,25 +1057,356 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label className="lbl">{label}</label>{children}</div>;
 }
 
-const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "clearance", "aisle-guide", "top-sellers", "store-services", "splash"];
 
-/** Every picture in the media library as a scrollable grid (videos can't be images or backgrounds). */
-function LibraryPicker({ title, assets, onPick }: { title: string; assets: { id: string; name: string; url: string; type: string }[]; onPick: (url: string) => void }) {
-  const pics = assets.filter((a) => a.type !== "video");
-  const hidden = assets.length - pics.length;
-  if (pics.length === 0) return null;
+type Asset = { id: string; name: string; url: string; type: string; source?: string };
+
+/**
+ * One media thumbnail with a visible fallback when the file can't be loaded, so a
+ * broken/mistyped URL or a deleted file reads as "404" instead of an empty box.
+ */
+function Thumb({ url, fit = "cover", className = "h-10 w-16" }: { url: string; fit?: "cover" | "contain"; className?: string }) {
+  const [failed, setFailed] = useState("");
+  const broken = failed === url;
   return (
-    <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
-      <div className="mb-2 flex items-center justify-between text-[11px] font-black tracking-widest text-white/50">
-        <span>{title}</span>
-        <span className="font-mono text-white/40">{pics.length} images{hidden ? ` · ${hidden} video${hidden > 1 ? "s" : ""} hidden` : ""}</span>
+    <span className={`${className} grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/15`}>
+      {broken ? (
+        <span className="text-sm font-black text-red-300" title="This file could not be loaded — is the address right, or is the display offline?">!</span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" loading="lazy" draggable={false} onError={() => setFailed(url)} className={`h-full w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+      )}
+    </span>
+  );
+}
+
+/** Small picture icon for the library buttons (emoji glyphs are not on every machine). */
+function BrowseIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]">
+      <rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="9" cy="10" r="1.8" fill="currentColor" />
+      <path d="M4.5 18l5-5 4 4 3-2.5 3 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * Media-library browser. It is always rendered *inline below the field that opened
+ * it* — never inside the narrow row grid — because as a grid child it used to be
+ * squeezed into the 40px column and clipped to an unreadable sliver.
+ */
+function LibraryPicker({
+  title,
+  assets,
+  onPick,
+  current = "",
+  onClose,
+  media = "image",
+  fit = "cover",
+  onUpload,
+}: {
+  title: string;
+  assets: Asset[];
+  onPick: (url: string) => void;
+  current?: string;
+  onClose?: () => void;
+  media?: "image" | "video";
+  fit?: "cover" | "contain";
+  /** Optional: upload a new file and return its URL (then it is picked). */
+  onUpload?: (file: File) => Promise<string | null>;
+}) {
+  const [query, setQuery] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const q = query.trim().toLowerCase();
+  const all = assets.filter((a) => (media === "video" ? a.type === "video" : a.type !== "video"));
+  const items = q ? all.filter((a) => a.name.toLowerCase().includes(q) || a.url.toLowerCase().includes(q)) : all;
+  const noun = media === "video" ? "video" : "image";
+  const upload = async (file: File) => {
+    if (!onUpload || uploading) return;
+    setUploading(true);
+    const url = await onUpload(file);
+    setUploading(false);
+    if (url) onPick(url);
+  };
+  return (
+    <div className="mt-2 w-full rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10" role="group" aria-label={title}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-black tracking-widest text-white/50">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-white/40" aria-live="polite">
+            {q ? `${items.length} of ${all.length}` : all.length} {noun}{all.length === 1 ? "" : "s"}
+          </span>
+          {onUpload && (
+            <label className={`cursor-pointer rounded-lg px-2 py-0.5 text-[11px] font-black ring-1 ${uploading ? "bg-white/10 text-white/40 ring-white/10" : "bg-white text-black ring-white hover:bg-white/90"}`}>
+              {uploading ? "Uploading…" : "+ Upload"}
+              <input
+                type="file"
+                className="hidden"
+                accept={media === "video" ? "video/mp4,video/webm" : "image/*"}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }}
+              />
+            </label>
+          )}
+          {onClose && (
+            <button type="button" onClick={onClose} aria-label="Close the media library" className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-black text-white/70 ring-1 ring-white/15 hover:bg-white/20">✕</button>
+          )}
+        </span>
       </div>
-      <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-5">
-        {pics.map((a) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={a.id} src={a.url} alt={a.name} loading="lazy" onClick={() => onPick(a.url)} className="aspect-[4/3] w-full cursor-pointer rounded-lg object-cover ring-1 ring-white/20 hover:ring-white" title={a.name} />
-        ))}
+      {all.length > 0 && (
+        <div className="mb-2 flex gap-1.5">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${noun}s by name…`}
+            aria-label={`Search the media library`}
+            className="inp !py-1.5 text-xs"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear the search" className="shrink-0 rounded-lg bg-white/10 px-2.5 text-xs font-black ring-1 ring-white/15 hover:bg-white/20">✕</button>
+          )}
+        </div>
+      )}
+      {all.length === 0 ? (
+        <p className="text-xs text-white/50">
+          No {noun}s in the library yet — {onUpload ? "use “+ Upload” above" : "upload one in the Assets tab"} and it shows up here.
+        </p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-white/50">Nothing matches “{query}”.</p>
+      ) : (
+        <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-4">
+          {items.map((a) => {
+            const active = current === a.url;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onPick(a.url)}
+                title={a.name}
+                aria-pressed={active}
+                className={`relative overflow-hidden rounded-lg transition ${active ? "ring-2 ring-white" : "ring-1 ring-white/20 hover:ring-2 hover:ring-white/70"}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={a.url} alt={a.name} loading="lazy" draggable={false} className={`aspect-[4/3] w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/65 px-1 py-0.5 text-left text-[10px] font-bold text-white/90">{a.name}</span>
+                {active && <span className="pointer-events-none absolute right-1 top-1 rounded bg-white px-1 text-[9px] font-black text-black">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The nine standard focal points, in the order the 3×3 pad shows them. */
+const FOCAL_POINTS: { value: string; label: string }[] = [
+  { value: "left top", label: "Top left" },
+  { value: "center top", label: "Top centre" },
+  { value: "right top", label: "Top right" },
+  { value: "left center", label: "Middle left" },
+  { value: "center", label: "Centre" },
+  { value: "right center", label: "Middle right" },
+  { value: "left bottom", label: "Bottom left" },
+  { value: "center bottom", label: "Bottom centre" },
+  { value: "right bottom", label: "Bottom right" },
+];
+
+/**
+ * Read a CSS object-position value back into one of FOCAL_POINTS, so a slide that
+ * stores "top" or "50% 50%" still highlights the right square. Custom values like
+ * "30% 60%" return null — they stay editable in the advanced box.
+ */
+function focalPoint(raw: string): string | null {
+  const tokens = (raw || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const word = (t: string) =>
+    ({ left: "left", right: "right", center: "center", centre: "center", "0%": "left", "50%": "center", "100%": "right" })[t];
+  const vert = (t: string) => ({ top: "top", bottom: "bottom", center: "center", centre: "center", "0%": "top", "50%": "center", "100%": "bottom" })[t];
+  if (tokens.length === 0) return "center";
+  if (tokens.length === 1) {
+    const v = vert(tokens[0]);
+    if (tokens[0] === "center" || tokens[0] === "centre" || tokens[0] === "50%") return "center";
+    if (v === "top" || v === "bottom") return `center ${v}`;
+    const h = word(tokens[0]);
+    return h === "left" || h === "right" ? `${h} center` : null;
+  }
+  const a = tokens[0];
+  const b = tokens[1];
+  const aVert = vert(a) && !word(a);
+  const x = aVert ? word(b) : word(a);
+  const y = aVert ? vert(a) : vert(b);
+  if (!x || !y) return null;
+  const xv = x === "center" ? "center" : x;
+  const yv = y === "center" ? "center" : y;
+  return xv === "center" && yv === "center" ? "center" : `${xv} ${yv}`;
+}
+
+/**
+ * Focal point + fit for the slide photo (and the background image — both use
+ * `imagePosition`). Replaces the old free-text box that expected CSS syntax like
+ * "30% 60%" and gave no hint what the valid values were.
+ */
+function FocalPicker({ value, onChange, fit, onFit }: { value: string; onChange: (v: string) => void; fit: string; onFit: (v: string) => void }) {
+  const [advanced, setAdvanced] = useState(false);
+  const active = focalPoint(value);
+  return (
+    <div>
+      <label className="lbl">Image position &amp; fit</label>
+      <div className="flex items-start gap-3">
+        <div className="grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-black/40 p-1.5 ring-1 ring-white/10" role="radiogroup" aria-label="Image focal point">
+          {FOCAL_POINTS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              role="radio"
+              aria-checked={active === p.value}
+              aria-label={p.label}
+              title={p.label}
+              onClick={() => onChange(p.value)}
+              className={`grid h-6 w-6 place-items-center rounded-md ring-1 transition ${active === p.value ? "bg-white ring-white" : "bg-white/10 ring-white/15 hover:bg-white/25"}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${active === p.value ? "bg-black" : "bg-white/50"}`} />
+            </button>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => onFit("cover")}
+              aria-pressed={fit !== "contain"}
+              title="Fill the area — the picture is cropped at the edges"
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-black ring-1 ${fit !== "contain" ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+            >
+              Fill area
+            </button>
+            <button
+              type="button"
+              onClick={() => onFit("contain")}
+              aria-pressed={fit === "contain"}
+              title="Show the whole picture — nothing is cropped"
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-black ring-1 ${fit === "contain" ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+            >
+              Show whole
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => { onChange("center"); onFit("cover"); }} className="text-[11px] text-white/40 underline hover:text-white/70">
+              Reset
+            </button>
+            <button type="button" onClick={() => setAdvanced((a) => !a)} aria-expanded={advanced} className="text-[11px] text-white/40 underline hover:text-white/70">
+              {advanced ? "Hide custom value" : "Custom value"}
+            </button>
+          </div>
+          {advanced && (
+            <input
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="inp !py-1.5 text-xs"
+              placeholder="center · top · 30% 60%"
+              aria-label="Custom image position (CSS object-position)"
+            />
+          )}
+        </div>
       </div>
+      <p className="mt-1 text-[11px] text-white/40">Which part of the photo stays in view. Applies to the slide photo and the background image.</p>
+    </div>
+  );
+}
+
+/**
+ * Address field for an image/video with a library button, a live preview and a
+ * clear button. Used for the slide image, the background image and the video.
+ */
+function MediaField({
+  label,
+  value,
+  onChange,
+  assets,
+  media = "image",
+  fit = "cover",
+  placeholder = "https://… or /retail/apples.jpg",
+  hint,
+  onUpload,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  assets: Asset[];
+  media?: "image" | "video";
+  fit?: "cover" | "contain";
+  placeholder?: string;
+  hint?: React.ReactNode;
+  /** Optional: drop a file on the field to upload it and use the result. */
+  onUpload?: (file: File) => Promise<string | null>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const broken = value !== "" && failed === value;
+  const isVideo = media === "video";
+  const drop = async (file: File | undefined) => {
+    if (!file || !onUpload || uploading) return;
+    setUploading(true);
+    const url = await onUpload(file);
+    setUploading(false);
+    if (url) onChange(url);
+  };
+  return (
+    <div
+      onDragOver={onUpload ? (e) => { e.preventDefault(); setDragging(true); } : undefined}
+      onDragLeave={onUpload ? () => setDragging(false) : undefined}
+      onDrop={onUpload ? (e) => { e.preventDefault(); setDragging(false); void drop(e.dataTransfer.files?.[0]); } : undefined}
+      className={dragging ? "rounded-xl ring-2 ring-white/70" : undefined}
+    >
+      <label className="lbl">{label}</label>
+      <div className="flex gap-2">
+        <input value={value} onChange={(e) => onChange(e.target.value)} className="inp" placeholder={placeholder} />
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          title="Browse the media library"
+          className={`shrink-0 rounded-xl px-3 text-xs font-bold ring-1 ${open ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+        >
+          {uploading ? "Uploading…" : <><BrowseIcon /> Library</>}
+        </button>
+        {value && (
+          <button type="button" onClick={() => onChange("")} title="Clear this field" aria-label="Clear" className="shrink-0 rounded-xl bg-white/10 px-3 text-xs font-bold ring-1 ring-white/15 hover:bg-white/20">✕</button>
+        )}
+      </div>
+      {value && (
+        <div className="mt-1.5 flex items-center gap-2">
+          {broken ? (
+            <span className="rounded-lg bg-red-500/15 px-2 py-1 text-[11px] font-bold text-red-300 ring-1 ring-red-400/30">Can&apos;t load this {isVideo ? "video" : "image"} — check the address</span>
+          ) : (
+            <span className="h-10 w-16 shrink-0 overflow-hidden rounded-lg bg-black/40 ring-1 ring-white/15">
+              {isVideo ? (
+                <video src={value} className="h-full w-full object-cover" muted onError={() => setFailed(value)} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={value} alt="" draggable={false} onError={() => setFailed(value)} className="h-full w-full object-cover" />
+              )}
+            </span>
+          )}
+          <span className="min-w-0 truncate font-mono text-[10px] text-white/35">{value}</span>
+        </div>
+      )}
+      {hint}
+      {dragging && <p className="mt-1 text-[11px] font-bold text-white/80">Drop to upload and use this file…</p>}
+      {open && (
+        <LibraryPicker
+          title={`${label.toUpperCase()} — MEDIA LIBRARY`}
+          assets={assets}
+          current={value}
+          media={media}
+          fit={fit}
+          onUpload={onUpload}
+          onClose={() => setOpen(false)}
+          onPick={(url) => { onChange(url); setOpen(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -941,61 +1444,100 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "trustpilot-review": "Top reviews — name = reviewer, detail = review text, tag = stars (★★★★★). The rating number goes in the slide's Headline",
 };
 
-function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: { id: string; name: string; url: string; type: string }[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
+function ItemsEditor({ items, template, assets, onChange, onUpload }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: Asset[]; onChange: (v: NonNullable<Scene["items"]>) => void; onUpload?: (file: File) => Promise<string | null> }) {
   const list = items || [];
   const [pickIndex, setPickIndex] = useState<number | null>(null);
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
-  const showPrice =
-    template === "food-menu" ||
-    template === "product-grid" ||
-    template === "price-list" ||
-    template === "deals-grid" ||
-    template === "clearance" ||
-    template === "top-sellers";
-  // only these layouts draw a picture per row
-  const showImage = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy"].includes(template);
-  const pics = assets.filter((a) => a.type !== "video");
+  // Which columns this template draws comes from lib/templateFields, so adding a
+  // template can no longer leave the editor showing the wrong inputs.
+  const rows = templateRows(template);
+  const showPrice = rows.includes("price");
+  const showTag = rows.includes("tag");
+  const showDesc = rows.includes("desc");
+  const showImage = rows.includes("image");
+  const isLogo = template === "brand-wall";
+  const imagePlaceholder = isLogo ? "Logo image URL" : template === "team-intro" ? "Photo URL (optional)" : template === "trustpilot-review" ? "Reviewer photo URL" : "Image URL";
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-xs font-black tracking-widest text-white/50">ROWS ({list.length})</span>
         <button onClick={() => onChange([...list, { name: "New row", price: "£9.99", desc: "", tag: "" }])} className="rounded-full bg-white px-3 py-1 text-xs font-black text-black">+ Add</button>
       </div>
-      <p className="mb-2 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
+      <p className="mb-1 text-[11px] text-white/40">{ITEM_HINTS[template] || "Rows for this template"}</p>
+      <p className="mb-2 text-[10px] uppercase tracking-widest text-white/25">Columns: {rows.length ? rows.join(" · ") : "none"}</p>
       <div className="space-y-2">
-        {list.map((it, i) => (
-          <div key={i} className="space-y-1.5 rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/10">
-            <div className="grid grid-cols-[1fr_84px_96px_26px] gap-1.5">
-              <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
-              {showPrice ? (
-                <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
-              ) : (
-                <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
-              )}
-              {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
-              <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
-            </div>
-            <div className={`grid gap-1.5 ${showImage ? "grid-cols-[1fr_150px_40px]" : "grid-cols-1"}`}>
-              <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 text-xs" placeholder="Detail / spec value" />
-              <div className="flex items-center gap-1">
-                <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs flex-1" placeholder={template === "brand-wall" ? "logo image URL" : "img URL"} />
-                <button onClick={() => setPickIndex(i)} className="rounded-lg bg-white/10 px-2 text-[12px] font-bold hover:bg-white/20" title="Pick from library">📂</button>
+        {list.map((it, i) => {
+          const picking = pickIndex === i;
+          return (
+            <div key={i} className="space-y-1.5 rounded-xl bg-white/[0.04] p-2 ring-1 ring-white/10">
+              <div className="grid grid-cols-[minmax(0,1fr)_84px_96px_26px] gap-1.5">
+                <input value={it.name} onChange={(e) => edit(i, "name", e.target.value)} className="inp !py-2 text-xs" placeholder="Name / label" />
+                {showPrice ? (
+                  <input value={it.price || ""} onChange={(e) => edit(i, "price", e.target.value)} className="inp !py-2 text-xs" placeholder="£0.00" />
+                ) : showTag ? (
+                  <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />
+                ) : (
+                  <span />
+                )}
+                {showPrice && showTag && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
+                <button onClick={() => { onChange(list.filter((_, j) => j !== i)); setPickIndex(null); }} title="Remove this row" aria-label={`Remove row ${i + 1}`} className="rounded-lg bg-white/10 text-red-300">✕</button>
               </div>
-              {pickIndex === i && pics.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {showDesc && (
+                  <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 min-w-0 flex-1 text-xs" placeholder="Detail / spec value" />
+                )}
+                {showImage && (
+                  <button
+                    type="button"
+                    onClick={() => setPickIndex(picking ? null : i)}
+                    aria-expanded={picking}
+                    aria-label={`Pick an image for row ${i + 1} from the library`}
+                    title="Pick from the media library"
+                    className={`shrink-0 rounded-xl px-3 py-2 text-xs font-black ring-1 ${picking ? "bg-white text-black ring-white" : "bg-white/10 ring-white/15 hover:bg-white/20"}`}
+                  >
+                    <BrowseIcon /> Image
+                  </button>
+                )}
+              </div>
+              {showImage && (
+                <div className="flex items-center gap-1.5">
+                  {it.image && <Thumb url={it.image} fit={isLogo ? "contain" : "cover"} className="h-9 w-14" />}
+                  <input
+                    value={it.image || ""}
+                    onChange={(e) => { edit(i, "image", e.target.value); setPickIndex(null); }}
+                    className="inp !py-2 min-w-0 flex-1 text-xs"
+                    placeholder={imagePlaceholder}
+                    aria-label={`Row ${i + 1} image URL`}
+                  />
+                  {it.image && (
+                    <button
+                      type="button"
+                      onClick={() => { edit(i, "image", ""); setPickIndex(null); }}
+                      title="Remove this row's image"
+                      aria-label={`Clear the image on row ${i + 1}`}
+                      className="shrink-0 rounded-xl bg-white/10 px-3 py-2 text-xs font-black text-red-300 ring-1 ring-white/15 hover:bg-red-500/25"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* The library opens full-width below the row — as a grid child it was
+                  squeezed into a 40px column and clipped to an unreadable sliver. */}
+              {showImage && picking && (
                 <LibraryPicker
-                  title={`ROW ${i + 1} IMAGE`}
-                  assets={pics}
+                  title={`ROW ${i + 1} IMAGE — MEDIA LIBRARY`}
+                  assets={assets}
+                  current={it.image || ""}
+                  fit={isLogo ? "contain" : "cover"}
+                  onUpload={onUpload}
+                  onClose={() => setPickIndex(null)}
                   onPick={(url) => { edit(i, "image", url); setPickIndex(null); }}
                 />
               )}
             </div>
-          </div>
-        ))}
-        {showImage && pickIndex === null && pics.length > 0 && list.length > 0 && (
-          <div className="mt-2">
-            <LibraryPicker title="QUICK-SET ANY ROW IMAGE" assets={pics} onPick={(url) => { if (list.length) edit(list.length - 1, "image", url); }} />
-          </div>
-        )}
+          );
+        })}
         {list.length === 0 && <p className="text-xs text-white/40">No rows yet — add some above.</p>}
       </div>
     </div>
@@ -1006,6 +1548,7 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string; url: string; type: string; source?: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -1026,25 +1569,40 @@ function AssetsPanel({ assets, onReload, flash, onUse }: { assets: { id: string;
   };
 
   const upload = async (f: File) => {
+    if (busy) return;
     setBusy(true);
     const fd = new FormData();
     fd.append("file", f);
-    const r = await fetch("/api/upload", { method: "POST", body: fd });
-    const j = await r.json();
+    try {
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) flash(j.error || `Upload failed (${r.status})`);
+      else { onReload(); flash("Uploaded to library"); }
+    } catch {
+      flash("Upload failed — check the connection to the server");
+    }
     setBusy(false);
-    if (j.error) flash(j.error);
-    else { onReload(); flash("Uploaded to library"); }
   };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
       <div className="h-fit space-y-4 rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">
         <h3 className="font-black">Add media</h3>
-        <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-white/20 p-6 text-center hover:border-white/50">
+        <label
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) upload(f); }}
+          className={`block cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition ${dragging ? "border-white bg-white/10" : "border-white/20 hover:border-white/50"}`}
+        >
           <div className="text-3xl">⇪</div>
           <div className="mt-1 text-sm font-bold">{busy ? "Uploading…" : "Drop / click to upload"}</div>
           <div className="text-xs text-white/40">jpg · png · webp · gif · mp4 · webm · max 25 MB</div>
-          <input type="file" className="hidden" accept="image/*,video/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*,video/*"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(f); }}
+          />
         </label>
         <div className="space-y-2">
           <label className="lbl">Or register by URL</label>

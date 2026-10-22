@@ -152,10 +152,15 @@ export default function DatabasePanel({
               }}
               className="rounded-full bg-white px-4 py-2 text-xs font-black text-black hover:bg-white/90"
             >
-              ✨ Seed 8 Demo Scenes
+              ✨ Seed demo pack
             </button>
           </div>
         </div>
+        <p className="mt-3 text-xs leading-relaxed text-white/45">
+          Seeding builds example scenes, a playlist and screens so the admin isn&apos;t empty — it is
+          setup material, not the offline fallback. What a screen shows when the CMS can&apos;t be
+          reached is set on the <strong className="text-white/70">Failsafe</strong> tab.
+        </p>
 
         {status?.error && (
           <div className="mt-4 rounded-2xl bg-red-500/15 p-4 font-mono text-xs text-red-200 ring-1 ring-red-400/30">

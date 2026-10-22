@@ -1,7 +1,7 @@
 // Business branding: placeholders, brand colours, ticker rules, settings validation
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_BRAND, brandScene, fillText, normalizeBrand, tickerFor } from "../src/lib/brand.ts";
+import { DEFAULT_BRAND, TICKER_SIZES, TICKER_SIZE_IDS, brandScene, fillText, normalizeBrand, tickerFor } from "../src/lib/brand.ts";
 
 const brand = { ...DEFAULT_BRAND, businessName: "Easygates", phone: "01632 960 000" };
 
@@ -69,6 +69,28 @@ describe("business branding", () => {
     assert.equal(n.applyColors, DEFAULT_BRAND.applyColors);
     assert.equal(n.phone, DEFAULT_BRAND.phone);
     assert.deepEqual(normalizeBrand(null), DEFAULT_BRAND);
+  });
+
+  it("offers three ticker sizes, all bigger than the last", () => {
+    assert.deepEqual(TICKER_SIZE_IDS, ["sm", "md", "lg"]);
+    for (const id of TICKER_SIZE_IDS) {
+      const t = TICKER_SIZES[id];
+      assert.ok(t.name && t.blurb, `${id} needs a label and a description for the Business tab`);
+      assert.match(String(t.fontSize), /^\d+$/, `${id} needs a numeric font size`);
+    }
+    assert.ok(TICKER_SIZES.sm.fontSize < TICKER_SIZES.md.fontSize);
+    assert.ok(TICKER_SIZES.md.fontSize < TICKER_SIZES.lg.fontSize);
+    assert.ok(TICKER_SIZES.sm.padY <= TICKER_SIZES.md.padY && TICKER_SIZES.md.padY < TICKER_SIZES.lg.padY);
+  });
+
+  it("defaults the ticker size to standard and ignores anything else", () => {
+    assert.equal(DEFAULT_BRAND.tickerSize, "md");
+    assert.equal(normalizeBrand({}).tickerSize, "md");
+    assert.equal(normalizeBrand({ tickerSize: "lg" }).tickerSize, "lg");
+    assert.equal(normalizeBrand({ tickerSize: "huge" }).tickerSize, "md");
+    assert.equal(normalizeBrand({ tickerSize: 42 }).tickerSize, "md");
+    // survives a round trip through JSON (settings are stored as one JSON blob)
+    assert.equal(normalizeBrand(JSON.parse(JSON.stringify({ ...DEFAULT_BRAND, tickerSize: "sm" }))).tickerSize, "sm");
   });
 
   it("validates the time zone and defaults to Europe/London", () => {

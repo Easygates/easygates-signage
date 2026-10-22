@@ -3,7 +3,7 @@
 
 import { useState, type ReactNode } from "react";
 import ScreenView from "@/components/ScreenView";
-import type { BrandSettings } from "@/lib/brand";
+import { TICKER_SIZES, TICKER_SIZE_IDS, type BrandSettings } from "@/lib/brand";
 import type { Scene } from "@/lib/signage";
 
 type Asset = { id: string; name: string; url: string; type: string };
@@ -174,6 +174,32 @@ export default function BusinessPanel({
           <input value={draft.tickerText} onChange={(e) => onChange("tickerText", e.target.value)} className="inp" placeholder="FREE SITE SURVEYS — CALL {phone} —" />
           <div className="mt-3">
             <Check checked={draft.tickerOnAll} onChange={(v) => onChange("tickerOnAll", v)} label="Show it on every slide" hint="Otherwise it only appears on slides that don't have a ticker of their own." />
+          </div>
+          <div className="mt-4">
+            <label className="lbl">Ticker size</label>
+            <div className="grid grid-cols-3 gap-2">
+              {TICKER_SIZE_IDS.map((id) => {
+                const size = TICKER_SIZES[id];
+                const active = draft.tickerSize === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => onChange("tickerSize", id)}
+                    aria-pressed={active}
+                    title={size.blurb}
+                    className={`rounded-xl p-2 text-left ring-1 ${active ? "bg-white text-black ring-white" : "bg-white/5 text-white ring-white/10 hover:bg-white/10"}`}
+                  >
+                    <span className="block overflow-hidden whitespace-nowrap font-bold" style={{ fontSize: Math.round(size.fontSize * 0.6), letterSpacing: `${size.tracking}em` }}>
+                      Aa · {size.name}
+                    </span>
+                    <span className={`mt-0.5 block text-[10px] font-normal ${active ? "text-black/60" : "text-white/50"}`}>{size.blurb}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-white/40">
+              Applies to the strip at the bottom of every screen, including tickers set on individual slides. The preview on the right shows the real size.
+            </p>
           </div>
         </Section>
 
