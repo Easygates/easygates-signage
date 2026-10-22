@@ -745,12 +745,13 @@ const HIGHLIGHT_TEMPLATES: string[] = ["price-drop", "deals-grid", "multibuy", "
 /** Every picture in the media library as a scrollable grid (videos can't be images or backgrounds). */
 function LibraryPicker({ title, assets, onPick }: { title: string; assets: { id: string; name: string; url: string; type: string }[]; onPick: (url: string) => void }) {
   const pics = assets.filter((a) => a.type !== "video");
+  const hidden = assets.length - pics.length;
   if (pics.length === 0) return null;
   return (
     <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between text-[11px] font-black tracking-widest text-white/50">
         <span>{title}</span>
-        <span className="font-mono text-white/40">{pics.length}</span>
+        <span className="font-mono text-white/40">{pics.length} images{hidden ? ` · ${hidden} video${hidden > 1 ? "s" : ""} hidden` : ""}</span>
       </div>
       <div className="grid max-h-60 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-5">
         {pics.map((a) => (
