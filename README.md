@@ -1,12 +1,13 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 27 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 32 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
-Four fictional demo campaigns, all loadable from `/admin`:
+Five fictional demo campaigns, all loadable from `/admin`:
 
-- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
+- **NOVA MART · Winter Sale Event** — 8 retail scenes, covering the 7 original retail templates.
 - **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
+- **RAPIDFIX · Trade Counter** — 5 trade-counter retail scenes: bulk-buy price ladder, six shelf-edge labels, a 48-hour flash sale, click & collect and a trade-account sign-up. Uses the bundled `public/counter/` packshots, so it also runs offline.
 - **Easygates · Head Office & Reception** — 7 corporate scenes, one per corporate / social-proof template (company values, team, milestone, news, testimonial, fullscreen background, Trustpilot review), using bundled images only so displays work offline.
 
 ## Templates
@@ -30,6 +31,18 @@ Four fictional demo campaigns, all loadable from `/admin`:
 | Announcement | Store news & events (original) |
 | Full-Screen Campaign | Brand moments (original) |
 | Split-Screen Promo | Dual-message promos (original) |
+
+### Trade counter / Screwfix-style retail
+
+| Template | Best for |
+|---|---|
+| Bulk Buy | Quantity-break price ladder beside a catalogue product card — "buy more, pay less" |
+| Shelf-Edge Deals | Up to six white shelf-edge labels with cat numbers, pack tags and barcodes |
+| Flash Sale | Hazard-taped event board with a giant % burst and the categories included |
+| Click & Collect | Stopwatch dial and numbered collection steps |
+| Trade Account | Oversized trade card, benefits list and an apply-now plate |
+
+Charcoal steel, off-white catalogue paper, safety yellow and hard red, with mono part numbers and generated bar codes. They sit in the **Retail & promo** group in the template picker.
 
 ### Trade (electrical / smart home / gate automation)
 
@@ -57,13 +70,14 @@ Theme decorations always render; theme colours only override the slide's own pal
 
 ## Demo campaigns
 
-Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**) or via the API:
+Seed a campaign from `/admin` (**✨ Retail demo**, **⚡ Trade demo**, **💰 Value demo**, **🏢 Corporate demo**, **🔧 Trade counter demo**) or via the API:
 
 ```bash
 curl -X POST 'http://localhost:3000/api/seed?campaign=value'
 curl -X POST 'http://localhost:3000/api/seed?campaign=retail'
 curl -X POST 'http://localhost:3000/api/seed?campaign=trade'
 curl -X POST 'http://localhost:3000/api/seed?campaign=corporate'
+curl -X POST 'http://localhost:3000/api/seed?campaign=counter'
 ```
 
 The value campaign uses fictional products, a fictional store name ("Value Store"), and `{phone}` placeholders resolved from the Business tab settings. At least 4 slides use different seasonal themes.
@@ -107,7 +121,7 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 
    > **Why RLS with no policies?** Supabase exposes `public` tables through its Data API to anyone holding the project's publishable/anon key. NovaSign never uses that API — it connects to Postgres directly as the table owner, which bypasses RLS — so enabling RLS without policies closes the API off (including the Fully Kiosk passwords in `displays.settings`) without affecting the app. `/admin?tab=database` warns if any table still has RLS off.
 
-5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
+5. Start the server and seed a demo campaign via **✨ Retail demo** / **⚡ Trade demo** / **💰 Value demo** / **🏢 Corporate demo** / **🔧 Trade counter demo** in `/admin`, or `curl -X POST 'http://localhost:3000/api/seed?campaign=trade'` (`campaign=retail` is the default).
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 
@@ -139,7 +153,7 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 |---|---|
 | **Last playlist it played** (default) | The copy each player keeps in its own browser (`localStorage`), so the real content keeps running through an outage. |
 | **A playlist I choose** | A playlist downloaded onto the screen in the background (refreshed about every 5 minutes) and played from that copy if the CMS disappears. |
-| **The built-in demo pack** | The 26 built-in scenes whose photos ship in `public/` — so they still render with no internet. Works with no database at all: day-one content or a shop-window loop. |
+| **The built-in demo pack** | The 31 built-in scenes whose photos ship in `public/` — so they still render with no internet. Works with no database at all: day-one content or a shop-window loop. |
 
 - The choice is stored in `settings` under the `failsafe` key and reaches screens on their next poll (≤ 30 s).
 - A screen that has never loaded anything plays the built-in pack, so it is never blank. A screen that already has content keeps playing it even if the API answers 503.
@@ -153,12 +167,51 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 | `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`, `&offline=1` to preview the failsafe) |
 | `/export?playlistId=…` | Record one playlist pass as a 1080p MP4 from the browser |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline, failsafe |
-| `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
+| `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + backup / restore (JSON + SQL) |
 | `/docs` | Hardware research, deploy guide and Supabase setup |
 | `/api/db-status` | Live DB health, latency, pooler mode & table row counts |
+| `/api/backup` | Download every table as JSON (default) or `?format=sql`; `POST` a JSON backup with `?mode=merge` or `?mode=replace` to restore |
 | `/api/selftest` | Automated checks (JSON) |
 | `/api/player?displayId=…` | What a screen should play right now (`&poll=` is a player-side refresh hint) |
 | `/api/displays/:id/control` | Proxy to Fully Kiosk Remote Admin — reload / wake / restart / screenshot (POST action, GET screenshot) |
+
+## Backing up and restoring the database
+
+**Admin → Database / Supabase → 💾 Backup & restore** exports the complete database as one file:
+
+| Button | File | Best for |
+|---|---|---|
+| **Download JSON backup** | `novasign-backup-YYYY-MM-DD-HHmm.json` | Restoring from the same card — roll the database back, or clone the whole setup onto a new server |
+| **Download SQL dump** | `novasign-backup-YYYY-MM-DD-HHmm.sql` | `psql "$DATABASE_URL" -f novasign-backup-….sql`, pgAdmin, or pasting into the Supabase SQL Editor |
+
+Both contain all seven tables — `assets`, `scenes`, `playlists`, `playlist_items`, `displays`, `schedules` and `settings` — including business details, the failsafe choice and the Fully Kiosk passwords stored on each screen.
+
+- **Merge** (default) adds rows that don't exist yet and leaves current content untouched.
+- **Replace** empties all seven tables first, then restores the file exactly (the UI asks for an extra confirmation).
+- Restores run in a single PostgreSQL transaction: a malformed file is rejected by validation before anything is written, and a database error rolls the whole restore back.
+- Both restore paths expect the seven tables to exist. On a brand-new database run `supabase/schema.sql` (or `npx drizzle-kit push`) first; the JSON restore returns that hint if the tables are missing.
+- Backups carry a format version. A file from a newer NovaSign is refused with an "update first" message instead of being half-imported.
+
+Once `ADMIN_PASSWORD` is set, both downloading and restoring a backup require the admin login. **Keep backup files private** — like the database itself, they contain screen-control passwords.
+
+**Media files are not in a database backup.** The `assets` table stores URLs; the image and video files live in `public/uploads/` (or the Supabase Storage bucket). Copy those separately — e.g. `rsync -a public/uploads/ /backup/uploads/`, or download the bucket from Supabase → Storage. Supabase's own scheduled database backups are a useful second layer.
+
+### Automating backups
+
+```bash
+# Sign in first — the same cookie works for every admin request.
+curl -c cookies.txt -X POST localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" -d '{"password":"choose-a-password"}'
+
+curl -b cookies.txt -o novasign-backup.json http://localhost:3000/api/backup
+curl -b cookies.txt -o novasign-backup.sql  "http://localhost:3000/api/backup?format=sql"
+
+# Restore later (merge; use ?mode=replace to wipe first):
+curl -b cookies.txt -X POST --data-binary @novasign-backup.json \
+  "http://localhost:3000/api/backup?mode=merge"
+```
+
+A nightly `cron` entry or Windows Task Scheduler job around the first two commands is enough for most shops; copy the results off the machine (NAS, cloud drive or another PC).
 
 ## Exporting a playlist to MP4
 

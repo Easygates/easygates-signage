@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALL_DEMO_SCENES, CORPORATE_DEMO_SCENES, DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "../src/lib/signage.ts";
+import { ALL_DEMO_SCENES, CORPORATE_DEMO_SCENES, COUNTER_DEMO_SCENES, DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "../src/lib/signage.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
@@ -50,8 +50,12 @@ describe("opening page", () => {
   it("the built-in total really is every pack, and every template has a demo slide", () => {
     assert.equal(
       ALL_DEMO_SCENES.length,
-      DEMO_SCENES.length + TRADE_DEMO_SCENES.length + VALUE_DEMO_SCENES.length + CORPORATE_DEMO_SCENES.length,
-      "ALL_DEMO_SCENES must be the sum of the four packs"
+      DEMO_SCENES.length +
+        TRADE_DEMO_SCENES.length +
+        VALUE_DEMO_SCENES.length +
+        CORPORATE_DEMO_SCENES.length +
+        COUNTER_DEMO_SCENES.length,
+      "ALL_DEMO_SCENES must be the sum of the five packs"
     );
     const covered = new Set(ALL_DEMO_SCENES.map((s) => s.template));
     const missing = TEMPLATES.map((t) => t.id).filter((id) => !covered.has(id));

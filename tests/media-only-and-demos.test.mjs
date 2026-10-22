@@ -98,10 +98,10 @@ describe("demo packs land on the playlist they build", () => {
   });
 
   it("still explains what each pack contains", () => {
-    for (const pack of ["retail", "trade", "value", "corporate"]) {
+    for (const pack of ["retail", "trade", "value", "corporate", "counter"]) {
       assert.ok(admin.includes(`seed("${pack}")`), `${pack} demo button missing`);
     }
-    assert.equal((admin.match(/title="\d+ [a-z-]+ slides \+ a playlist/g) ?? []).length, 4, "each demo button needs a title saying what it loads");
+    assert.equal((admin.match(/title="\d+ [a-z-]+ slides \+ a playlist/g) ?? []).length, 5, "each demo button needs a title saying what it loads");
   });
 });
 

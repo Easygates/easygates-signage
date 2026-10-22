@@ -123,8 +123,9 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 # SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 # SUPABASE_SECRET_KEY="sb_secret_..."   (Settings → API Keys — server-only)
 # SUPABASE_STORAGE_BUCKET="signage-media"`}</pre>
-            <p className="mt-3">Paste <code>supabase/schema.sql</code> into <b>Supabase Dashboard → SQL Editor → Run</b> (creates the 7 tables, enables Row Level Security and creates the <code>signage-media</code> bucket) <b>or</b> push the tables with <code>npx drizzle-kit push</code> (uses <code>DIRECT_URL</code> automatically via <code>drizzle.config.ts</code>; enables RLS but does not create the bucket). Then restart the app and click one of the demo packs (<b>✨ Retail</b>, <b>⚡ Trade</b>, <b>💰 Value</b>, <b>🏢 Corporate</b>). Each one creates its scenes, a playlist, screens and a schedule, then opens that playlist ready to press ▶ Play.</p>
+            <p className="mt-3">Paste <code>supabase/schema.sql</code> into <b>Supabase Dashboard → SQL Editor → Run</b> (creates the 7 tables, enables Row Level Security and creates the <code>signage-media</code> bucket) <b>or</b> push the tables with <code>npx drizzle-kit push</code> (uses <code>DIRECT_URL</code> automatically via <code>drizzle.config.ts</code>; enables RLS but does not create the bucket). Then restart the app and click one of the demo packs (<b>✨ Retail</b>, <b>⚡ Trade</b>, <b>💰 Value</b>, <b>🏢 Corporate</b>, <b>🔧 Trade counter</b>). Each one creates its scenes, a playlist, screens and a schedule, then opens that playlist ready to press ▶ Play.</p>
             <p className="mt-2 text-white/60">RLS with no policies keeps the tables out of Supabase&apos;s public Data API — the app connects as the table owner and is unaffected. <code>/admin?tab=database</code> warns if any table still has RLS off.</p>
+            <p className="mt-3"><b>Backups.</b> <Link href="/admin?tab=database" className="font-bold text-emerald-300 underline">Database / Supabase → Backup &amp; restore</Link> downloads every table as a restorable JSON file or a psql-ready <code>.sql</code> dump, and restores a JSON backup in <b>merge</b> (add missing rows) or <b>replace</b> (wipe then restore) mode. Media files live outside the database — also copy <code>public/uploads/</code> or the Supabase Storage bucket. Set <code>ADMIN_PASSWORD</code> before exposing the CMS: backup files contain the screen-control passwords, so keep them private.</p>
           </>
         } />
 
@@ -151,7 +152,7 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 
         <Doc title="7 · Tests & verification" body={
           <>
-            <p><code>GET /api/selftest</code> checks: all 27 templates covered by the demo campaigns, every timeline ordered with an exit step, durations in range, images present. Node tests live in <code>tests/</code> and run with <code>node --test</code>. Full gate before finishing:</p>
+            <p><code>GET /api/selftest</code> checks: every template in the catalogue is covered by a demo campaign, every timeline ordered with an exit step, durations in range, images present. Node tests live in <code>tests/</code> and run with <code>node --test</code>. Full gate before finishing:</p>
             <pre className="mt-3 overflow-x-auto rounded-2xl bg-black/50 p-4 font-mono text-xs text-green-300 ring-1 ring-white/10">{`npx next typegen && npm exec tsc -- --noEmit && npm run build\nnode --test tests/ && curl /api/selftest`}</pre>
           </>
         } />

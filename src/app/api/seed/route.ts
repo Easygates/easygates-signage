@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { CORPORATE_DEMO_SCENES, DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
+import { CORPORATE_DEMO_SCENES, COUNTER_DEMO_SCENES, DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-type Campaign = "retail" | "trade" | "value" | "corporate";
+type Campaign = "retail" | "trade" | "value" | "corporate" | "counter";
 
 const CAMPAIGNS = {
   retail: {
@@ -43,6 +43,16 @@ const CAMPAIGNS = {
       { name: "Value Store · Aisle Sign", location: "Aisle end-cap", pairingCode: "VCAF" },
     ],
   },
+  counter: {
+    scenes: COUNTER_DEMO_SCENES,
+    playlistName: "RAPIDFIX · Trade Counter Deals",
+    description: "5-scene trade-counter campaign covering the five Screwfix-style retail templates",
+    scheduleName: "Trade counter hours",
+    displays: [
+      { name: "Trade Counter · Counter TV", location: "Trade counter", pairingCode: "RAPD" },
+      { name: "Trade Counter · Warehouse", location: "Warehouse / loading bay", pairingCode: "RAPW" },
+    ],
+  },
   corporate: {
     scenes: CORPORATE_DEMO_SCENES,
     playlistName: "Easygates · Head Office & Reception",
@@ -53,14 +63,14 @@ const CAMPAIGNS = {
       { name: "Office Screen", location: "Staff office", pairingCode: "OFFC" },
     ],
   },
-} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES | typeof CORPORATE_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
+} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES | typeof CORPORATE_DEMO_SCENES | typeof COUNTER_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
 
 async function campaignFrom(req: Request): Promise<Campaign> {
   const q = new URL(req.url).searchParams.get("campaign");
-  if (q === "trade" || q === "retail" || q === "value" || q === "corporate") return q;
+  if (q === "trade" || q === "retail" || q === "value" || q === "corporate" || q === "counter") return q;
   try {
     const body = await req.json();
-    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value" || body?.campaign === "corporate") return body.campaign;
+    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value" || body?.campaign === "corporate" || body?.campaign === "counter") return body.campaign;
   } catch {
     /* no body */
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import BackupPanel from "@/components/BackupPanel";
 
 interface DbStatus {
   connected: boolean;
@@ -39,9 +40,11 @@ const REGIONS = [
 export default function DatabasePanel({
   onFlash,
   onSeed,
+  onRestored,
 }: {
   onFlash: (msg: string) => void;
   onSeed: () => Promise<void>;
+  onRestored?: () => void;
 }) {
   const [status, setStatus] = useState<DbStatus | null>(null);
   const [checking, setChecking] = useState(false);
@@ -193,6 +196,15 @@ export default function DatabasePanel({
           </div>
         )}
       </div>
+
+      {/* Export every table for backup / restore a JSON backup */}
+      <BackupPanel
+        onFlash={onFlash}
+        onRestored={() => {
+          void refresh();
+          onRestored?.();
+        }}
+      />
 
       {/* Step-by-Step Interactive Supabase .env Builder */}
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
