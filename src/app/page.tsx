@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { DEMO_SCENES, TEMPLATES, TRADE_DEMO_SCENES } from "@/lib/signage";
+import { ALL_DEMO_SCENES, DEMO_SCENES, TEMPLATES } from "@/lib/signage";
+import { DEFAULT_BRAND, fillText } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +30,17 @@ export default function Home() {
         <div className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold tracking-[0.25em] ring-1 ring-white/20">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" /> 8-SCENE DEMO · 7 TEMPLATES · RUNNING NOW
+              <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />{" "}
+              {TEMPLATES.length} BUILT-IN TEMPLATES · {ALL_DEMO_SCENES.length} BUILT-IN DEMO SCENES · RUNNING NOW
             </div>
             <h1 className="sg-display mt-5 text-[clamp(2.8rem,6.5vw,5.2rem)]">
-              Broadcast-grade signage for the <span className="text-red-500">every screen in your shop.</span>
+              A kiosk advertising board, <span className="text-red-500">run from your own laptop.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/70">
-              A McDonald&apos;s-grade menu-board engine: staged animation timelines, price-pop choreography, tickers, playlists, schedules and multi-display control — with the CMS on your laptop and the player on any HDMI screen.
+              A kiosk signage system for shops, cafés, showrooms and offices: build slides in the browser — promos with
+              animated price drops, menu boards, trade price lists, welcome screens, full-bleed photo or video — group them
+              into playlists, and every TV on the network plays them on a schedule. No cloud account, no USB sticks; each
+              screen is just a browser on a small PC, Raspberry Pi or Android box.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/display" className="rounded-2xl bg-red-500 px-8 py-4 text-lg font-black shadow-[0_20px_50px_rgba(255,59,48,0.4)] hover:bg-red-400">▶ Launch Display</Link>
@@ -52,17 +57,23 @@ export default function Home() {
           <div className="space-y-3">
             <div className="overflow-hidden rounded-3xl ring-1 ring-white/20 shadow-2xl">
               <div className="flex items-center justify-between bg-black/60 px-4 py-2 text-xs font-bold tracking-widest">
-                <span>WINTER SALE EVENT · PREVIEW</span><span className="text-red-400">● ON AIR</span>
+                <span>BUILT-IN DEMO CONTENT · PREVIEW</span><span className="text-red-400">● ON AIR</span>
               </div>
               <div className="grid grid-cols-2 gap-0">
-                {DEMO_SCENES.slice(0, 4).map((s) => (
+                {[
+                  ...ALL_DEMO_SCENES.filter((s) => s.imageUrl?.startsWith("/")),
+                  ...DEMO_SCENES,
+                ]
+                  .filter((s, i, all) => all.findIndex((x) => x.id === s.id) === i)
+                  .slice(0, 4)
+                  .map((s) => (
                   <div key={s.id} className="relative h-36 overflow-hidden border border-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {s.imageUrl && <img src={s.imageUrl} alt="" className="h-full w-full object-cover" />}
                     <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, ${s.bgFrom}dd, transparent 70%)` }} />
                     <div className="absolute bottom-2 left-2 right-2">
-                      <div className="text-[10px] font-bold tracking-widest" style={{ color: s.accentColor }}>{s.eyebrow?.slice(0, 28)}</div>
-                      <div className="truncate text-sm font-black">{s.productName || s.headline}</div>
+                      <div className="text-[10px] font-bold tracking-widest" style={{ color: s.accentColor }}>{fillText(s.eyebrow, DEFAULT_BRAND)?.slice(0, 28)}</div>
+                      <div className="truncate text-sm font-black">{fillText(s.productName || s.headline, DEFAULT_BRAND)}</div>
                     </div>
                     {s.promoPrice && <span className="absolute right-2 top-2 rounded-lg px-2 py-0.5 text-xs font-black text-white" style={{ background: s.accentColor }}>{s.promoPrice}</span>}
                   </div>
@@ -70,7 +81,11 @@ export default function Home() {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
-              {[["7", "templates"], ["8", "demo scenes"], ["60fps", "target HDMI"]].map(([a, b]) => (
+              {[
+                [String(TEMPLATES.length), "built-in templates"],
+                [String(ALL_DEMO_SCENES.length), "built-in demo scenes"],
+                ["60fps", "target HDMI"],
+              ].map(([a, b]) => (
                 <div key={b} className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
                   <div className="text-2xl font-black">{a}</div>
                   <div className="text-[11px] tracking-widest text-white/50">{b.toUpperCase()}</div>
@@ -85,12 +100,13 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-6 py-14">
         <h2 className="text-3xl font-black tracking-tight">{TEMPLATES.length} coordinated templates.</h2>
         <p className="mt-2 max-w-3xl text-white/60">
-          Not one slideshow theme — {TEMPLATES.length} art-directed layouts, each with its own staged timeline. Built for shops and
-          showrooms, then extended for the trade: service lists, rate cards, brand walls, spec sheets and emergency call-outs.
+          Not one slideshow theme — {TEMPLATES.length} art-directed layouts, each with its own staged timeline: retail promos
+          and deal grids, café and takeaway menus, store information boards, trade rate cards and spec sheets, plus corporate
+          values, team, news and review boards.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEMPLATES.map((t, i) => {
-            const demo = [...DEMO_SCENES, ...TRADE_DEMO_SCENES].find((s) => s.template === t.id);
+            const demo = ALL_DEMO_SCENES.find((s) => s.template === t.id);
             return (
               <Link key={t.id} href="/admin" className="group overflow-hidden rounded-3xl bg-white/[0.05] ring-1 ring-white/10 hover:ring-white/30">
                 <div className="relative h-40 overflow-hidden">

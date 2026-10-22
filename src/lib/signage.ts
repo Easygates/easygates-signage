@@ -1405,3 +1405,15 @@ export const CORPORATE_DEMO_SCENES: Scene[] = [
     ],
   },
 ];
+
+/**
+ * Every built-in demo slide, in pack order (retail, trade, value, corporate).
+ * Used by the landing page so “built-in demo scenes” is a count of what is
+ * actually shipped rather than a number in the copy that goes stale.
+ */
+export const ALL_DEMO_SCENES: Scene[] = [
+  ...DEMO_SCENES,
+  ...TRADE_DEMO_SCENES,
+  ...VALUE_DEMO_SCENES,
+  ...CORPORATE_DEMO_SCENES,
+];

@@ -123,7 +123,7 @@ Your shop screens (`/display`) never need the password, and the "screen is onlin
 
 ## Business settings (logo, phone, colours)
 
-`/admin?tab=business` holds the details every screen shares: business name, logo, phone number, brand colours and a ticker. They're saved in the `settings` table and reach the screens on their next poll (≤ 30 s).
+`/admin?tab=business` holds the details every screen shares: business name, logo, phone number, brand colours and a ticker (with a size setting — Small / Standard / Large). They're saved in the `settings` table and reach the screens on their next poll (≤ 30 s).
 
 - Type `{phone}` or `{business}` in any slide text — headline, button, ticker, price-list rows — and the screen shows the saved value, so changing the number once updates every slide.
 - **Use these colours on every slide** swaps each slide's own colours for the brand colours.

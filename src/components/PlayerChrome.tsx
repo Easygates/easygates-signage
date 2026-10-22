@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { isLightTheme, themePalette } from "@/lib/themes";
 import { contrast, mixHex } from "@/lib/color";
-import type { BrandSettings } from "@/lib/brand";
+import { TICKER_SIZES, type BrandSettings, type TickerSize } from "@/lib/brand";
 
 /** Top corners of every screen: business logo (or name) left, optional clock right. */
 /** hideLogo: the slide already shows the logo large (splash), so only the clock is drawn. */
@@ -105,19 +105,31 @@ export function ProgressBar({ durationSec, animKey, color, theme }: { durationSe
  * bar on a pale Easter background broke the illusion that the whole screen was
  * dressed. The bar is always a deep tint, so its text stays white.
  */
-export function Ticker({ text, color, theme }: { text?: string; color: string; theme?: string }) {
+export function Ticker({ text, color, theme, size = "md" }: { text?: string; color: string; theme?: string; size?: TickerSize }) {
   if (!text) return null;
   const pal = themePalette(theme);
   const light = isLightTheme(theme);
   const bar = light ? mixHex(pal.text, "#000000", 0.15) : mixHex(pal.bgTo, "#000000", 0.4);
   const accent = contrast(color, bar) >= 4.5 ? color : contrast(pal.accent2, bar) >= 4.5 ? pal.accent2 : "#ffffff";
   const line = `${text} `.repeat(4);
+  const t = TICKER_SIZES[size] ?? TICKER_SIZES.md;
+  // Same pixels-per-second at every size: the loop grows with the type instead of
+  // making a large ticker race past.
+  const duration = (28 * t.fontSize) / TICKER_SIZES.md.fontSize;
   return (
     <div
-      className="absolute bottom-1.5 left-0 right-0 z-30 overflow-hidden border-t py-2 backdrop-blur"
-      style={{ background: `${bar}e6`, borderColor: light ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.10)" }}
+      className="absolute bottom-1.5 left-0 right-0 z-30 overflow-hidden border-t backdrop-blur"
+      style={{
+        background: `${bar}e6`,
+        borderColor: light ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.10)",
+        paddingTop: t.padY,
+        paddingBottom: t.padY,
+      }}
     >
-      <div className="flex w-max whitespace-nowrap text-[20px] font-bold tracking-[0.18em] text-white" style={{ animation: "sg-ticker 28s linear infinite" }}>
+      <div
+        className="flex w-max whitespace-nowrap font-bold text-white"
+        style={{ fontSize: t.fontSize, letterSpacing: `${t.tracking}em`, animation: `sg-ticker ${duration}s linear infinite` }}
+      >
         <span className="pr-8">{line}</span>
         <span className="pr-8" style={{ color: accent }}>{line}</span>
       </div>

@@ -4,6 +4,22 @@
 import type { Scene, SceneItem } from "./signage";
 import { themePalette } from "./themes.ts";
 
+/**
+ * Ticker sizes. The bar lives on the 1920×1080 canvas, so the numbers are canvas
+ * pixels: "md" is what the ticker has always been. `speed` keeps the text moving
+ * at a constant pixels-per-second when the type gets bigger — a 26 px ticker on
+ * the same 28 s loop reads much faster than a 16 px one.
+ */
+export type TickerSize = "sm" | "md" | "lg";
+
+export const TICKER_SIZES: Record<TickerSize, { name: string; blurb: string; fontSize: number; padY: number; tracking: number }> = {
+  sm: { name: "Small", blurb: "Quiet — a footnote under the slide", fontSize: 16, padY: 6, tracking: 0.16 },
+  md: { name: "Standard", blurb: "The default news-ticker strip", fontSize: 20, padY: 8, tracking: 0.18 },
+  lg: { name: "Large", blurb: "Readable across a shop floor", fontSize: 28, padY: 11, tracking: 0.14 },
+};
+
+export const TICKER_SIZE_IDS = Object.keys(TICKER_SIZES) as TickerSize[];
+
 export interface BrandSettings {
   businessName: string;
   /** "" = no logo, show the business name instead */
@@ -24,6 +40,8 @@ export interface BrandSettings {
   tickerText: string;
   /** replace slide tickers; otherwise only fills slides without one */
   tickerOnAll: boolean;
+  /** how big the scrolling strip is drawn */
+  tickerSize: TickerSize;
   showBrandBar: boolean;
   showClock: boolean;
 }
@@ -41,6 +59,7 @@ export const DEFAULT_BRAND: BrandSettings = {
   applyColors: false,
   tickerText: "",
   tickerOnAll: false,
+  tickerSize: "md",
   showBrandBar: true,
   showClock: true,
 };
@@ -54,6 +73,8 @@ export function normalizeBrand(input: unknown): BrandSettings {
     typeof v[k] === "string" ? (v[k] as string).trim().slice(0, max) : (DEFAULT_BRAND[k] as string);
   const bool = (k: keyof BrandSettings) =>
     typeof v[k] === "boolean" ? (v[k] as boolean) : (DEFAULT_BRAND[k] as boolean);
+  const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
   const hex = (k: keyof BrandSettings) =>
     typeof v[k] === "string" && HEX.test(v[k] as string) ? (v[k] as string).toLowerCase() : (DEFAULT_BRAND[k] as string);
   const tz = (k: keyof BrandSettings) => {
@@ -78,6 +99,7 @@ export function normalizeBrand(input: unknown): BrandSettings {
     applyColors: bool("applyColors"),
     tickerText: str("tickerText", 300),
     tickerOnAll: bool("tickerOnAll"),
+    tickerSize: oneOf(v.tickerSize, TICKER_SIZE_IDS, DEFAULT_BRAND.tickerSize),
     showBrandBar: bool("showBrandBar"),
     showClock: bool("showClock"),
   };

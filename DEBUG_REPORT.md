@@ -839,3 +839,77 @@ toolbar space.
   returns a stub, would keep the documented contract.
 - The playlist runtime line shows “≈ 0.2 min” for short lists; seconds under a
   minute would read better.
+
+## 18. Ticker size + an honest opening page — arena/989b2b84 (2026-10-22)
+
+### 18.1 Ticker size (Small / Standard / Large)
+
+The ticker was the last piece of player chrome with no control: a hard-coded
+`text-[20px]` strip. It now has three sizes, set once on the Business tab and
+applied to the strip on every screen — including slides whose ticker text comes
+from the slide rather than from the business settings.
+
+| | Small | Standard (default) | Large |
+|---|---|---|---|
+| Type size (canvas px) | 16 | 20 | 28 |
+| Bar padding | 6 px | 8 px | 11 px |
+| Letter-spacing | 0.16 em | 0.18 em | 0.14 em |
+| Loop at the same text | 22.4 s | 28 s | 39.2 s |
+
+- Sizes live in `TICKER_SIZES` / `TICKER_SIZE_IDS` (`src/lib/brand.ts`), so the
+  Business tab and the player read one table. Unknown or missing values fall back
+  to Standard, which is what every existing install has.
+- **Reading speed stays constant**: the ticker's loop is derived from its font
+  size (`28 s × size / 20`). Bigger type on the same 28 s loop would race past —
+  the strip now moves at the same pixels-per-second at all three sizes.
+- The Business tab shows a segmented control whose sample text is drawn at each
+  size, so the choice is made by looking rather than by reading numbers.
+- Stored in the existing `settings` JSON blob (`brand.tickerSize`), so there is no
+  schema migration: older saved settings normalize to `"md"`.
+
+Verified on a production build: clicking each button changes the rendered strip
+to 16/20/28 px with 22.4/28/39.2 s loops and 6/8/11 px padding, and the same
+values appear in the player preview.
+
+### 18.2 Opening page
+
+The landing page pitched a “McDonald's-grade menu-board engine” and quoted
+“7 templates · 8 demo scenes” — numbers that were true before the trade, value
+and corporate packs existed (the product actually ships **27 templates** and
+**34 demo scenes**).
+
+- **Copy**: now describes what it is — “A kiosk advertising board, run from your
+  own laptop”, followed by a plain description of the system (build slides in the
+  browser, group them into playlists, every TV on the network plays them on a
+  schedule, no cloud account). The fast-food comparison and the “menu-board
+  engine” framing are gone.
+- **Counts**: the badge and the stat tiles now read from `TEMPLATES.length` and a
+  new `ALL_DEMO_SCENES` export (all four packs, 8 + 7 + 12 + 7), labelled
+  “built-in templates” and “built-in demo scenes”. The “60fps target HDMI” tile
+  is unchanged. A test fails if either number is hard-coded again.
+- **Template grid**: the artwork lookup now searches every pack (it only knew
+  retail + trade, so the corporate and value templates showed empty cards), and
+  the section blurb names the actual range instead of “shops and showrooms, then
+  the trade”.
+- **Hero preview strip**: now prefers the images that ship in `/public` over the
+  remote stock photos, so the first paint is not four broken thumbnails.
+- Fixed the duplicated word in the old headline (“for the every screen”).
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint .` | 0 errors, 0 warnings ✅ |
+| `node --test tests/*.mjs` | **179 pass** (was 170; +3 ticker tests in `tests/brand.test.mjs`, +7 in `tests/landing-and-ticker.test.mjs`) ✅ |
+| `next build` | ✅ |
+| Browser, production build — landing | badge “27 BUILT-IN TEMPLATES · 34 BUILT-IN DEMO SCENES · RUNNING NOW”; h1 “A kiosk advertising board, run from your own laptop.”; no “McDonald's” anywhere; preview strip shows bundled photos ✅ |
+| Browser, production build — ticker | Small/Standard/Large → 16/20/28 px, 22.4/28/39.2 s, 6/8/11 px padding on the real player preview ✅ |
+
+**Guarded by** `tests/landing-and-ticker.test.mjs`: the page must describe a
+kiosk signage system (no fast-food comparison), must not re-introduce the literal
+“7 templates” / “8 demo scenes” / “8-SCENE DEMO” strings, must derive its counts
+from the catalogue, `ALL_DEMO_SCENES` must equal the four packs and cover every
+template, and the ticker size must be wired Business settings → `ScreenView` →
+`Ticker` with a size-normalised loop. `tests/brand.test.mjs` covers the size table
+and the fallback for bad values.

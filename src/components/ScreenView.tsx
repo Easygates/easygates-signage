@@ -41,7 +41,7 @@ export default function ScreenView({
         <SceneRenderer scene={shown} reducedMotion={reducedMotion} animKey={animKey} mini={preview} />
       </div>
       {!mediaOnly && <BrandBar brand={brand} hideLogo={shown.template === "splash"} theme={shown.theme} />}
-      {!mediaOnly && <Ticker text={ticker} color={shown.accentColor} theme={shown.theme} />}
+      {!mediaOnly && <Ticker text={ticker} color={shown.accentColor} theme={shown.theme} size={brand.tickerSize} />}
       {progressKey !== undefined && <ProgressBar durationSec={shown.durationSec} animKey={progressKey} color={shown.accentColor} theme={shown.theme} />}
     </Stage>
   );
