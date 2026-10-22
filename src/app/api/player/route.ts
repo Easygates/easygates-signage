@@ -4,7 +4,8 @@ import { playlists, playlistItems, scenes, displays, schedules } from "@/db/sche
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { rowToScene } from "@/lib/server";
 import { DEMO_SCENES } from "@/lib/signage";
-import { loadBrand } from "@/lib/settings";
+import { loadBrand, loadFailsafe } from "@/lib/settings";
+import type { FailsafeSettings } from "@/lib/failsafe";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,11 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const displayId = searchParams.get("displayId");
   const playlistIdParam = searchParams.get("playlistId");
-  const { brand } = await loadBrand();
+  const [loadedBrand, loadedFailsafe] = await Promise.all([loadBrand(), loadFailsafe()]);
+  const brand = loadedBrand.brand;
+  // Every payload carries the fallback choice so the screen knows what to keep
+  // on hand (and what to show if this request is the last one that ever works).
+  const failsafe: FailsafeSettings = loadedFailsafe.failsafe;
 
   try {
     let playlistId: string | null = playlistIdParam;
@@ -47,7 +52,7 @@ export async function GET(req: Request) {
 
     if (playlistId) {
       const p = await db.select().from(playlists).where(eq(playlists.id, playlistId)).limit(1);
-      if (!p[0]) return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
+      if (!p[0]) return NextResponse.json({ brand, failsafe, mode: "demo", playlist: { id: "demo", name: "Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
       const items = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId)).orderBy(asc(playlistItems.position));
       const ids = items.map((i) => i.sceneId);
       const byId = new Map();
@@ -64,6 +69,7 @@ export async function GET(req: Request) {
         .filter(Boolean);
       return NextResponse.json({
         brand,
+        failsafe,
         mode: "playlist",
         playlist: { id: p[0].id, name: p[0].name, description: p[0].description, loop: p[0].loop, items },
         scenes: resolved.length ? resolved : DEMO_SCENES,
@@ -74,7 +80,7 @@ export async function GET(req: Request) {
 
     // No playlist selected → first playlist, else demo
     const all = await db.select().from(playlists).limit(1);
-    if (!all[0]) return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
+    if (!all[0]) return NextResponse.json({ brand, failsafe, mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
     playlistId = all[0].id;
     const p2 = await db.select().from(playlists).where(eq(playlists.id, playlistId)).limit(1);
     const items2 = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId)).orderBy(asc(playlistItems.position));
@@ -91,7 +97,7 @@ export async function GET(req: Request) {
         return { ...s, durationSec: i.durationOverride || s.durationSec, transition: (i.transitionOverride as never) || s.transition };
       })
       .filter(Boolean);
-    return NextResponse.json({ brand, mode: "playlist", playlist: { id: p2[0].id, name: p2[0].name, description: p2[0].description, loop: p2[0].loop, items: items2 }, scenes: resolved2.length ? resolved2 : DEMO_SCENES, display, fetchedAt: new Date().toISOString() });
+    return NextResponse.json({ brand, failsafe, mode: "playlist", playlist: { id: p2[0].id, name: p2[0].name, description: p2[0].description, loop: p2[0].loop, items: items2 }, scenes: resolved2.length ? resolved2 : DEMO_SCENES, display, fetchedAt: new Date().toISOString() });
   } catch (e) {
     // A database ERROR (down, or the schema is out of date) must not blank the shop screens: answer
     // 503 so the screen keeps playing what it already has. (An empty database still gets the demo above.)

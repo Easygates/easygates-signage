@@ -913,3 +913,104 @@ from the catalogue, `ALL_DEMO_SCENES` must equal the four packs and cover every
 template, and the ticker size must be wired Business settings → `ScreenView` →
 `Ticker` with a size-normalised loop. `tests/brand.test.mjs` covers the size table
 and the fallback for bad values.
+
+## 19. Honest animation presets + a real offline failsafe — arena/989b2b84 (2026-10-22)
+
+Two requests from the review, both of which were “you choose the better way”:
+
+1. animation presets implied choreography that did not exist;
+2. “demo content” needed to become an offline failsafe.
+
+### 19.1 Presets now describe — and perform — an entrance
+
+The five presets previously differed **only** in milliseconds and an easing
+curve. Every template hard-codes its entrance classes (`sg-fade-up`,
+`sg-scale-in`, `sg-pop`), so “Cinematic” and “Elegant Fade” produced the same
+shapes at different speeds while their names promised otherwise.
+
+**Decision: make the presets true, not the label vaguer.** A preset is now the
+slide's entrance language, with three layers:
+
+| Preset | Base / stagger | Rise | Scale from | Pop from | Easing |
+|---|---|---|---|---|---|
+| Launch Pop | 700 / 120 ms | 56 px | 0.78× | 0.40× | out-expo |
+| Smooth Rise | 800 / 140 ms | 28 px | 0.94× | 0.80× | soft |
+| Cinematic | 1100 / 180 ms | 12 px | **1.06×** (settles down) | 0.90× | slow quart |
+| Retail Snap | 500 / 80 ms | 10 px | 0.86× | 0.55× | spring |
+| Elegant Fade | 1000 / 160 ms | 6 px | 1.00× (no scale) | 0.96× | ease-out |
+
+- `presetVars()` publishes `--sg-rise`, `--sg-scale-from` and `--sg-pop-from` on
+  the slide root (`SceneRenderer`), and the `sg-fade-up`, `sg-fade-down`,
+  `sg-scale-in`, `sg-pop` and `sg-price` keyframes read them with the old values
+  as fallbacks. No template was rewritten, so all 27 templates inherit it.
+- The control is labelled **Animation feel**, and each option shows its numbers
+  (`700 ms · 120 ms stagger · enters from 56 px / 0.78×`), so the picker states
+  what will happen instead of selling a mood.
+- The timeline inspector's pill now reads `Feel: Cinematic` rather than the raw
+  id. `buildTimeline` is unchanged (timing only), so scheduling is untouched.
+- Default and stored values are unchanged: `animationPreset: "launch"` etc.
+  resolve exactly as before; only their motion is richer.
+
+### 19.2 Failsafe: what a screen shows when the CMS is gone
+
+There was no control over the outage case. The player kept a `localStorage` copy
+and used the demo pack only when it had never loaded anything; “demo content”
+was seeding material with no role in an outage. It is now a first-class
+setting — **Admin → Failsafe** (`/admin?tab=failsafe`) — with three modes:
+
+| Mode | Offline behaviour | Needs the CMS? |
+|---|---|---|
+| **Last playlist it played** (default, = today's behaviour) | Replays the copy in its own browser | no |
+| **A playlist I choose** | Replays a background-downloaded copy of that playlist, refreshed ≤ every 5 min while online | to keep the copy current |
+| **The built-in demo pack** | Plays the bundled pack regardless of what is cached | no — works with no database at all |
+
+- **`src/lib/failsafe.ts`** is the single decision point: `normalizeFailsafe()`
+  (rejects unknown modes, downgrades `playlist` without an id to `cache`,
+  trims/caps the id) and `resolveFailsafe()` (pure, ordered fallback:
+  pinned copy → last played → built-in pack). It never returns an empty list.
+- **The pack** is `FAILSAFE_SCENES` — the **26** built-in scenes whose photos
+  ship in `public/`. The eight retail demo slides are excluded because their
+  photography is hosted: during an outage they would draw a headline over a
+  broken image. Media-free templates (brand wall, splash, fullscreen background)
+  are included. A test asserts no remote URL can enter the pack.
+- **Player** (`/display`): every successful poll stores the failsafe choice from
+  the API in a ref (not state — state here would restart the poll interval) and
+  pre-downloads the pinned playlist to `sg_failsafe_*`, a key separate from the
+  last-played cache so choosing a failsafe cannot overwrite the real cache.
+  Non-OK responses and network errors both go through `resolveFailsafe`.
+- **`/display?offline=1`** fakes an outage: no `/api/player` fetches, no
+  heartbeat, nothing written. It shows a `FAILSAFE PREVIEW` badge with the mode,
+  the source (saved copy / built-in pack) and the slide count — the Failsafe
+  tab's **Preview with the CMS switched off** link opens it.
+- **API**: `/api/player` payloads now carry `failsafe`; `/api/settings` GET
+  returns `{ brand, failsafe, ready, failsafeStored }`, and PUT accepts
+  `{ brand }`, `{ failsafe }` or both — saving one panel cannot blank the other.
+  Stored in the existing `settings` table under key `failsafe`; no migration.
+- **Copy** in the Database tab now says seeding is setup material and points at
+  the Failsafe tab, so “demo” is no longer asked to mean two things.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint .` | 0 errors, 0 warnings ✅ |
+| `node --test tests/*.mjs` | **199 pass** (was 179; +20 in `tests/failsafe.test.mjs`) ✅ |
+| `next build` | ✅ |
+| Browser, production build — Failsafe tab | three modes, “26 scenes in the built-in pack”, playlist picker + hint appear when “A playlist I choose” is selected ✅ |
+| Browser, production build — save without a database | reports “Couldn't save the failsafe”, stays dirty; never claims success ✅ |
+| Browser, production build — `/display?offline=1` | 0 `/api/player` requests, badge “mode: Last playlist it played · showing: built-in demo pack · 26 slides”, first slide renders with a bundled photo; badge clears the ticker ✅ |
+| Browser, production build — `/display?offline=1` with a cached playlist | badge switches to “showing: saved copy · 1 slides”, cached headline appears ✅ |
+| Browser, production build — Animation feel | all five presets list their timing and geometry; `--sg-rise`/`--sg-scale-from`/`--sg-pop-from` computed on the live slide (56px / 0.78 / 0.4 for Launch Pop) ✅ |
+
+**Guarded by** `tests/failsafe.test.mjs`: the three modes, rejection of unknown
+stored modes, the “no playlist ⇒ cache” downgrade, id trimming, the full
+resolution order (including ignoring a stale download of a different playlist),
+“never returns an empty list”, all five presets defining distinct geometry, and
+the failsafe pack containing only bundled media with unique ids.
+
+**Still open** (unchanged from §17.4): demo-data tagging + clear button, hiding
+the progress line and pausing video under reduced motion, a first-run checklist,
+and lazy DB import so a missing `DATABASE_URL` yields 503 JSON instead of a 500
+(the player survives it, but the API contract says 503). The admin still logs a
+minified React #418 hydration warning; `/display` is clean.

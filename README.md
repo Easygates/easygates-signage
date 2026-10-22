@@ -131,14 +131,28 @@ Your shop screens (`/display`) never need the password, and the "screen is onlin
 
 Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the screen, so the admin preview, a 1080p TV and a 4K TV show the same composition. Non-16:9 screens get thin black bars.
 
+## Failsafe (when the internet drops out)
+
+`/admin?tab=failsafe` decides what every screen shows when it can't reach the CMS — Wi-Fi down, the laptop closed, or the database unreachable. Three modes:
+
+| Mode | What it plays offline |
+|---|---|
+| **Last playlist it played** (default) | The copy each player keeps in its own browser (`localStorage`), so the real content keeps running through an outage. |
+| **A playlist I choose** | A playlist downloaded onto the screen in the background (refreshed about every 5 minutes) and played from that copy if the CMS disappears. |
+| **The built-in demo pack** | The 26 built-in scenes whose photos ship in `public/` — so they still render with no internet. Works with no database at all: day-one content or a shop-window loop. |
+
+- The choice is stored in `settings` under the `failsafe` key and reaches screens on their next poll (≤ 30 s).
+- A screen that has never loaded anything plays the built-in pack, so it is never blank. A screen that already has content keeps playing it even if the API answers 503.
+- `▶ Preview with the CMS switched off` (or `/display?offline=1` by hand) opens a screen that makes no requests at all, so the fallback can be checked without unplugging the router.
+
 ## Routes
 
 | Route | Purpose |
 |---|---|
 | `/` | Product overview |
-| `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`) |
+| `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`, `&offline=1` to preview the failsafe) |
 | `/export?playlistId=…` | Record one playlist pass as a 1080p MP4 from the browser |
-| `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline |
+| `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline, failsafe |
 | `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + SQL export |
 | `/docs` | Hardware research, deploy guide and Supabase setup |
 | `/api/db-status` | Live DB health, latency, pooler mode & table row counts |

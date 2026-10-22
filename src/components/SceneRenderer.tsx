@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { ANIMATION_PRESETS, type Scene } from "@/lib/signage";
+import { ANIMATION_PRESETS, presetVars, type Scene } from "@/lib/signage";
 import { delays, HeadlineLines, Eyebrow, PriceBlock, Cta, ProductImage, HeroMedia, kbClass } from "./scene/parts";
 import { ThemeDecor } from "./scene/ThemeDecor";
 import PriceDropTemplate from "./scene/templates/PriceDrop";
@@ -80,7 +80,9 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
   // slide ran on the global --sg-ease. Publishing it as a CSS variable on the
   // slide root lets every entrance/exit inside inherit the preset's curve.
   const preset = ANIMATION_PRESETS[scene.animationPreset] ?? ANIMATION_PRESETS.smooth;
-  const fg = { color: scene.textColor, "--sg-ease": preset.easing } as CSSProperties;
+  // Easing + entrance geometry both come from the preset, so the same template
+  // travels differently under "Launch Pop" and "Elegant Fade".
+  const fg = { color: scene.textColor, "--sg-ease": preset.easing, ...presetVars(preset) } as CSSProperties;
   const scale = mini ? "pointer-events-none select-none" : "";
 
   return (

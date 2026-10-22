@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import ScreenView from "@/components/ScreenView";
 import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
+import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
@@ -13,8 +14,8 @@ import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
 import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
 import { THEMES, themeDef } from "@/lib/themes";
 
-type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
-const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "database"];
+type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "failsafe" | "database";
+const TABS: Tab[] = ["scenes", "playlists", "assets", "displays", "schedules", "timeline", "business", "failsafe", "database"];
 
 const sameBrand = (a: BrandSettings, b: BrandSettings) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -719,13 +720,19 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="lbl">Animation preset</label>
+                  <label className="lbl">Animation feel</label>
                   <div className="space-y-1.5">
-                    {(Object.keys(ANIMATION_PRESETS) as (keyof typeof ANIMATION_PRESETS)[]).map((k) => (
-                      <button key={k} onClick={() => { set("animationPreset", k as never); }} className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold ring-1 ${draft.animationPreset === k ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
-                        {ANIMATION_PRESETS[k].name} — <span className="font-normal opacity-70">{ANIMATION_PRESETS[k].blurb}</span>
-                      </button>
-                    ))}
+                    {(Object.keys(ANIMATION_PRESETS) as (keyof typeof ANIMATION_PRESETS)[]).map((k) => {
+                      const pr = ANIMATION_PRESETS[k];
+                      return (
+                        <button key={k} onClick={() => { set("animationPreset", k as never); }} className={`w-full rounded-xl px-3 py-2 text-left text-xs font-bold ring-1 ${draft.animationPreset === k ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
+                          {pr.name} — <span className="font-normal opacity-70">{pr.blurb}</span>
+                          <span className="mt-0.5 block font-mono text-[10px] opacity-60">
+                            {pr.baseMs} ms · {pr.staggerMs} ms stagger · enters from {pr.rise} px / {pr.scaleFrom}×
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -1007,7 +1014,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 })}
               </div>
               <div className="mt-4 flex gap-2 text-xs">
-                <span className="rounded-full bg-white/10 px-3 py-1.5">Preset: {draft.animationPreset}</span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5">Feel: {ANIMATION_PRESETS[draft.animationPreset]?.name ?? draft.animationPreset}</span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5">Easing: {ANIMATION_PRESETS[draft.animationPreset]?.easing}</span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5">Exit: {draft.transition}</span>
               </div>
@@ -1039,6 +1046,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         )}
 
         {/* ── DATABASE / SUPABASE ── */}
+        {tab === "failsafe" && <FailsafePanel playlists={playlists} onFlash={flash} />}
         {tab === "database" && <DatabasePanel onFlash={flash} onSeed={seed} />}
       </div>
     </main>
