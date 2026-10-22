@@ -166,3 +166,27 @@ npm run build       # expect: ✓ Compiled successfully, ✓ Generating static p
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app_db npm run build
 npm start           # → http://localhost:3000, seed via /admin → ✨ Retail demo
 ```
+
+## 6. Re-verification - arena/c5ccc534-easygates-signage @ d6d53db (2026-10-22)
+
+Re-checked the previous agent's debugging (PR #8 / arena/5155fdcc) on this branch. Every claim in sections 2-4 was confirmed against the actual tree, and the full verification matrix passes again:
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Unit tests | node --test tests/*.mjs | 88 pass, 0 fail OK |
+| Lint | npm run lint | 0 errors, 0 warnings OK |
+| Typecheck | npm run typecheck | pass OK |
+| Build (no DATABASE_URL) | npm run build | success, all routes dynamic OK |
+
+Spot checks:
+- src/db/index.ts - placeholder DB config during NEXT_PHASE build phase; still throws at runtime if DATABASE_URL missing. OK
+- drizzle.config.ts - placeholder URL + warning, no build crash. OK
+- src/app/display/page.tsx - no render-phase setState; safeIndex derived from scenes, used for render/preload/auto-advance/navigation. OK
+- API routes - try/catch -> 503 { error: "db-unavailable" } on all GET and write handlers, incl. seed. OK
+- src/app/api/scenes/route.ts - template validated against TEMPLATES id set (400 on unknown). OK
+- src/app/api/playlist-items/route.ts - 400 unless playlistId and sceneId present. OK
+- src/components/SceneRenderer.tsx - cssUrl() escapes " and \ in url("..."). OK
+- src/components/BusinessPanel.tsx, src/components/scene/parts.tsx - file-level eslint-disable with justification; misplaced per-line disables removed. OK
+- next.config.ts - *.supabase.co / *.supabase.com added to remotePatterns. OK
+
+No regressions found; nothing needed fixing. The previous agent's debugging was done correctly and is fully backward-compatible.
