@@ -45,6 +45,7 @@ export default function AdminPage() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
+  const [publicAssets, setPublicAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
   const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
@@ -72,18 +73,20 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const savedBrandRef = useRef<BrandSettings>(DEFAULT_BRAND);
 
   const load = useCallback(async () => {
-    const [s, p, a, d, sch, st] = await Promise.all([
+    const [s, p, a, d, sch, st, pub] = await Promise.all([
       fetch("/api/scenes").then((r) => r.json()).catch(() => ({ scenes: [] })),
       fetch("/api/playlists").then((r) => r.json()).catch(() => ({ playlists: [] })),
       fetch("/api/assets").then((r) => r.json()).catch(() => ({ assets: [] })),
       fetch("/api/displays").then((r) => r.json()).catch(() => ({ displays: [] })),
       fetch("/api/schedules").then((r) => r.json()).catch(() => ({ schedules: [] })),
       fetch("/api/settings").then((r) => r.json()).catch(() => null),
+      fetch("/api/public-assets").then((r) => r.json()).catch(() => ({ assets: [] })),
     ]);
     const dbScenes: Scene[] = s.scenes?.length ? s.scenes : DEMO_SCENES;
     setScenes(dbScenes);
     setPlaylists(p.playlists || []);
     setAssets(a.assets || []);
+    setPublicAssets(pub.assets || []);
     setDisplays(d.displays || []);
     setSchedules(sch.schedules || []);
     if (st?.brand) {
@@ -105,6 +108,13 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const t = setTimeout(() => void load(), 0);
     return () => clearTimeout(t);
   }, [load]);
+
+  // DB assets + public disk images (seasonal, retail, trade, uploads) —
+  // merged so both show in the library and quick-set pickers.
+  const allAssets = useMemo(
+    () => [...assets, ...publicAssets],
+    [assets, publicAssets]
+  );
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 3000); };
 
@@ -459,6 +469,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <ItemsEditor
                   items={(draft.items as Scene["items"]) || []}
                   template={draft.template}
+                  assets={allAssets}
                   onChange={(v) => set("items", v as never)}
                 />
               )}
@@ -480,8 +491,8 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 <button onClick={save} className="rounded-xl bg-green-500/20 p-3 font-black text-green-300 ring-1 ring-green-400/40">⬆ Publish<br />to displays</button>
                 <button onClick={() => setTab("timeline")} className="rounded-xl bg-white/10 p-3 font-bold ring-1 ring-white/15">◷ View<br />timeline</button>
               </div>
-              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={assets} onPick={(url) => set("imageUrl", url as never)} />
-              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={assets} onPick={(url) => set("bgImageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET IMAGE FROM LIBRARY" assets={allAssets} onPick={(url) => set("imageUrl", url as never)} />
+              <LibraryPicker title="QUICK-SET BACKGROUND FROM LIBRARY" assets={allAssets} onPick={(url) => set("bgImageUrl", url as never)} />
             </div>
           </div>
         )}
@@ -554,7 +565,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
         )}
 
         {/* ── ASSETS ── */}
-        {tab === "assets" && <AssetsPanel assets={assets} onReload={load} flash={flash} onUse={(url) => { set("imageUrl", url as never); setTab("scenes"); flash("Image set on current scene draft"); }} />}
+        {tab === "assets" && <AssetsPanel assets={allAssets} onReload={load} flash={flash} onUse={(url) => { set("imageUrl", url as never); setTab("scenes"); flash("Image set on current scene draft"); }} />}
 
         {/* ── DISPLAYS ── */}
         {tab === "displays" && (
@@ -717,7 +728,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             onSave={saveBrand}
             onUndo={() => setBrandDraft(brand)}
             scenes={scenes}
-            assets={assets}
+            assets={allAssets}
             onAssetsChanged={load}
             flash={flash}
           />
@@ -792,8 +803,9 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "store-services": "Up to 6 service cards — name = title, detail = lines such as opening hours, tag = icon word (collect, returns, hours, help, delivery)",
 };
 
-function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {
+function ItemsEditor({ items, template, assets, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; assets: { id: string; name: string; url: string; type: string }[]; onChange: (v: NonNullable<Scene["items"]>) => void }) {
   const list = items || [];
+  const [pickIndex, setPickIndex] = useState<number | null>(null);
   const edit = (i: number, k: string, v: string) => onChange(list.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
   const showPrice =
     template === "food-menu" ||
@@ -804,6 +816,7 @@ function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["
     template === "top-sellers";
   // only these layouts draw a picture per row
   const showImage = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy"].includes(template);
+  const pics = assets.filter((a) => a.type !== "video");
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -824,12 +837,27 @@ function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["
               {showPrice && <input value={it.tag || ""} onChange={(e) => edit(i, "tag", e.target.value)} className="inp !py-2 text-xs" placeholder="TAG" />}
               <button onClick={() => onChange(list.filter((_, j) => j !== i))} className="rounded-lg bg-white/10 text-red-300">✕</button>
             </div>
-            <div className={`grid gap-1.5 ${showImage ? "grid-cols-[1fr_150px]" : "grid-cols-1"}`}>
+            <div className={`grid gap-1.5 ${showImage ? "grid-cols-[1fr_150px_40px]" : "grid-cols-1"}`}>
               <input value={it.desc || ""} onChange={(e) => edit(i, "desc", e.target.value)} className="inp !py-2 text-xs" placeholder="Detail / spec value" />
-              {showImage && <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs" placeholder={template === "brand-wall" ? "logo image URL" : "img URL"} />}
+              <div className="flex items-center gap-1">
+                <input value={it.image || ""} onChange={(e) => edit(i, "image", e.target.value)} className="inp !py-2 text-xs flex-1" placeholder={template === "brand-wall" ? "logo image URL" : "img URL"} />
+                <button onClick={() => setPickIndex(i)} className="rounded-lg bg-white/10 px-2 text-[12px] font-bold hover:bg-white/20" title="Pick from library">📂</button>
+              </div>
+              {pickIndex === i && pics.length > 0 && (
+                <LibraryPicker
+                  title={`ROW ${i + 1} IMAGE`}
+                  assets={pics}
+                  onPick={(url) => { edit(i, "image", url); setPickIndex(null); }}
+                />
+              )}
             </div>
           </div>
         ))}
+        {showImage && pickIndex === null && pics.length > 0 && list.length > 0 && (
+          <div className="mt-2">
+            <LibraryPicker title="QUICK-SET ANY ROW IMAGE" assets={pics} onPick={(url) => { if (list.length) edit(list.length - 1, "image", url); }} />
+          </div>
+        )}
         {list.length === 0 && <p className="text-xs text-white/40">No rows yet — add some above.</p>}
       </div>
     </div>
