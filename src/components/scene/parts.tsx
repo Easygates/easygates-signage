@@ -8,7 +8,7 @@ import { ANIMATION_PRESETS } from "@/lib/signage";
 
 export function delays(scene: Scene) {
   const preset = ANIMATION_PRESETS[scene.animationPreset] ?? ANIMATION_PRESETS.smooth;
-  const s = scene.staggerMs || preset.staggerMs;
+  const s = scene.staggerMs ?? preset.staggerMs;
   const b = preset.baseMs;
   const style = (i: number, extra = 0): CSSProperties => ({
     animationDelay: `${150 + i * s + extra}ms`,

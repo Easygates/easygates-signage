@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Stage from "@/components/Stage";
 import SceneRenderer from "@/components/SceneRenderer";
+import { templateIsMediaOnly } from "@/lib/templateFields";
 import { BrandBar, ProgressBar, Ticker } from "@/components/PlayerChrome";
 import { brandScene, tickerFor, type BrandSettings } from "@/lib/brand";
 import type { Scene } from "@/lib/signage";
@@ -31,13 +32,16 @@ export default function ScreenView({
 }) {
   const shown = useMemo(() => brandScene(scene, brand), [scene, brand]);
   const ticker = tickerFor(scene, brand);
+  // "Background image / video" is an ambient slide: the picture is the whole
+  // screen, so no logo, business name, clock or ticker is drawn over it.
+  const mediaOnly = templateIsMediaOnly(shown.template);
   return (
     <Stage className={className}>
       <div key={animKey} className={`absolute inset-0 ${sceneClassName}`}>
         <SceneRenderer scene={shown} reducedMotion={reducedMotion} animKey={animKey} mini={preview} />
       </div>
-      <BrandBar brand={brand} hideLogo={shown.template === "splash"} theme={shown.theme} />
-      <Ticker text={ticker} color={shown.accentColor} theme={shown.theme} />
+      {!mediaOnly && <BrandBar brand={brand} hideLogo={shown.template === "splash"} theme={shown.theme} />}
+      {!mediaOnly && <Ticker text={ticker} color={shown.accentColor} theme={shown.theme} />}
       {progressKey !== undefined && <ProgressBar durationSec={shown.durationSec} animKey={progressKey} color={shown.accentColor} theme={shown.theme} />}
     </Stage>
   );

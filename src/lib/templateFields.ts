@@ -167,15 +167,28 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     ["subheadline", "productName", "description", "ctaText", "imageUrl"],
     ["name", "desc", "tag"],
   ),
-  "fullscreen-bg": t(
-    ["eyebrow", "subheadline", "ctaText", "imageUrl", "videoUrl"],
-  ),
+  // Media only: the renderer draws the image/video and nothing else, so no text
+  // field is offered (headline and ticker are hidden too — see templateIsMediaOnly).
+  "fullscreen-bg": t(["imageUrl", "videoUrl"]),
   "trustpilot-review": t(
     ["eyebrow", "subheadline", "description", "ctaText", "imageUrl"],
     ["name", "desc", "tag", "image"],
     "logo",
   ),
 };
+
+/**
+ * Templates that draw nothing but their media. The player hides the brand bar
+ * (logo, business name, clock) and the ticker for these, and the editor hides
+ * Headline and Ticker, so an "ambient background" slide really is just the
+ * picture or the video.
+ */
+export const MEDIA_ONLY_TEMPLATES: TemplateId[] = ["fullscreen-bg"];
+
+/** true when the template shows only its image/video — no text, logo, clock or ticker. */
+export function templateIsMediaOnly(template: TemplateId): boolean {
+  return MEDIA_ONLY_TEMPLATES.includes(template);
+}
 
 /** Every gateable slide field, in editor order (used to count hidden ones). */
 export const SCENE_TEXT_FIELDS: SceneTextField[] = [

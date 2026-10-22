@@ -154,6 +154,9 @@ export async function POST(req: Request) {
       campaign,
       created: created.length,
       playlistId,
+      playlistName: cfg.playlistName,
+      // slides now in the playlist (not just the ones created on this run)
+      scenes: campaignRows.length,
       displays: cfg.displays.length,
     });
   } catch (e) {

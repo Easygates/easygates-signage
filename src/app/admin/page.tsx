@@ -10,7 +10,7 @@ import PlayerControls from "@/components/PlayerControls";
 import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import { DEFAULT_BRAND, normalizeBrand, type BrandSettings } from "@/lib/brand";
-import { SCENE_TEXT_FIELDS, templateImageMode, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
+import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
 import { THEMES, themeDef } from "@/lib/themes";
 
 type Tab = "scenes" | "playlists" | "assets" | "displays" | "schedules" | "timeline" | "business" | "database";
@@ -134,7 +134,8 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
   "fullscreen-bg": {
     fields: {
       eyebrow: "",
-      headline: "{business}",
+      // media only — nothing is drawn over the picture
+      headline: "",
       subheadline: "",
       description: "",
       ctaText: "",
@@ -144,7 +145,7 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
       kenBurns: "zoom-in",
       items: null,
     },
-    flash: "Background sample loaded — swap the background via Quick-set or Image URL",
+    flash: "Background sample loaded — pick an image or video; nothing is drawn over it",
   },
   "trustpilot-review": {
     fields: {
@@ -306,6 +307,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const imageMode = templateImageMode(draft.template);
   // Logo templates draw the image whole, so the picker should not crop it.
   const imageIsLogo = imageMode === "logo";
+  // "Background image / video": the renderer draws the media only. Headline and
+  // ticker are hidden here too, because that template shows neither.
+  const mediaOnly = templateIsMediaOnly(draft.template);
   // "none" = the renderer never draws the slide-level image (rows carry the pictures).
   const imageUnused = imageMode === "none";
   const rowFields = templateRows(draft.template);
@@ -408,18 +412,29 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const j = await r.json(); setSelId(j.scene.id); adoptDraft(j.scene); load(); flash("Duplicated — now editing the copy");
   };
 
+  // Load a demo campaign and go straight to the playlist it builds. The endpoint
+  // creates the scenes, the playlist, the screens and a schedule; before this the
+  // only feedback was a toast, so it looked like the button had done nothing.
   const seed = async (campaign: "retail" | "trade" | "value" | "corporate" = "retail") => {
+    const label = campaign === "trade" ? "Trade" : campaign === "value" ? "Value" : campaign === "corporate" ? "Corporate" : "Retail";
     const r = await fetch(`/api/seed?campaign=${campaign}`, { method: "POST" });
     const j = await r.json().catch(() => ({}));
-    load();
+    if (!r.ok || !j.playlistId) {
+      // Keep the technical detail out of the toast: the API's db-unavailable text is
+      // aimed at whoever installed the CMS, not at the person clicking a demo pack.
+      const reason = String(j.error || "").startsWith("db-unavailable")
+        ? "the database isn't reachable — check DATABASE_URL and load supabase/schema.sql"
+        : j.error || "the database isn't reachable";
+      flash(`${label} demo not loaded — ${reason}`);
+      return;
+    }
+    await load();
+    setSelPlaylist(j.playlistId);
+    setTab("playlists");
     flash(
-      campaign === "trade"
-        ? `Trade demo loaded (${j.created ?? "?"} new scenes, 5 screens)`
-        : campaign === "value"
-          ? `Value demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
-          : campaign === "corporate"
-            ? `Corporate demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
-            : `Retail demo loaded (${j.created ?? "?"} new scenes, 2 screens)`
+      `${label} demo ready — playlist “${j.playlistName}” with ${j.scenes ?? "?"} slides` +
+        (j.created ? ` (${j.created} new scene${j.created === 1 ? "" : "s"})` : "") +
+        ` and ${j.displays ?? "?"} screens. Press ▶ Play to preview it.`
     );
   };
 
@@ -446,10 +461,10 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-            <button onClick={() => seed("retail")} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
-            <button onClick={() => seed("trade")} className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
-            <button onClick={() => seed("value")} className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
-            <button onClick={() => seed("corporate")} className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
+            <button onClick={() => seed("retail")} title="8 retail slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20 hover:bg-white/20">✨ Retail demo</button>
+            <button onClick={() => seed("trade")} title="7 trade slides + a playlist + 5 screens, then opens the playlist" className="rounded-full bg-amber-400/20 px-4 py-2 text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30">⚡ Trade demo</button>
+            <button onClick={() => seed("value")} title="12 value-store slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-emerald-400/20 px-4 py-2 text-emerald-200 ring-1 ring-emerald-300/40 hover:bg-emerald-400/30">💰 Value demo</button>
+            <button onClick={() => seed("corporate")} title="7 corporate slides + a playlist + 2 screens, then opens the playlist" className="rounded-full bg-sky-400/20 px-4 py-2 text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-400/30">🏢 Corporate demo</button>
             <Link href="/display" target="_blank" className="rounded-full bg-red-500 px-4 py-2 hover:bg-red-400">▶ Display</Link>
             <Link href="/docs" className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Docs</Link>
             <button onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); router.push("/login"); }} className="rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/20">Sign out</button>
@@ -531,9 +546,11 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2 ring-1 ring-white/10">
                 <span className="text-[11px] text-white/50">
-                  {hiddenFieldCount === 0
-                    ? "Every field below is drawn by this template."
-                    : `${hiddenFieldCount} field${hiddenFieldCount === 1 ? "" : "s"} hidden — this template doesn't draw ${hiddenFieldCount === 1 ? "it" : "them"}.`}
+                  {mediaOnly
+                    ? "This template draws only its image or video — no text, logo, clock or ticker."
+                    : hiddenFieldCount === 0
+                      ? "Every field below is drawn by this template."
+                      : `${hiddenFieldCount} field${hiddenFieldCount === 1 ? "" : "s"} hidden — this template doesn't draw ${hiddenFieldCount === 1 ? "it" : "them"}.`}
                 </span>
                 {hiddenFieldCount > 0 && (
                   <button
@@ -547,7 +564,14 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {sceneField("eyebrow", "Eyebrow / kicker", <input value={draft.eyebrow || ""} onChange={(e) => set("eyebrow", e.target.value as never)} className="inp" />)}
-                <Field label="Headline"><input value={draft.headline || ""} onChange={(e) => set("headline", e.target.value as never)} className="inp" /></Field>
+                {(showAllFields || !mediaOnly) && (
+                  <div className={mediaOnly ? "opacity-60" : undefined}>
+                    <Field label="Headline">
+                      <input value={draft.headline || ""} onChange={(e) => set("headline", e.target.value as never)} className="inp" />
+                    </Field>
+                    {mediaOnly && <p className="mt-1 text-[11px] text-amber-300/80">· not used by this template</p>}
+                  </div>
+                )}
                 {sceneField("productName", "Product name", <input value={draft.productName || ""} onChange={(e) => set("productName", e.target.value as never)} className="inp" />)}
                 {sceneField("subheadline", "Subheadline", <input value={draft.subheadline || ""} onChange={(e) => set("subheadline", e.target.value as never)} className="inp" />)}
               </div>
@@ -563,7 +587,14 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               )}
               <div className="grid grid-cols-2 gap-3">
                 {sceneField("ctaText", "CTA", <input value={draft.ctaText || ""} onChange={(e) => set("ctaText", e.target.value as never)} className="inp" />)}
-                <Field label="Ticker"><input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" /></Field>
+                {(showAllFields || !mediaOnly) && (
+                  <div className={mediaOnly ? "opacity-60" : undefined}>
+                    <Field label="Ticker">
+                      <input value={draft.tickerText || ""} onChange={(e) => set("tickerText", e.target.value as never)} className="inp" />
+                    </Field>
+                    {mediaOnly && <p className="mt-1 text-[11px] text-amber-300/80">· not used by this template (no ticker on ambient screens)</p>}
+                  </div>
+                )}
               </div>
               <p className="text-[11px] text-white/40">Tip: type <code className="text-white/70">{"{phone}"}</code> or <code className="text-white/70">{"{business}"}</code> in any text and the screen shows the details from the <button onClick={() => setTab("business")} className="underline">Business</button> tab.</p>
               {imageUnused && !showAllFields ? (
@@ -777,10 +808,15 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                 {playlists.map((p) => (
                   <button key={p.id} onClick={() => setSelPlaylist(p.id)} className={`w-full rounded-2xl p-3 text-left ring-1 ${selPlaylist === p.id ? "bg-white text-black" : "bg-white/5 ring-white/10"}`}>
                     <div className="text-sm font-black">{p.name}</div>
-                    <div className={`text-xs ${selPlaylist === p.id ? "text-black/60" : "text-white/50"}`}>{p.scenes?.length || 0} scenes</div>
+                    <div className={`text-xs ${selPlaylist === p.id ? "text-black/60" : "text-white/50"}`}>{p.scenes?.length || 0} scene{p.scenes?.length === 1 ? "" : "s"}</div>
                   </button>
                 ))}
-                {playlists.length === 0 && <p className="text-sm text-white/50">No playlists yet — click “Load demo”.</p>}
+                {playlists.length === 0 && (
+                  <p className="text-sm text-white/50">
+                    No playlists yet. The demo packs in the header (Retail / Trade / Value / Corporate) build a
+                    playlist, screens and a schedule, then open the playlist here.
+                  </p>
+                )}
               </div>
             </div>
             <div className="rounded-3xl bg-white/[0.04] p-5 ring-1 ring-white/10">

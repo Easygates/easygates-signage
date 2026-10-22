@@ -676,3 +676,166 @@ gradient; `accent2` reaches 4.5:1 with black or white ink; only Easter and Sprin
 are light; `brand.ts` writes `highlightColor` and no longer carries its own palette
 table; every animation class used by the decoration layer has both an `@keyframes`
 and an `animation-name` rule; reduced motion stops the layer.
+
+## 17. Demo packs, ambient slides, animation presets — arena/989b2b84 (2026-10-22)
+
+Three questions from review, plus what was done about each. §17.4 lists
+**recommendations only** — nothing there has been implemented.
+
+### 17.1 “Loading a demo adds a playlist but doesn’t take me to it”
+
+The demo packs are onboarding content, not a separate feature: each one writes a
+set of scenes, a playlist, screens and a schedule (all idempotent by name), so a
+fresh install has something to play and something to edit. What was missing was
+the last step — the UI only fired a toast.
+
+Verified first that the API side already did the work (`/api/seed?campaign=…` →
+scenes, playlist, `playlistItems`, displays, schedule). The bug was in the
+client:
+
+- `seed()` called `load()` but left the selection on whatever playlist was
+  selected before, and stayed on the Scenes tab.
+- A failed load (database down) flashed a **success-shaped** message:
+  “Retail demo loaded (? new scenes, 2 screens)”.
+
+Now:
+
+| Before | After |
+|---|---|
+| toast “… loaded (? new scenes, 2 screens)” | `await load()` → select the new playlist → open **Playlists** |
+| nothing selected | the campaign playlist is selected, with ▶ Play / Export MP4 ready |
+| failure looked like success | red-path toast: “Retail demo not loaded — the database isn't reachable — check DATABASE_URL and load supabase/schema.sql” |
+| API returned only `created` | API also returns `playlistName` and the playlist's slide count |
+| buttons gave no clue what they do | each button has a tooltip with its size (8/7/12/7 slides + screens) |
+| empty playlist list said “Load demo” (no such button) | it names the four packs and what they create |
+
+Also fixed while there: “1 scenes” in the playlist list, and the Docs page still
+told people to click a “✨ Load demo” button that no longer exists.
+
+**Decision: keep the packs.** They are the only way to get a non-empty CMS on a
+fresh install without typing three dozen sample slides by hand. Recommendation 17.4(a) covers
+making them removable.
+
+### 17.2 “Background image / video should be just a background or video — no text, no logo”
+
+It claimed to be media-only, but the renderer drew headline, eyebrow,
+subheadline and CTA over the picture, and the player drew the brand bar
+(logo + business name + clock) and the ticker on top of it.
+
+- **Field table** (`src/lib/templateFields.ts`): `fullscreen-bg` now declares only
+  `imageUrl` + `videoUrl`; new `templateIsMediaOnly()` / `MEDIA_ONLY_TEMPLATES`
+  expose the fact, and a test keeps the flag and the field table in agreement.
+- **Renderer**: the media-only branch draws the video, else the background image,
+  else the slide image — *nothing else*. The 35 % black scrim is gone too, so an
+  ambient photo is not dimmed by default.
+- **Player chrome** (`ScreenView`): brand bar (logo, name, clock) and ticker are
+  not rendered for media-only templates. The small progress line stays — see
+  17.4(b).
+- **Bug found while rewriting it**: the old expression
+  `scene.bgImageUrl || scene.imageUrl && (<div …/>)` returned the *string* when
+  only a background image was set, so React printed the URL as text over the
+  picture. Replaced with an explicit ternary.
+- **Editor**: Headline and Ticker are hidden for this template (with the same
+  “Show unused fields” escape hatch as the rest of the editor) and the banner
+  says “This template draws only its image or video — no text, logo, clock or
+  ticker.”
+- **Content**: the corporate demo's ambient slide shipped with
+  `headline: "EASYGATES"`, which can never be drawn now — cleared. The template
+  starter did the same with `{business}`; cleared, and its hint reworded.
+
+### 17.3 “Do animation presets do anything?”
+
+**Before:** partly. A preset supplied `baseMs`, `staggerMs` and `easing`
+(`src/lib/signage.ts` → `ANIMATION_PRESETS`). `baseMs`/`staggerMs` were real: they
+set every element's `animation-duration` and the stagger between elements
+(`delays()` in `parts.tsx`), and they drive the timeline inspector and the
+duration maths. But:
+
+- **`easing` was never applied.** The admin printed “Easing: cubic-bezier(…)”
+  from the preset, while every `.sg-anim` and mask reveal ran on the global
+  `--sg-ease`. So Launch/Smooth/Cinematic/Retail Snap/Elegant differed only in
+  *speed*, not in feel.
+- **An explicit stagger of `0` was ignored** — `scene.staggerMs || preset.staggerMs`
+  treated 0 as “unset”, so a slide set to 0 ms still staggered at the preset's
+  80–180 ms.
+
+**Now:** the renderer publishes `preset.easing` as `--sg-ease` on the slide root,
+which every entrance/mask inside the slide inherits, and `??` replaces `||` so
+0 ms is respected. Verified in a production build: Retail Snap gives
+`cubic-bezier(0.34,1.3,0.64,1)` / 0.5 s, Cinematic gives
+`cubic-bezier(0.25,1,0.4,1)` / 1.1 s on the same element.
+
+What a preset still does **not** change is the *entrance style*: which elements
+fade-up vs pop vs mask comes from the template (and per element), and the
+cross-slide transition is a separate `transition` field applied to a wrapper
+outside the slide, so it keeps the global easing. That is the honest description
+of the control, and 17.4(c) suggests what to do about it.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit` | pass ✅ |
+| `eslint .` | 0 errors, 0 warnings ✅ |
+| `node --test tests/*.mjs` | **170 pass** (was 157; +13 in `tests/media-only-and-demos.test.mjs`) ✅ |
+| `next build` | ✅ |
+| Browser, production build — demo pack | click Retail demo (API mocked) → tab switches to **PLAYLISTS**, campaign playlist selected, “8 slides · ▶ Play” present, toast names the playlist ✅ |
+| Browser, production build — demo failure | API 503 → stays on Scenes, toast reads “Trade demo not loaded — the database isn't reachable …” ✅ |
+| Browser, production build — ambient slide | preview contains the picture only: no logo, no clock, no ticker, no text; editor hides Headline/Ticker and shows the explanation ✅ |
+| Browser, production build — presets | same element reports different `animation-timing-function` and duration for Retail Snap vs Cinematic ✅ |
+
+New tests (`tests/media-only-and-demos.test.mjs`): media-only template draws no
+text in the renderer source; brand bar/ticker suppressed; the demo's ambient slide
+has no text; seed API returns what the client needs; `seed()` reloads, selects,
+switches tab and cannot navigate on failure; every preset easing is a distinct
+valid CSS timing function; `--sg-ease` is published and consumed; presets change
+timeline timings; `staggerMs: 0` is honoured.
+
+### 17.4 Recommendations (not implemented — for review)
+
+**(a) Demo packs: add “Clear demo content” and mark what is demo data.**
+Right now the packs are idempotent by scene name but not removable as a set — a
+reviewer who clicks all four ends up with 34 slides, 4 playlists, 11 screens and
+one schedule and has to delete them by hand. Options, cheapest first: (i) tag
+seeded rows (`scenes.source = 'demo'`, `playlists.source = 'demo'`) and add one
+button that deletes anything with that tag; (ii) keep a JSON manifest of created
+ids in the response and delete by id; (iii) hide the demo buttons behind
+`?demo=1`. I would do (i) — it also lets the scene list label demo content, which
+is currently indistinguishable from real content.
+
+**(b) Ambient slides: hide the progress line, and decide what video does under
+reduced motion.** The 1.5 px progress bar still runs on `fullscreen-bg`. It is
+useful as a “player is alive” tell on a promo screen and noise on an ambient one
+— recommend hiding it for media-only templates behind the same
+`templateIsMediaOnly()` check. Separately, `prefers-reduced-motion` currently
+stops CSS animations but does **not** pause the background video; auto-playing
+motion is the usual accessibility complaint. Recommend pausing (or not
+autoplaying) video when reduced motion is on, and adding a `poster` fallback in
+that case. Both are small, but they change visible behaviour, so I left them out
+of this pass.
+
+**(c) Animation presets: either give them an entrance style or stop implying
+one.** The names (Launch Pop, Retail Snap, Elegant Fade) promise different
+*choreography*, but a preset only scales timing/easing. Two honest options:
+(i) add `entrance: "fade-up" | "pop" | "mask"` to the preset and use it for the
+elements that do not hard-code a class (templates would opt in); (ii) rename the
+control “Animation speed / feel” and drop the easing chip from the summary. If
+you want presets to be previewable, a third option is a 3-second looping preview
+tile per preset in the editor instead of a text list. I would take (ii) now and
+(i) only if retail wants more variety.
+
+**(d) A “first run” checklist instead of four buttons in the header.** The header
+is now crowded with four demo packs next to Display / Docs / Sign out. Once (a)
+exists, a small “Getting started” card on the Scenes tab (load a pack → edit a
+slide → register a screen) would explain them without occupying permanent
+toolbar space.
+
+**(e) Two smaller things spotted on the way:**
+- Every DB route returns a bare 500 `Internal Server Error` when `DATABASE_URL`
+  is missing, because `src/db` throws at import time before the handler's
+  try/catch. The admin copes (it falls back to baked demo scenes, and the seed
+  toast now translates the error), but the API contract said 503 + JSON. A lazy
+  `await import("@/db")` inside the handlers, or a module-level guard that
+  returns a stub, would keep the documented contract.
+- The playlist runtime line shows “≈ 0.2 min” for short lists; seconds under a
+  minute would read better.

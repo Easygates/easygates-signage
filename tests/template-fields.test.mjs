@@ -16,6 +16,7 @@ import {
   SCENE_TEXT_FIELDS,
   TEMPLATE_FIELDS,
   templateImageMode,
+  templateIsMediaOnly,
   templateRows,
   templateUses,
 } from "../src/lib/templateFields.ts";
@@ -65,6 +66,11 @@ describe("template field table", () => {
       assert.equal(templateUses(id, "imageUrl"), true, `${id} should use imageUrl`);
     }
     assert.equal(templateImageMode("splash"), "logo", "splash draws the image as a logo");
+    assert.equal(templateIsMediaOnly("fullscreen-bg"), true, "fullscreen-bg is an ambient media slide");
+    assert.equal(templateIsMediaOnly("splash"), false);
+    for (const id of ["retail-promo", "product-showcase", "announcement", "trustpilot-review"]) {
+      assert.equal(templateIsMediaOnly(id), false, `${id} draws text, so it is not media-only`);
+    }
     assert.deepEqual(IMAGE_UNUSED_TEMPLATES.sort(), [...new Set(IMAGE_UNUSED_TEMPLATES)].sort(), "derived list must be unique");
   });
 
@@ -73,7 +79,12 @@ describe("template field table", () => {
     assert.equal(templateUses("deals-grid", "promoPrice"), false, "deals-grid prices live on the rows");
     assert.equal(templateUses("price-drop", "promoPrice"), true, "price-drop draws the hero price");
     assert.equal(templateUses("product-grid", "ctaText"), true);
-    assert.equal(templateUses("fullscreen-bg", "ctaText"), true);
+    // background image / video is media only — no overlay text
+    for (const f of ["eyebrow", "subheadline", "ctaText", "productName", "description", "promoPrice"]) {
+      assert.equal(templateUses("fullscreen-bg", f), false, `fullscreen-bg must not draw ${f}`);
+    }
+    assert.equal(templateUses("fullscreen-bg", "imageUrl"), true);
+    assert.equal(templateUses("fullscreen-bg", "videoUrl"), true);
     assert.equal(templateUses("aisle-guide", "productName"), true, "the aisle number is productName");
     assert.equal(templateUses("aisle-guide", "description"), false);
     assert.equal(templateUses("store-services", "description"), false);

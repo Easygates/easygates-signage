@@ -167,7 +167,7 @@ export const TEMPLATES: {
   { id: "corporate-news", name: "Company News", blurb: "Headline, story and date — news ticker style", bestFor: "Internal comms & announcements" },
   { id: "testimonial-quote", name: "Testimonial / Quote", blurb: "Large quote with attribution and optional customer photo", bestFor: "Customer praise & reviews" },
   // ── background only ──
-  { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video with optional overlay text — no logo", bestFor: "Ambient & mood screens" },
+  { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video only — no text, logo or ticker", bestFor: "Ambient & mood screens" },
   // ── social proof ──
   { id: "trustpilot-review", name: "Trustpilot Review", blurb: "Trustpilot rating, star breakdown and top reviews — social proof for reception screens", bestFor: "Customer trust & reputation" },
 ];
@@ -228,7 +228,7 @@ export interface TimelineStep {
  */
 export function buildTimeline(scene: Scene): TimelineStep[] {
   const preset = ANIMATION_PRESETS[scene.animationPreset] ?? ANIMATION_PRESETS.smooth;
-  const stagger = scene.staggerMs || preset.staggerMs;
+  const stagger = scene.staggerMs ?? preset.staggerMs;
   const b = preset.baseMs;
   const steps: TimelineStep[] = [
     { key: "bg", label: "Background animates in", atMs: 0, durMs: 900, effect: "gradient pan + shapes" },
@@ -1355,7 +1355,8 @@ export const CORPORATE_DEMO_SCENES: Scene[] = [
     id: "corp-6",
     name: "06 · Ambient — Fullscreen Background",
     template: "fullscreen-bg",
-    headline: "EASYGATES",
+    // media only — the slide draws the background image and nothing else
+    headline: "",
     subheadline: "",
     bgImageUrl: CORPORATE_IMG.ambientAurora,
     bgFrom: "#05070f",
