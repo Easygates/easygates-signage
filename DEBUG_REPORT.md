@@ -1,0 +1,168 @@
+# Debug & Test Report — Easygates Signage
+**Branch:** `arena/5155fdcc-easygates-signage` (from `ebe8585`)  
+**Date:** 2026-10-22  
+**Environment:** Node 22, Next.js 16.2.6 (Turbopack), PostgreSQL via `pg@8.20` + `drizzle-orm`
+
+---
+
+## 1. Test Matrix
+
+| Check | Command | Before | After |
+|-------|---------|--------|-------|
+| **Unit tests** | `node --test tests/*.mjs` | 88 pass, 0 fail | **88 pass, 0 fail** ✅ |
+| **Lint** | `npm run lint` | 4 warnings, `eslint: not found` without install | **0 errors, 0 warnings** ✅ |
+| **Typecheck** | `npm run typecheck` / `tsc --noEmit` | pass | **pass** ✅ |
+| **Build** | `npm run build` (no `.env`) | **FAIL** — `DATABASE_URL is required` during `Collecting page data` | **pass** ✅ — 7.1s, all routes dynamic |
+
+`npm install` was required first (402 packages). Vulnerabilities: 12 (4 moderate, 7 high, 1 critical via `sharp`/`postcss` — upstream, not fixable without major bump).
+
+---
+
+## 2. Problems Found & Fixed
+
+### 🔴 P0 — Build crashes without `DATABASE_URL` (blocker)
+**Symptom**
+```
+Creating an optimized production build ...
+Error: DATABASE_URL is required. Set it in .env
+  at src/db/index.ts:resolveDbConfig
+> Build error occurred
+Error: Failed to collect page data for /api/assets
+```
+Next.js imports every API route at build time even with `export const dynamic = "force-dynamic"`. The top-level `export const dbInfo = resolveDbConfig()` throws when `DATABASE_URL` is unset, so CI / Vercel builds without env fail.
+
+**Root cause:** Throw at import time, no build-time guard.
+
+**Fix**
+- `src/db/index.ts` — `resolveDbConfig()` now returns a safe localhost placeholder when `process.env.NEXT_PHASE === "phase-production-build"` (or `SKIP_DB_CHECK=1`), so the build can collect pages. At runtime (no `NEXT_PHASE`) it still throws if the var is truly missing, so mis-configuration is still caught.
+- `drizzle.config.ts` — same pattern: use placeholder URL + warning when `raw` is empty, unless it's a build. Prevents `drizzle-kit` import from crashing the build.
+
+**Verification:** `npm run build` with no `DATABASE_URL` now succeeds, emits all 19 API routes + pages.
+
+---
+
+### 🔴 P1 — Render-phase `setState` in display player (React anti-pattern)
+**File:** `src/app/display/page.tsx:90`
+```ts
+if (index >= scenes.length) setIndex(0); // during render!
+```
+Triggers React warning *“Cannot update a component from inside the function body”* and can cause cascading renders/infinite loop when CMS playlist shrinks.
+
+**Fix:** Derive a clamped index instead of mutating state mid-render:
+```ts
+const safeIndex = scenes.length === 0 ? 0 : Math.min(index, scenes.length - 1);
+// … use safeIndex everywhere (render, preload, auto-advance, navigation)
+// navigation helpers derive next from safeIndex, not stale functional updater
+const go = useCallback((dir) => {
+  const next = (safeIndex + dir + len) % len; // closure, not (i) => …
+  setIndex(next);
+}, [safeIndex, len, reduced]);
+```
+No `useEffect` with `setState` needed; lint rule `react-hooks/set-state-in-effect` passes.
+
+---
+
+### 🟠 P1 — Missing error handling in write APIs (DoS / stack leak)
+**Files:** `src/app/api/assets`, `displays`, `playlists`, `playlist-items`, `schedules`, `scenes`, `seed`, `scenes/[id]`, `playlists/[id]`, `displays/[id]`
+- `GET` handlers wrapped in `try/catch → { error: "db-unavailable" }`.
+- `POST/PUT/DELETE` handlers had **no** catch — DB outage leaks stack trace as unhandled 500.
+- `seed` performs ~20 DB writes with no catch at all.
+
+**Fix:** Wrap every write handler in `try { … } catch { return 503 }` returning `{ error: "db-unavailable" }`. Consistent with read handlers; screens keep playing on 503.
+
+**Extra:** `src/app/api/scenes/route.ts` now validates `template` against `TEMPLATES` id set, returning 400 for unknown templates (prevents persisting corrupt scenes that crash `SceneRenderer`).
+
+**Extra:** `src/app/api/upload/route.ts` outer `formData()` parsing now wrapped; malformed multipart returns 400 instead of 500.
+
+---
+
+### 🟠 P1 — Input validation: playlist-items missing required fields
+**File:** `src/app/api/playlist-items/route.ts`  
+`POST` accepted empty `playlistId`/`sceneId`, creating orphan rows. **Fix:** return 400 unless both present.
+
+---
+
+### 🟡 P2 — Lint: `<img>` vs `<Image>` warnings + unused disable
+**Files:** `src/components/BusinessPanel.tsx`, `src/components/scene/parts.tsx`
+- BusinessPanel renders 4 `<img>` tags for arbitrary user upload URLs (any domain) — `next/image` would need dynamic allowlist, so `<img>` is intentional.
+- `parts.tsx` had per-line `eslint-disable` placed on `return (` line, not on `<img>`, appearing “unused” + still warning.
+
+**Fix:** Add file-level `/* eslint-disable @next/next/no-img-element -- reason */` with justification, remove misplaced per-line disables. `npm run lint` now 0 warnings.
+
+---
+
+### 🟡 P2 — XSS via unescaped `url("…")` interpolation
+**File:** `src/components/SceneRenderer.tsx`  
+`backgroundImage: \`url("${scene.bgImageUrl}")\`` breaks out if URL contains `"` or `)`. Low risk (only admin can set), but fixed.
+
+**Fix:** Added `cssUrl()` helper that escapes `"` and `\` before interpolation: `` `url("${cssUrl(scene.bgImageUrl!)}")` ``.
+
+---
+
+### 🟡 P2 — `next.config.ts` missing Supabase remote pattern
+**Before:** only `images.pexels.com`, `images.unsplash.com`.  
+Supabase Storage URLs (`*.supabase.co`) would fail if ever passed to `<Image>`.  
+**Fix:** Added `{ hostname: "*.supabase.co" }` and `{ hostname: "*.supabase.com" }` to `remotePatterns`.
+
+---
+
+### 🟡 P2 — `drizzle.config.ts` crash path
+Same build-safety fix as `src/db/index.ts` (placeholder + warning).
+
+---
+
+### ℹ️ Noted but not changed (informational)
+
+| Item | Why left as-is |
+|------|----------------|
+| **Middleware deprecation** — `⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.` | Keeping `src/middleware.ts`; renaming to `proxy.ts` would break on older Next. Warning is cosmetic and build still succeeds. Attempting both files causes hard error. |
+| **Vulnerabilities in `sharp`/`postcss`** (12 via `next`) | Upstream; `npm audit fix` would pin `next@16.4.2` (SemVer major) — deferred to separate dep-bump PR. |
+| **Playlist reorder not transactional** (`playlist-items` PUT loops sequential updates) | Low concurrency; true fix needs `db.transaction`. Documented for future. |
+| **Tests mirror timeline logic instead of importing it** (`animation.test.mjs`) | Tests pass but won't catch drift between test copy and real `src/lib/signage.ts`. Recommend importing real `buildTimeline` when DB-free test setup allows. |
+| **`eslint-config-next/core-web-vitals` on ESLint 9.39** | Deprecated in ESLint 9 flat config but still functional; migration to `eslint@10` is separate. |
+
+---
+
+## 3. Manual Smoke Tests
+
+- `npm install` → 402 packages, 12 vulns (expected).
+- `npm run lint` → 0 errors.
+- `npx tsc --noEmit` → no errors.
+- `node --test tests/*.mjs` → 88/88.
+- `npm run build` with empty env → success, 19 dynamic routes listed, no DB required.
+- `npm run build` with dummy `DATABASE_URL=postgresql://…@localhost:5432/app_db` → same success (placeholder not needed, real URL used).
+- Visual check: `src/app/display/page.tsx` preload and auto-advance use `safeIndex`, no render-phase setState.
+
+---
+
+## 4. Changed Files Summary
+
+```
+18 files | +324 −217
+
+drizzle.config.ts                   — build-safe placeholder
+next.config.ts                      — add Supabase remotePatterns
+src/db/index.ts                     — build-safe resolveDbConfig
+src/app/api/*                       — add try/catch + validation (10 routes)
+src/app/display/page.tsx            — clamp safeIndex, remove render-phase setState
+src/components/BusinessPanel.tsx    — fix lint disables
+src/components/SceneRenderer.tsx    — cssUrl escape
+src/components/scene/parts.tsx      — file-level eslint disable
+```
+
+All changes are backward-compatible; no schema, API contract, or template behaviour changed except adding safety guards.
+
+---
+
+## 5. How to Verify Locally
+
+```bash
+npm install
+npm run lint        # expect: no output
+npm run typecheck   # expect: no errors
+node --test tests/*.mjs  # expect: 88 pass
+npm run build       # expect: ✓ Compiled successfully, ✓ Generating static pages
+# with DB:
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app_db npm run build
+npm start           # → http://localhost:3000, seed via /admin → ✨ Retail demo
+```

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- signage renders arbitrary user/remote URLs (uploads, Supabase storage, external media) that can't be pre-allowlisted for next/image; <img> is intentional here */
 import type { CSSProperties } from "react";
 import type { Scene } from "@/lib/signage";
 import { ANIMATION_PRESETS } from "@/lib/signage";
@@ -77,7 +78,6 @@ export function HeroMedia({
     );
   }
   if (scene.imageUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={scene.imageUrl}
@@ -162,7 +162,6 @@ export function ProductImage({
   return (
     <div className={`sg-anim sg-scale-in relative ${className}`} style={d.style(1, 60)}>
       <div className={`relative overflow-hidden rounded-[28px] shadow-[0_40px_90px_rgba(0,0,0,0.5)] ring-1 ring-white/20 ${kbClass(scene.kenBurns)}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={scene.imageUrl}
           alt={scene.productName || scene.headline || "promotion"}

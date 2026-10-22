@@ -34,6 +34,9 @@ function DisplayInner() {
   const cacheKey = `sg_player_${displayId || playlistId || "default"}`;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Clamp derived index so we never render out-of-bounds when CMS playlist shrinks.
+  const safeIndex = scenes.length === 0 ? 0 : Math.min(index, scenes.length - 1);
+
   // reduced motion: OS preference
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -86,9 +89,6 @@ function DisplayInner() {
     return () => { clearTimeout(first); clearInterval(poll); clearTimeout(giveUp); };
   }, [load, pollSec]);
 
-  // if the CMS playlist shrinks, don't sit on an index that no longer exists
-  if (index >= scenes.length) setIndex(0);
-
   // heartbeat for multi-display status
   useEffect(() => {
     if (!displayId) return;
@@ -100,44 +100,46 @@ function DisplayInner() {
 
   // preload next image (memory-light: only next 1)
   useEffect(() => {
-    const next = scenes[(index + 1) % scenes.length]?.imageUrl;
+    const next = scenes[(safeIndex + 1) % scenes.length]?.imageUrl;
     if (next) {
       const im = new Image();
       im.src = next;
     }
-    (scenes[index]?.items || []).slice(0, 4).forEach((it) => {
+    (scenes[safeIndex]?.items || []).slice(0, 4).forEach((it) => {
       if (it.image) {
         const im = new Image();
         im.src = it.image;
       }
     });
-  }, [index, scenes]);
+  }, [safeIndex, scenes]);
 
   const go = useCallback(
     (dir: 1 | -1) => {
+      const len = scenes.length || 1;
+      const next = (safeIndex + dir + len) % len;
       if (reduced) {
-        setIndex((i) => (i + dir + scenes.length) % scenes.length);
+        setIndex(next);
         return;
       }
       setExiting(true);
       setTimeout(() => {
-        setIndex((i) => (i + dir + scenes.length) % scenes.length);
+        setIndex(next);
         setExiting(false);
       }, 480);
     },
-    [scenes.length, reduced]
+    [safeIndex, scenes.length, reduced]
   );
 
   // auto-advance
   useEffect(() => {
     if (paused || scenes.length < 2) return;
-    const cur = scenes[index];
+    const cur = scenes[safeIndex];
     const ms = (cur.durationSec || 10) * 1000;
     timer.current = setTimeout(() => go(1), ms);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [index, paused, scenes, go]);
+  }, [safeIndex, paused, scenes, go]);
 
   // keyboard: arrows navigate, space pause, F fullscreen, M reduced, H help
   useEffect(() => {
@@ -159,7 +161,7 @@ function DisplayInner() {
     return () => window.removeEventListener("keydown", fn);
   }, [go]);
 
-  const scene = scenes[index] ?? DEMO_SCENES[0];
+  const scene = scenes[safeIndex] ?? DEMO_SCENES[0];
   const tClass = useMemo(() => transitionClass(scene.transition, exiting ? "exit" : "enter"), [scene.transition, exiting]);
   void muted;
 
@@ -168,10 +170,10 @@ function DisplayInner() {
       <ScreenView
         scene={scene}
         brand={brand}
-        animKey={`${scene.id}-${index}`}
+        animKey={`${scene.id}-${safeIndex}`}
         sceneClassName={tClass}
         reducedMotion={reduced}
-        progressKey={paused ? undefined : `${scene.id}-${index}`}
+        progressKey={paused ? undefined : `${scene.id}-${safeIndex}`}
       />
 
       {paused && (

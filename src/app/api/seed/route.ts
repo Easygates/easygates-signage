@@ -58,91 +58,96 @@ async function campaignFrom(req: Request): Promise<Campaign> {
 }
 
 export async function POST(req: Request) {
-  const campaign = await campaignFrom(req);
-  const cfg = CAMPAIGNS[campaign];
+  try {
+    const campaign = await campaignFrom(req);
+    const cfg = CAMPAIGNS[campaign];
 
-  // ── scenes (idempotent by name) ──
-  const existing = await db.select({ name: scenes.name }).from(scenes);
-  const have = new Set(existing.map((r) => r.name));
-  const created: string[] = [];
-  for (const s of cfg.scenes) {
-    if (have.has(s.name)) continue;
-    const payload = sceneToRow(s);
-    const rows = await db.insert(scenes).values({ ...payload, name: s.name, template: s.template } as never).returning();
-    created.push(rows[0].id);
-  }
+    // ── scenes (idempotent by name) ──
+    const existing = await db.select({ name: scenes.name }).from(scenes);
+    const have = new Set(existing.map((r) => r.name));
+    const created: string[] = [];
+    for (const s of cfg.scenes) {
+      if (have.has(s.name)) continue;
+      const payload = sceneToRow(s);
+      const rows = await db.insert(scenes).values({ ...payload, name: s.name, template: s.template } as never).returning();
+      created.push(rows[0].id);
+    }
 
-  // ── playlist for this campaign ──
-  const pl = await db.select().from(playlists).where(eq(playlists.name, cfg.playlistName)).limit(1);
-  let playlistId: string;
-  if (pl[0]) {
-    playlistId = pl[0].id;
-  } else {
-    const r = await db.insert(playlists).values({ name: cfg.playlistName, description: cfg.description, loop: true } as never).returning();
-    playlistId = r[0].id;
-  }
+    // ── playlist for this campaign ──
+    const pl = await db.select().from(playlists).where(eq(playlists.name, cfg.playlistName)).limit(1);
+    let playlistId: string;
+    if (pl[0]) {
+      playlistId = pl[0].id;
+    } else {
+      const r = await db.insert(playlists).values({ name: cfg.playlistName, description: cfg.description, loop: true } as never).returning();
+      playlistId = r[0].id;
+    }
 
-  // ── attach missing scenes in campaign order ──
-  const allScenes = await db.select().from(scenes);
-  const campaignRows = cfg.scenes
-    .map((d) => allScenes.find((r) => r.name === d.name))
-    .filter(Boolean) as typeof allScenes;
-  const cur = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId));
-  const haveScene = new Set(cur.map((i) => i.sceneId));
-  let pos = cur.length;
-  for (const r of campaignRows) {
-    if (haveScene.has(r.id)) continue;
-    await db.insert(playlistItems).values({ playlistId, sceneId: r.id, position: pos++ } as never);
-  }
+    // ── attach missing scenes in campaign order ──
+    const allScenes = await db.select().from(scenes);
+    const campaignRows = cfg.scenes
+      .map((d) => allScenes.find((r) => r.name === d.name))
+      .filter(Boolean) as typeof allScenes;
+    const cur = await db.select().from(playlistItems).where(eq(playlistItems.playlistId, playlistId));
+    const haveScene = new Set(cur.map((i) => i.sceneId));
+    let pos = cur.length;
+    for (const r of campaignRows) {
+      if (haveScene.has(r.id)) continue;
+      await db.insert(playlistItems).values({ playlistId, sceneId: r.id, position: pos++ } as never);
+    }
 
-  // ── media library (by URL, so re-running never duplicates) ──
-  const existingAssets = await db.select({ url: assets.url }).from(assets);
-  const haveAsset = new Set(existingAssets.map((a) => a.url));
-  for (const s of cfg.scenes) {
-    if (!s.imageUrl || haveAsset.has(s.imageUrl)) continue;
-    haveAsset.add(s.imageUrl);
-    await db.insert(assets).values({ name: s.productName || s.name, url: s.imageUrl, type: "image" } as never);
-  }
+    // ── media library (by URL, so re-running never duplicates) ──
+    const existingAssets = await db.select({ url: assets.url }).from(assets);
+    const haveAsset = new Set(existingAssets.map((a) => a.url));
+    for (const s of cfg.scenes) {
+      if (!s.imageUrl || haveAsset.has(s.imageUrl)) continue;
+      haveAsset.add(s.imageUrl);
+      await db.insert(assets).values({ name: s.productName || s.name, url: s.imageUrl, type: "image" } as never);
+    }
 
-  // ── displays (one per TV, idempotent by name) ──
-  const existingDisplays = await db.select({ name: displays.name }).from(displays);
-  const haveDisplay = new Set(existingDisplays.map((d) => d.name));
-  const newDisplays = cfg.displays.filter((d) => !haveDisplay.has(d.name));
-  if (newDisplays.length) {
-    await db.insert(displays).values(
-      newDisplays.map((d) => ({
-        ...d,
+    // ── displays (one per TV, idempotent by name) ──
+    const existingDisplays = await db.select({ name: displays.name }).from(displays);
+    const haveDisplay = new Set(existingDisplays.map((d) => d.name));
+    const newDisplays = cfg.displays.filter((d) => !haveDisplay.has(d.name));
+    if (newDisplays.length) {
+      await db.insert(displays).values(
+        newDisplays.map((d) => ({
+          ...d,
+          playlistId,
+          resolution: "1920x1080",
+          orientation: "landscape",
+          status: "offline",
+        })) as never
+      );
+    }
+
+    // ── schedule demo ──
+    // Bound to one display on purpose: a display-less schedule overrides EVERY screen,
+    // which would make the second demo campaign hijack the first one's playlist.
+    const sCount = await db.select().from(schedules).limit(1);
+    if (!sCount[0]) {
+      const schedDisplay = await db.select().from(displays).where(eq(displays.name, cfg.displays[0].name)).limit(1);
+      await db.insert(schedules).values({
+        name: cfg.scheduleName,
         playlistId,
-        resolution: "1920x1080",
-        orientation: "landscape",
-        status: "offline",
-      })) as never
-    );
-  }
+        displayId: schedDisplay[0]?.id ?? null,
+        days: "1,2,3,4,5,6,0",
+        startTime: "08:30",
+        endTime: "18:00",
+        priority: 0,
+        enabled: true,
+      } as never);
+    }
 
-  // ── schedule demo ──
-  // Bound to one display on purpose: a display-less schedule overrides EVERY screen,
-  // which would make the second demo campaign hijack the first one's playlist.
-  const sCount = await db.select().from(schedules).limit(1);
-  if (!sCount[0]) {
-    const schedDisplay = await db.select().from(displays).where(eq(displays.name, cfg.displays[0].name)).limit(1);
-    await db.insert(schedules).values({
-      name: cfg.scheduleName,
+    return NextResponse.json({
+      ok: true,
+      campaign,
+      created: created.length,
       playlistId,
-      displayId: schedDisplay[0]?.id ?? null,
-      days: "1,2,3,4,5,6,0",
-      startTime: "08:30",
-      endTime: "18:00",
-      priority: 0,
-      enabled: true,
-    } as never);
+      displays: cfg.displays.length,
+    });
+  } catch (e) {
+    console.error("seed failed", e);
+    return NextResponse.json({ error: "db-unavailable — run supabase/schema.sql and check DATABASE_URL" }, { status: 503 });
   }
-
-  return NextResponse.json({
-    ok: true,
-    campaign,
-    created: created.length,
-    playlistId,
-    displays: cfg.displays.length,
-  });
 }

@@ -36,6 +36,11 @@ function BgDecor({ scene }: { scene: Scene }) {
   );
 }
 
+/** CSS-escape a URL for use inside url("…") — prevents breaking out with " or ). */
+function cssUrl(url: string): string {
+  return url.replace(/["\\]/g, "\\$&").replace(/\n/g, "");
+}
+
 /** Full-bleed canvas background: gradient, optional cover image, dark overlay. */
 function Background({ scene }: { scene: Scene }) {
   const hasImage = Boolean(scene.bgImageUrl);
@@ -53,7 +58,7 @@ function Background({ scene }: { scene: Scene }) {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `url("${scene.bgImageUrl}")`,
+            backgroundImage: `url("${cssUrl(scene.bgImageUrl!)}")`,
             backgroundSize: "cover",
             backgroundPosition: scene.imagePosition || "center",
             backgroundRepeat: "no-repeat",
