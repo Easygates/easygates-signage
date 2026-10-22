@@ -1,11 +1,11 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 19 art-directed templates (12 retail/value + 7 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 20 art-directed templates (7 retail + 7 value-store + 1 splash + 5 trade), a deterministic animation engine, playlists, schedules, seasonal themes and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
 Three fictional demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering all 7 retail templates.
-- **APEX · Electrical, Smart Home & Gates** — 6 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out) plus 5 pre-registered screens.
+- **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
 
 ## Templates
@@ -21,6 +21,7 @@ Three fictional demo campaigns, all loadable from `/admin`:
 | Aisle Guide | Store wayfinding — department name, giant aisle circle, arrow, sub-categories |
 | Top Sellers | Bestseller charts — numbered top-5 list, rank numbers are the hero |
 | Store Services | Customer information — click & collect, returns, opening hours, services desk |
+| Splash / Welcome | Logo on a white plate, tagline and contact-detail cards — the logo follows Business settings |
 | Retail Promotion | Hero deals & price drops (original) |
 | Food Menu Board | QSR / café menu boards (original) |
 | Product Showcase | Flagship launches (original) |

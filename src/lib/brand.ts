@@ -122,6 +122,8 @@ const TEXT_FIELDS = [
  */
 export function brandScene(scene: Scene, brand: BrandSettings): Scene {
   const out: Scene = { ...scene };
+  out.brandLogoUrl = brand.logoUrl || undefined;
+  out.brandName = brand.businessName || undefined;
   if (!out.bgImageUrl && brand.defaultBgImageUrl) out.bgImageUrl = brand.defaultBgImageUrl;
   for (const k of TEXT_FIELDS) out[k] = fillText(scene[k], brand);
   if (scene.items) {

@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import type { BrandSettings } from "@/lib/brand";
 
 /** Top corners of every screen: business logo (or name) left, optional clock right. */
-export function BrandBar({ brand }: { brand: BrandSettings }) {
+/** hideLogo: the slide already shows the logo large (splash), so only the clock is drawn. */
+export function BrandBar({ brand, hideLogo = false }: { brand: BrandSettings; hideLogo?: boolean }) {
   if (!brand.showBrandBar && !brand.showClock) return null;
   const name = brand.businessName;
   const showName = Boolean(name) && (brand.showName || !brand.logoUrl);
   return (
     <div className="pointer-events-none absolute left-0 right-0 top-0 z-30 flex items-start justify-between px-8 pt-7">
-      {brand.showBrandBar ? (
+      {brand.showBrandBar && !hideLogo ? (
         <div className="flex items-center gap-4">
           {brand.logoUrl ? (
             <span className={`flex h-16 items-center ${brand.logoOnWhite ? "rounded-2xl bg-white px-5 shadow-[0_12px_32px_rgba(0,0,0,0.35)]" : ""}`}>

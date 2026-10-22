@@ -36,7 +36,7 @@ export default function ScreenView({
       <div key={animKey} className={`absolute inset-0 ${sceneClassName}`}>
         <SceneRenderer scene={shown} reducedMotion={reducedMotion} animKey={animKey} mini={preview} />
       </div>
-      <BrandBar brand={brand} />
+      <BrandBar brand={brand} hideLogo={shown.template === "splash"} />
       <Ticker text={ticker} color={shown.accentColor} />
       {progressKey !== undefined && <ProgressBar durationSec={shown.durationSec} animKey={progressKey} color={shown.accentColor} />}
     </Stage>

@@ -23,7 +23,7 @@ const CAMPAIGNS = {
   trade: {
     scenes: TRADE_DEMO_SCENES,
     playlistName: "APEX · Electrical, Smart Home & Gates",
-    description: "6-scene trade campaign: gate automation, smart home, upfront prices",
+    description: "7-scene trade campaign: gate automation, smart home, upfront prices, welcome screen",
     scheduleName: "Opening hours",
     displays: [
       { name: "01 · Showroom window", location: "Front window", pairingCode: "WIND" },
