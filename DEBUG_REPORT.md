@@ -302,3 +302,113 @@ budget). Ideal with the `fullscreen-bg` template or as any scene background.
 
 Every step verified: `tsc --noEmit`, `eslint .`, `next build`, 88/88 tests.
 Ready for review → merge into `main`.
+
+## 11. Branch review + fixes — arena/35ef1cdf-easygates-signage (2026-10-22)
+
+Full re-verification of PR #9's claims against the actual tree + live server.
+Most of the work was real (rendering, API endpoints, ambient images), but two
+user-visible features were incomplete and the runtime selftest had been
+silently failing since the templates were added.
+
+### 🔴 P0 — Asset deletion was unreachable in the UI (user-reported)
+§10.1 claimed "every library card now has a 🗑 button". It did not: the confirm
+modal, `pendingDelete` state and both DELETE endpoints existed, but **nothing
+ever called `setPendingDelete(asset)`** — no button was rendered on the cards,
+so the whole deletion flow was dead code.
+**Fix:** 🗑 button on every library card (COPY / USE → / 🗑) opening the existing
+confirm modal. Verified live: `DELETE /api/public-assets` removes the file from
+disk (200 → file gone → 404 on repeat; 400 on `..` traversal, disallowed dir,
+non-image extension).
+
+### 🔴 P0 — No sample pages for the new templates (user-reported)
+The 7 new templates (5 corporate + fullscreen-bg + trustpilot-review) were
+registered and rendered, but:
+1. **None of the demo campaigns covered them** — Retail/Trade/Value demos only
+   cover the 20 pre-existing templates. The app's own gate, `GET /api/selftest`,
+   was therefore **failing**: "demo campaigns cover all 27 templates — missing:
+   company-values, team-intro, corporate-milestone, corporate-news,
+   testimonial-quote, fullscreen-bg, trustpilot-review". The previous pass
+   never ran it (its matrix only covered `node --test`, which doesn't include
+   the runtime selftest).
+2. **The template picker loaded no starter content** for the new templates
+   (only `splash` did), so switching a slide to e.g. Trustpilot left the old
+   product content (prices, "BIG SUMMER DEAL") in the new layout.
+
+**Fix:**
+- New **Corporate demo** campaign `CORPORATE_DEMO_SCENES` (signage.ts): 7 sample
+  pages, one per new template, Easygates head-office themed, **bundled public/
+  images only** so displays work offline. Wired into `/api/seed?campaign=corporate`
+   and a 🏢 Corporate demo button in the admin header. Selftest now includes the
+  corporate scenes → **137/137 checks pass (was 112 checks, 1 failing)**.
+- `TEMPLATE_STARTERS` map in the admin page: switching a slide to any of
+  splash + the 7 new templates now loads template-appropriate sample content
+  (same pattern splash already had), with a flash explaining the field mapping.
+
+### 🟡 P1 — Small gaps found while double-checking
+- `ITEM_HINTS` had no entries for the new item-based templates → editor showed
+  the generic "Rows for this template". Added hints for company-values,
+  team-intro, testimonial-quote, trustpilot-review.
+- Trustpilot star-breakdown bars were hardcoded `width: 70%` (a static fake).
+  Now derived from the review rows' star tags (★★★★★ parsing); even 70%
+  placeholder only when no rows exist yet.
+- Docs drift: README said "Three fictional demo campaigns / 20 templates",
+  docs page said "all 12 templates" → updated to four campaigns / 27 templates.
+
+### 🟢 Verified working (no change needed)
+- `tsc --noEmit`, `eslint .` → clean. `npm run build` → success, all routes.
+- `GET /api/public-assets` lists 28 bundled images incl. the 3 ambient
+  backgrounds; path-safety on DELETE confirmed live (traversal/bad-dir/bad-ext
+  → 400, missing file → 404).
+- All 7 new templates render in SceneRenderer (render branch per template).
+- No-DB behaviour unchanged by design: DB routes 500 at import without
+  DATABASE_URL (pre-existing, documented); admin + display fall back to demo
+  content and keep working.
+
+### New guards (tests/)
+- `tests/corporate-demo.test.mjs` — corporate demo has a sample page per new
+  template, all campaigns cover the full 27-template catalogue, scene
+  validity (known template, 6–20s, rows for item templates, ordered timeline
+  with exit), corporate images are local + exist on disk, star tags parse.
+- `tests/admin-wiring.test.mjs` — delete button is actually wired to
+  `setPendingDelete` (regression guard for the dead-code bug), starter content
+  covers splash + all new templates, corporate campaign wired into seed /
+  admin header / selftest.
+
+**Final gate:** `tsc --noEmit` ✅ · `eslint .` ✅ (0 errors/warnings) ·
+`node --test tests/*.mjs` → **115 pass, 0 fail** (was 88) · `next build` ✅ ·
+live `GET /api/selftest` → **pass: true, 137 checks** (was failing) ·
+asset delete live-tested end-to-end ✅
+
+## 12. Starter safety: template switching never overwrites user content (2026-10-22)
+
+Follow-up to §11's `TEMPLATE_STARTERS`: loading a sample page unconditionally
+would have clobbered anything the user had already typed into a slide. Now:
+
+- `draftBaseline` ref holds the draft's content as last **loaded / saved /
+  starter-applied** (a stable `adoptDraft()` sets it at every scene-adopting
+  site: initial load, scene-list pick, + New, delete, duplicate, save/create,
+  publish).
+- `pickTemplate` applies a template's sample page **only while the draft is
+  byte-identical to that baseline** (untouched). The moment the user has edited
+  anything, switching templates keeps all their content and only changes the
+  layout — with a flash confirming "your content was kept, nothing was
+  overwritten".
+- Applying a starter updates the baseline, so browsing several sample pages in
+  a row (without typing) shows a fresh sample per template; after a Publish,
+  the saved scene becomes the new baseline.
+
+Regression guards added to `tests/admin-wiring.test.mjs`: baseline ref +
+untouched check + preserve branch must exist, and no untracked wholesale
+`setDraft` call may remain (only `adoptDraft`, the per-field `set()` editor
+and the starter branch may call it).
+
+## 13. Final state — arena/35ef1cdf-easygates-signage (2026-10-22)
+
+| Commit | Change |
+|---|---|
+| `7ba4e93` | Branch review fixes: 🗑 delete button actually rendered on library cards (was dead code); 🏢 Corporate demo campaign = sample pages for all 7 new templates (bundled offline images); `TEMPLATE_STARTERS` so the picker loads a sample page per template; selftest coverage → 137/137 pass (was failing); row hints; data-driven Trustpilot star bars; README/docs updated (§11) |
+| `53a61ae` | Starter safety: template switching never overwrites user content — sample page only loads while the draft is untouched (baseline-tracked via `adoptDraft`); edited slides keep their content on template switch (§12) |
+
+New tests: `tests/corporate-demo.test.mjs`, `tests/admin-wiring.test.mjs`
+(117/117 total, was 88). Gate: tsc ✅ · eslint ✅ · `next build` ✅ ·
+live `GET /api/selftest` pass ✅ · asset delete verified end-to-end ✅

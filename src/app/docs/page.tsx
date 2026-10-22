@@ -151,7 +151,7 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
 
         <Doc title="7 · Tests & verification" body={
           <>
-            <p><code>GET /api/selftest</code> checks: all 12 templates covered by the demo campaigns, every timeline ordered with an exit step, durations in range, images present. Node tests live in <code>tests/</code> and run with <code>node --test</code>. Full gate before finishing:</p>
+            <p><code>GET /api/selftest</code> checks: all 27 templates covered by the demo campaigns, every timeline ordered with an exit step, durations in range, images present. Node tests live in <code>tests/</code> and run with <code>node --test</code>. Full gate before finishing:</p>
             <pre className="mt-3 overflow-x-auto rounded-2xl bg-black/50 p-4 font-mono text-xs text-green-300 ring-1 ring-white/10">{`npx next typegen && npm exec tsc -- --noEmit && npm run build\nnode --test tests/ && curl /api/selftest`}</pre>
           </>
         } />

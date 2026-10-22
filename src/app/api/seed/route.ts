@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { assets, displays, playlistItems, playlists, scenes, schedules } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
+import { CORPORATE_DEMO_SCENES, DEMO_SCENES, TRADE_DEMO_SCENES, VALUE_DEMO_SCENES } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-type Campaign = "retail" | "trade" | "value";
+type Campaign = "retail" | "trade" | "value" | "corporate";
 
 const CAMPAIGNS = {
   retail: {
@@ -43,14 +43,24 @@ const CAMPAIGNS = {
       { name: "Value Store · Aisle Sign", location: "Aisle end-cap", pairingCode: "VCAF" },
     ],
   },
-} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
+  corporate: {
+    scenes: CORPORATE_DEMO_SCENES,
+    playlistName: "Easygates · Head Office & Reception",
+    description: "7-scene corporate campaign: values, team, milestone, news, testimonial, ambient background and Trustpilot review",
+    scheduleName: "Office hours",
+    displays: [
+      { name: "Reception TV", location: "Reception / lobby", pairingCode: "RECP" },
+      { name: "Office Screen", location: "Staff office", pairingCode: "OFFC" },
+    ],
+  },
+} satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES | typeof CORPORATE_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;
 
 async function campaignFrom(req: Request): Promise<Campaign> {
   const q = new URL(req.url).searchParams.get("campaign");
-  if (q === "trade" || q === "retail" || q === "value") return q;
+  if (q === "trade" || q === "retail" || q === "value" || q === "corporate") return q;
   try {
     const body = await req.json();
-    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value") return body.campaign;
+    if (body?.campaign === "trade" || body?.campaign === "retail" || body?.campaign === "value" || body?.campaign === "corporate") return body.campaign;
   } catch {
     /* no body */
   }
