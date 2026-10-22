@@ -28,6 +28,10 @@ function DisplayInner() {
   });
   const [muted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  // false until the saved copy has been read or the first fetch has settled, so a screen that boots
+  // offline never flashes the demo before showing its last playlist
+  const [ready, setReady] = useState(false);
+  const cacheKey = `sg_player_${displayId || playlistId || "default"}`;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // reduced motion: OS preference
@@ -38,6 +42,22 @@ function DisplayInner() {
     return () => mq.removeEventListener("change", fn);
   }, []);
 
+  // last good copy of this screen's playlist, kept in the browser so a restart during an internet or
+  // database outage still plays the real content instead of the demo
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(cacheKey) || "null") as { scenes?: Scene[]; brand?: unknown } | null;
+      if (saved?.scenes?.length) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only storage read once on mount
+        setScenes(saved.scenes);
+        if (saved.brand) setBrand(normalizeBrand(saved.brand));
+        setReady(true);
+      }
+    } catch {
+      /* storage unavailable or corrupt: wait for the network */
+    }
+  }, [cacheKey]);
+
   const load = useCallback(async () => {
     try {
       const q = new URLSearchParams();
@@ -45,17 +65,25 @@ function DisplayInner() {
       if (displayId) q.set("displayId", displayId);
       const r = await fetch(`/api/player?${q.toString()}`, { cache: "no-store" });
       const j = await r.json();
-      if (j.scenes?.length) setScenes(j.scenes);
-      if (j.brand) setBrand(normalizeBrand(j.brand));
+      if (r.ok && j.scenes?.length) {
+        setScenes(j.scenes);
+        if (j.brand) setBrand(normalizeBrand(j.brand));
+        try { localStorage.setItem(cacheKey, JSON.stringify({ scenes: j.scenes, brand: j.brand })); } catch { /* storage full or blocked */ }
+      } else if (j.brand) {
+        setBrand(normalizeBrand(j.brand));
+      }
     } catch {
-      /* stay on demo */
+      /* keep whatever is on screen (saved copy, or demo if this screen has never loaded) */
+    } finally {
+      setReady(true);
     }
-  }, [playlistId, displayId]);
+  }, [playlistId, displayId, cacheKey]);
 
   useEffect(() => {
     const first = setTimeout(() => void load(), 0);
     const poll = setInterval(() => void load(), pollSec * 1000); // pick up CMS pushes
-    return () => { clearTimeout(first); clearInterval(poll); };
+    const giveUp = setTimeout(() => setReady(true), 6000); // a hung request must not leave the screen black
+    return () => { clearTimeout(first); clearInterval(poll); clearTimeout(giveUp); };
   }, [load, pollSec]);
 
   // if the CMS playlist shrinks, don't sit on an index that no longer exists
@@ -163,6 +191,8 @@ function DisplayInner() {
           <div className="mt-2 opacity-60">Auto-refresh every {pollSec}s picks up CMS pushes (add ?poll=10 for faster). Append ?displayId=… to bind a screen, ?playlistId=… to preview.</div>
         </div>
       )}
+
+      {!ready && <div className="absolute inset-0 z-50 bg-black" />}
 
       <button onClick={() => setShowHelp((s) => !s)} className="absolute left-4 top-16 z-40 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold tracking-widest opacity-0 ring-1 ring-white/20 transition hover:opacity-100" style={{ cursor: "pointer" }}>
         ?
