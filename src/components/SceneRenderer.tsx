@@ -111,16 +111,13 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
             <div className="sg-mask">
               <HeadlineLines text={scene.headline || ""} className="sg-display text-[77px]" style={{ animationDelay: `${150 + d.s}ms` }} />
             </div>
-            <div className={`relative mt-2 overflow-hidden rounded-[24px] ring-1 ring-white/20 ${kbClass(scene.kenBurns)} sg-anim sg-scale-in`} style={d.style(1)}>
-              {HeroMedia({ scene, className: "h-[410px] w-full" })}
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                {(scene.items || []).some((it) => it.tag === "FEATURED") && (
-                  <span className="rounded-full px-4 py-2 text-sm font-black text-black" style={{ background: scene.accentColor }}>
-                    ★ {(scene.items || []).find((it) => it.tag === "FEATURED")?.tag || "FEATURED"}
-                  </span>
-                )}
-                {scene.ctaText && <span className="rounded-full bg-black/70 px-4 py-2 text-[20px] font-bold text-white backdrop-blur">{scene.ctaText}</span>}
-              </div>
+            <div className={`relative mt-2 h-[410px] overflow-hidden rounded-[24px] ring-1 ring-white/20 ${kbClass(scene.kenBurns)} sg-anim sg-scale-in`} style={d.style(1)}>
+              <HeroMedia scene={scene} />
+              {(scene.items || []).some((it) => it.tag === "FEATURED") && (
+                <div className="absolute bottom-3 left-3">
+                  <span className="rounded-full px-4 py-2 text-[20px] font-black text-black" style={{ background: scene.accentColor }}>★ FEATURED</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex min-h-0 flex-col justify-center rounded-[24px] bg-black/35 p-[3%] backdrop-blur-sm ring-1 ring-white/15">
@@ -153,8 +150,9 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {t === "product-showcase" && (
         <div className="relative z-10 h-full">
           <div className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}>
-            {HeroMedia({ scene })}
+            <HeroMedia scene={scene} />
           </div>
+          <div className="absolute inset-0" style={{ background: `linear-gradient(100deg, ${scene.bgFrom} 20%, transparent 60%), linear-gradient(0deg, ${scene.bgFrom} 5%, transparent 55%)`, opacity: (scene.overlayOpacity ?? 45) / 60 + 0.35 }} />
           <div className="relative z-10 flex h-full max-w-[1500px] flex-col justify-end px-[5%] pb-[4%]">
             <Eyebrow scene={scene} d={d} />
             <div className="sg-mask mt-3">
@@ -243,10 +241,11 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {/* ═══ 6 · FULLSCREEN CAMPAIGN ═══ */}
       {t === "fullscreen-campaign" && (
         <div className="relative z-10 h-full">
-          {/* Photo templates: a background image replaces the main photo (see the Background layer). */}
+          {/* With no main photo, the slide's background image (Background layer) shows through instead. */}
           <div className={`absolute inset-0 ${kbClass(scene.kenBurns)}`}>
-            {HeroMedia({ scene })}
+            <HeroMedia scene={scene} />
           </div>
+          <div className="absolute inset-0" style={{ background: `linear-gradient(200deg, transparent 30%, ${scene.bgFrom} 92%), linear-gradient(90deg, ${scene.bgFrom} 0%, transparent 65%)`, opacity: 0.92 }} />
           <div className="relative z-10 flex h-full max-w-[1500px] flex-col justify-center px-[5%]">
             <Eyebrow scene={scene} d={d} />
             <div className="sg-mask mt-2">
@@ -272,14 +271,14 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {t === "split-promo" && (
         <div className="relative z-10 grid h-full grid-cols-2">
           <div className={`relative overflow-hidden ${kbClass(scene.kenBurns)}`}>
-            {HeroMedia({ scene, className: "absolute inset-0" })}
-            <div className="sg-anim sg-wipe-x absolute bottom-6 left-6" style={{ ...d.style(2), background: scene.accentColor }}>
-              {scene.discountBadge && (
-                <span className="block px-5 py-2.5 text-[20px] font-black tracking-widest text-white" style={{ background: "transparent" }}>
+            <HeroMedia scene={scene} className="absolute inset-0" />
+            {scene.discountBadge && (
+              <div className="sg-anim sg-wipe-x absolute bottom-6 left-6" style={{ ...d.style(2), background: scene.accentColor }}>
+                <span className="block px-5 py-2.5 text-[20px] font-black tracking-widest text-white">
                   {scene.discountBadge} · LIMITED TIME
                 </span>
-              )}
-            </div>
+              </div>
+            )}
             <div className="absolute inset-y-0 right-0 w-2" style={{ background: scene.accentColor }} />
           </div>
           <div className="flex flex-col justify-center gap-4 px-[6%] py-[4%]" style={{ background: `linear-gradient(${scene.bgAngle}deg, ${scene.bgFrom}, ${scene.bgTo})`, color: scene.textColor }}>
@@ -351,7 +350,7 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
 
       {/* ═══ 9 · TRADE PRICE LIST ═══ */}
       {t === "price-list" && (
-        <div className="relative z-10 mx-auto flex h-full max-w-[1700px] flex-col px-[5%] pb-[3%]">
+        <div className="relative z-10 mx-auto flex h-full max-w-[1700px] flex-col px-[5%] pb-[3%] pt-[120px]">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
               <Eyebrow scene={scene} d={d} />
@@ -372,10 +371,10 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
           </div>
 
           {/* Rows size to their content; the block is centred vertically in the remaining canvas. */}
-          <div className="mt-3 flex-1 grid grid-flow-col grid-cols-2 gap-x-12 gap-y-6 place-content-center">
+          <div className="mt-3 grid flex-1 grid-flow-col grid-cols-2 grid-rows-[repeat(4,auto)] gap-x-12 gap-y-6 place-content-center">
             {(scene.items || []).slice(0, 8).map((it, i) => (
               <div key={i} className="sg-anim sg-fade-up flex items-baseline gap-3 border-b border-white/10 py-2" style={d.style(2 + i)}>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-[3]">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-[26px] font-extrabold">{it.name}</span>
                     {it.tag && <span className="shrink-0 rounded px-1.5 py-0.5 text-[20px] font-black text-black" style={{ background: scene.accentColor }}>{it.tag}</span>}
@@ -488,7 +487,7 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
         <div className="relative z-10 h-full">
           {scene.imageUrl || scene.videoUrl ? (
             <div className="absolute inset-y-0 right-0 w-[46%]">
-              {HeroMedia({ scene, className: "h-full w-full", imageOnly: false })}
+              <HeroMedia scene={scene} className="opacity-40" />
               <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${scene.bgFrom} 0%, ${scene.bgFrom}cc 38%, transparent 100%)` }} />
             </div>
           ) : null}

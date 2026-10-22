@@ -108,6 +108,16 @@ SUPABASE_STORAGE_BUCKET="signage-media"
 
 > **Built-in `pg@8.20` + Supabase TLS handling:** `src/db/index.ts` and `drizzle.config.ts` automatically normalize Supabase connection URLs (`uselibpqcompat=true&sslmode=require`, `ssl: { rejectUnauthorized: false }`, and stripping Prisma's `?pgbouncer=true`) so Supavisor pooler connections never fail with certificate chain errors.
 
+## Admin password (optional)
+
+By default the admin (`/admin`) is open to anyone on your network, and shows an orange warning bar saying so. To require a login:
+
+1. Open your `.env` file and add a line: `ADMIN_PASSWORD=choose-a-password`
+2. Restart the app (stop it with Ctrl+C, then `npm start`).
+3. Open `/admin`; it now sends you to a sign-in page.
+
+Your shop screens (`/display`) never need the password, and the "screen is online" signal still works. Without the password you cannot edit slides, change settings, load demos or control the player boxes. If you use `curl` for the demo loaders, sign in first: `curl -c cookies.txt -X POST localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"password":"choose-a-password"}'`, then add `-b cookies.txt` to the other commands.
+
 ## Business settings (logo, phone, colours)
 
 `/admin?tab=business` holds the details every screen shares: business name, logo, phone number, brand colours and a ticker. They're saved in the `settings` table and reach the screens on their next poll (≤ 30 s).

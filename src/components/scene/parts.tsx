@@ -33,16 +33,19 @@ export function kbClass(kb: string) {
 
 /** Headline broken into sentence lines as React elements (never injected as HTML). */
 export function HeadlineLines({ text, className, style }: { text: string; className?: string; style?: CSSProperties }) {
-  const parts = (text || "").split(".").map((p) => p.trim()).filter(Boolean);
+  // New line only after a full stop that is followed by a space ("SMASHED. STACKED."); nothing is
+  // added or removed, so "£9.95" and "BURGERS & FRIES" stay exactly as typed. It is a span so the
+  // .sg-mask > span reveal animation still applies.
+  const lines = (text || "").replace(/\.\s+/g, ".\n").split("\n").filter(Boolean);
   return (
-    <div className={className || undefined} style={style}>
-      {parts.map((part, i) => (
+    <span className={className || undefined} style={style}>
+      {lines.map((line, i) => (
         <span key={i}>
-          {part}.
-          {i < parts.length - 1 && <br />}
+          {line}
+          {i < lines.length - 1 && <br />}
         </span>
       ))}
-    </div>
+    </span>
   );
 }
 

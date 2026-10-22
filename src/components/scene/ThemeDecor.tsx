@@ -18,6 +18,48 @@ export function themePalette(theme: string | undefined) {
   return THEME_PALETTES[theme ?? "none"] ?? THEME_PALETTES.none;
 }
 
+/** Evenly spread, deterministic falling particles (no randomness, so server and browser agree). */
+function particles(
+  n: number,
+  o: { colors: string[]; size: [number, number]; dur: [number, number]; round?: boolean }
+) {
+  return Array.from({ length: n }, (_, i) => ({
+    left: Math.round(((i + 0.5) / n) * 1860 + ((i * 47) % 61) - 30),
+    size: Math.round(o.size[0] + ((i * 7) % 5) * ((o.size[1] - o.size[0]) / 4)),
+    color: o.colors[i % o.colors.length],
+    dur: Math.round(o.dur[0] + ((i * 5) % 6) * ((o.dur[1] - o.dur[0]) / 5)),
+    delay: -((i * 1.7) % 9), // negative = already mid-fall when the slide appears
+    opacity: 0.55 + (i % 3) * 0.15,
+    round: Boolean(o.round),
+  }));
+}
+
+/** Particles are plain positioned elements (SVG <use> ignores CSS left/top). The sg-snow class falls
+ *  them down the canvas and is switched off by the .sg-reduced rule in globals.css. */
+function Falling({ items }: { items: ReturnType<typeof particles> }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+      {items.map((p, i) => (
+        <span
+          key={i}
+          className="sg-snow absolute block"
+          style={{
+            left: p.left,
+            top: -40,
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            borderRadius: p.round ? "50%" : "70% 0 70% 0",
+            opacity: p.opacity,
+            animationDuration: `${p.dur}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** SVG decorations drawn behind/around content, never over prices or text.
  *  Respects .sg-reduced (stops all animation). */
 export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
@@ -31,25 +73,7 @@ export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
       {theme === "christmas" && (
         <>
           {/* falling snowflakes */}
-          <svg className="absolute inset-0 z-0 pointer-events-none" width="1920" height="1080" style={{ overflow: "hidden" }}>
-            <defs>
-              <circle id="snowflake" r="3" fill="#ffffff" />
-            </defs>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <use
-                key={i}
-                href="#snowflake"
-                className="sg-snow"
-                style={{
-                  left: `${100 + i * 200}px`,
-                  top: `-10px`,
-                  animation: `sg-snow-fall ${4 + i * 2}s linear infinite`,
-                  animationDelay: `${i * 0.8}s`,
-                  opacity: 0.6 + (i % 3) * 0.1,
-                }}
-              />
-            ))}
-          </svg>
+          <Falling items={particles(12, { colors: ["#ffffff"], size: [8, 18], round: true, dur: [7, 13] })} />
           {/* bunting along the top */}
           <svg className="absolute top-0 left-0 right-0 h-[28px] z-10 pointer-events-none" width="1920" height="28">
             <defs>
@@ -71,6 +95,7 @@ export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
               <use
                 key={i}
+                className="sg-bob"
                 href="#egg"
                 x={60 + i * 130}
                 y={10}
@@ -106,6 +131,7 @@ export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
               <use
                 key={i}
+                className="sg-bob"
                 href="#pumpkin"
                 x={40 + i * 190}
                 y={28}
@@ -124,24 +150,7 @@ export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
       {theme === "spring" && (
         <>
           {/* blossom petals falling */}
-          <svg className="absolute inset-0 z-0 pointer-events-none" width="1920" height="1080" style={{ overflow: "hidden" }}>
-            <defs>
-              <path id="petal" d="M0,0 Q4,-8 8,0 Q4,8 0,0" fill="#f472b6" opacity="0.7" />
-            </defs>
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
-              <use
-                key={i}
-                href="#petal"
-                style={{
-                  left: `${80 + i * 160}px`,
-                  top: `-20px`,
-                  animation: `sg-snow-fall ${5 + i * 1.5}s linear infinite`,
-                  animationDelay: `${i * 0.5}s`,
-                  transform: `rotate(${i * 30}deg)`,
-                }}
-              />
-            ))}
-          </svg>
+          <Falling items={particles(10, { colors: ["#f9a8d4", "#f472b6", "#fbcfe8"], size: [16, 26], dur: [8, 15] })} />
           {/* branch bottom-left */}
           <svg className="absolute bottom-0 left-0 w-[220px] h-[140px] z-0 pointer-events-none">
             <path d="M20,120 Q100,100 200,40" fill="none" stroke="#a16207" strokeWidth="6" strokeLinecap="round" />
@@ -185,24 +194,7 @@ export function ThemeDecor({ scene, theme }: { scene: Scene; theme: string }) {
       {theme === "autumn" && (
         <>
           {/* falling leaves */}
-          <svg className="absolute inset-0 z-0 pointer-events-none" width="1920" height="1080" style={{ overflow: "hidden" }}>
-            <defs>
-              <path id="leaf" d="M0,0 Q6,-14 12,0 Q6,14 0,0" fill="#d97706" opacity="0.8" />
-            </defs>
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
-              <use
-                key={i}
-                href="#leaf"
-                style={{
-                  left: `${120 + i * 150}px`,
-                  top: `-20px`,
-                  animation: `sg-snow-fall ${6 + i}s linear infinite`,
-                  animationDelay: `${i * 0.6}s`,
-                  transform: `rotate(${i * 45}deg) scale(${0.8 + (i % 3) * 0.2})`,
-                }}
-              />
-            ))}
-          </svg>
+          <Falling items={particles(10, { colors: ["#d97706", "#b45309", "#dc2626", "#eab308"], size: [20, 32], dur: [9, 16] })} />
           {/* acorn bottom-left */}
           <svg className="absolute bottom-0 left-0 w-[80px] h-[100px] z-0 pointer-events-none">
             <rect x="34" y="60" width="12" height="40" fill="#78350f" />

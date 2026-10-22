@@ -20,7 +20,8 @@ export default function LoginForm({ from }: { from: string }) {
         body: JSON.stringify({ password }),
       });
       if (!r.ok) {
-        setError(await r.text().catch(() => "Invalid password"));
+        const j = await r.json().catch(() => null);
+        setError(j?.error || "Invalid password");
         return;
       }
       router.push(from);

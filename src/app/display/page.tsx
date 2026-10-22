@@ -53,11 +53,9 @@ function DisplayInner() {
   }, [playlistId, displayId]);
 
   useEffect(() => {
-    const handles: ReturnType<typeof setTimeout>[] = [];
-    const tick = () => handles.push(setTimeout(() => void load(), 0));
-    tick();
-    const poll = setInterval(tick, pollSec * 1000); // pick up CMS pushes
-    return () => { clearInterval(poll); handles.forEach((h) => clearTimeout(h)); };
+    const first = setTimeout(() => void load(), 0);
+    const poll = setInterval(() => void load(), pollSec * 1000); // pick up CMS pushes
+    return () => { clearTimeout(first); clearInterval(poll); };
   }, [load, pollSec]);
 
   // if the CMS playlist shrinks, don't sit on an index that no longer exists
@@ -66,7 +64,7 @@ function DisplayInner() {
   // heartbeat for multi-display status
   useEffect(() => {
     if (!displayId) return;
-    const beat = () => fetch(`/api/displays/${displayId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ heartbeat: true }) }).catch(() => {});
+    const beat = () => fetch(`/api/displays/${displayId}/heartbeat`, { method: "POST" }).catch(() => {});
     beat();
     const i = setInterval(beat, 20000);
     return () => clearInterval(i);

@@ -52,6 +52,11 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [selPlaylist, setSelPlaylist] = useState<string | null>(null);
+  // load() is memoised, so it reads the current selection through refs (otherwise it always sees
+  // the first-render values and every reload jumps back to the first slide and playlist)
+  const selIdRef = useRef<string | null>(null);
+  const selPlRef = useRef<string | null>(null);
+  useEffect(() => { selIdRef.current = selId; selPlRef.current = selPlaylist; });
   const [reduced, setReduced] = useState(false);
 const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [previewKey, setPreviewKey] = useState(0);
@@ -85,9 +90,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
       setBrandDraft((dr) => (sameBrand(dr, prev) ? b : dr));
       setBrandReady(st.ready !== false);
     }
-    if (selId === null && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
-    if (selPlaylist === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
-  }, []);
+    if (selIdRef.current === null && dbScenes[0]) { setSelId(dbScenes[0].id); setDraft(dbScenes[0]); }
+    if (selPlRef.current === null && p.playlists?.[0]) setSelPlaylist(p.playlists[0].id);
+  }, [setBrandDraft]);
 
   // load() only touches state after awaiting, but keep it out of the effect
   // body so the set-state-in-effect rule stays quiet.
@@ -394,6 +399,16 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   <Field label="Image position"><input value={draft.imagePosition || "center"} onChange={(e) => set("imagePosition", e.target.value as never)} className="inp" placeholder="center / top / 30% 60%" /></Field>
                 </div>
               </div>
+              {draft.template === "aisle-guide" && (
+                <Field label="Arrow direction">
+                  <select value={["left", "right"].includes((draft.layoutVariant || "").toLowerCase()) ? draft.layoutVariant.toLowerCase() : "ahead"} onChange={(e) => set("layoutVariant", e.target.value as never)} className="inp bg-[#141b33]">
+                    <option value="ahead">Ahead</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                  <p className="mt-1 text-[11px] text-white/40">Put the aisle number in “Product name” and the department in “Headline”.</p>
+                </Field>
+              )}
               {ITEM_TEMPLATES.includes(draft.template) && (
                 <ItemsEditor
                   items={(draft.items as Scene["items"]) || []}
@@ -582,17 +597,17 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   <span className="text-white/40">→</span>
                   <input type="time" value={s.endTime} onChange={async (e) => { await fetch("/api/schedules", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: s.id, endTime: e.target.value }) }); load(); }} className="rounded-lg bg-black/40 px-2 py-1.5 text-sm ring-1 ring-white/15" />
                   <div className="flex items-center gap-1">
-                    {["M", "T", "W", "T", "F", "S", "S"].map((label, i) => {
-                      const value = i === 6 ? 0 : i + 1;
-                      const active = s.days.split(",").includes(String(value));
+                    {([["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]] as [string, number][]).map(([label, value]) => {
+                      // an empty / missing days value means "every day"
+                      const stored = (s.days ?? "").split(",").filter((d) => d !== "").map(Number);
+                      const cur = stored.length ? stored : [1, 2, 3, 4, 5, 6, 0];
+                      const active = cur.includes(value);
                       return (
                         <button
                           key={label}
                           onClick={async () => {
-                            const cur = s.days.split(",").map((d) => Number(d));
-                            const next = cur.includes(value)
-                              ? cur.filter((d) => d !== value)
-                              : [...cur, value];
+                            const next = active ? cur.filter((d) => d !== value) : [...cur, value];
+                            if (next.length === 0) { flash("A schedule needs at least one day"); return; }
                             await fetch("/api/schedules", {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
@@ -600,7 +615,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                             });
                             load();
                           }}
-                          className={`rounded px-2 py-1 text-[10px] font-black ${active ? "bg-white text-black" : "bg-white/10 text-white/50 ring-1 ring-white/20 hover:bg-white/20"}`}
+                          className={`rounded px-2 py-1 text-[12px] font-black ${active ? "bg-white text-black" : "bg-white/10 text-white/50 ring-1 ring-white/20 hover:bg-white/20"}`}
                         >
                           {label}
                         </button>
@@ -710,6 +725,9 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "deals-grid": "Up to 6 deal tiles — name / price / tag + image",
   "clearance": "Up to 4 clearance items — name + tag (% off) + detail (stock count)",
   "top-sellers": "Up to 5 ranked items — name / price / tag (rank number) + image",
+  "multibuy": "Up to 3 products in the offer — name / price + image",
+  "aisle-guide": "Up to 6 sub-categories for this aisle — name + optional note",
+  "store-services": "Up to 6 service cards — name = title, detail = lines such as opening hours, tag = icon word (collect, returns, hours, help, delivery)",
 };
 
 function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["items"]>; template: TemplateId; onChange: (v: NonNullable<Scene["items"]>) => void }) {
@@ -723,7 +741,7 @@ function ItemsEditor({ items, template, onChange }: { items: NonNullable<Scene["
     template === "clearance" ||
     template === "top-sellers";
   // only these layouts draw a picture per row
-  const showImage = template === "product-grid" || template === "brand-wall" || template === "deals-grid" || template === "top-sellers";
+  const showImage = ["product-grid", "brand-wall", "deals-grid", "top-sellers", "clearance", "multibuy"].includes(template);
   return (
     <div className="rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
       <div className="mb-2 flex items-center justify-between gap-3">

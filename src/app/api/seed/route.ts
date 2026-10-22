@@ -39,8 +39,8 @@ const CAMPAIGNS = {
     description: "12-scene value retail campaign covering all 7 templates with seasonal themes",
     scheduleName: "Daytime trading",
     displays: [
-      { name: "Entrance TV · 55in", location: "Store entrance", pairingCode: "VALU" },
-      { name: "Café Menu Board", location: "Café counter", pairingCode: "VCAF" },
+      { name: "Value Store · Entrance TV", location: "Store entrance", pairingCode: "VALU" },
+      { name: "Value Store · Aisle Sign", location: "Aisle end-cap", pairingCode: "VCAF" },
     ],
   },
 } satisfies Record<Campaign, { scenes: typeof DEMO_SCENES | typeof TRADE_DEMO_SCENES | typeof VALUE_DEMO_SCENES; playlistName: string; description: string; scheduleName: string; displays: { name: string; location: string; pairingCode: string }[] }>;

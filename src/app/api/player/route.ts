@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** Resolve what a display should play right now.
  *  ?displayId= — picks the display's playlist, overridden by an active schedule
  *  ?playlistId= — plays that playlist directly (preview / pairing)
- *  Falls back to the demo campaign when DB is empty/unavailable.
+ *  Falls back to the demo campaign when the DB is empty; on a DB error it answers 503 (screens keep playing).
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -93,8 +93,10 @@ export async function GET(req: Request) {
       .filter(Boolean);
     return NextResponse.json({ brand, mode: "playlist", playlist: { id: p2[0].id, name: p2[0].name, description: p2[0].description, loop: p2[0].loop, items: items2 }, scenes: resolved2.length ? resolved2 : DEMO_SCENES, display, fetchedAt: new Date().toISOString() });
   } catch (e) {
-    console.error("player fallback to demo:", e);
-    return NextResponse.json({ brand, mode: "demo", playlist: { id: "demo", name: "NOVA MART Demo (offline)", scenes: DEMO_SCENES }, scenes: DEMO_SCENES });
+    // A database ERROR (down, or the schema is out of date) must not blank the shop screens: answer
+    // 503 so the screen keeps playing what it already has. (An empty database still gets the demo above.)
+    console.error("player: database error", e);
+    return NextResponse.json({ error: "database unavailable" }, { status: 503 });
   }
 }
 
