@@ -1014,3 +1014,35 @@ the progress line and pausing video under reduced motion, a first-run checklist,
 and lazy DB import so a missing `DATABASE_URL` yields 503 JSON instead of a 500
 (the player survives it, but the API contract says 503). The admin still logs a
 minified React #418 hydration warning; `/display` is clean.
+
+## 20. Merge notes — what this branch puts on `main` (2026-10-22)
+
+Six commits, all reviewed on PR #11, all verified on a production build.
+
+| # | Commit | What changed |
+|---|---|---|
+| 1 | `f937965` | Scene-editor image fields and a working media picker (the original bug report) |
+| 2 | `0598b1f` | One template-field table shared by editor + tests, focal-point picker, scene/asset search, upload from the picker |
+| 3 | `dc5eb71` | Eight art-directed seasonal themes and themed player chrome (bar, ticker, clock, price plates) |
+| 4 | `64ffe49` | Demo packs open their playlist, ambient full-screen media slide, presets apply real easing |
+| 5 | `84d20ab` | Ticker size setting (Small/Standard/Large at constant reading speed) and an honest opening page with derived counts |
+| 6 | `5476d10` | Presets gained a real entrance language; “demo content” became the offline failsafe |
+
+**State at merge:** `tsc --noEmit` clean, `eslint .` 0 problems, **199 tests pass**
+across 47 suites, `next build` clean. Diff against the base: 33 files, +3,885 / −425.
+
+**Operational notes for whoever pulls `main`:**
+
+- Nothing needs a migration. New settings (`brand.tickerSize`, the whole `failsafe`
+  blob) live in the existing `settings` JSON column and normalize to defaults when
+  absent.
+- The failsafe defaults to “last playlist it played”, which is exactly the old
+  behaviour — an existing install behaves identically until someone changes it on
+  **Admin → Failsafe**.
+- The built-in failsafe pack is the 26 scenes whose photos ship in `public/`.
+  Adding a new demo scene with a hosted image keeps it out of the pack by design.
+- `/display?offline=1` is the supported way to test an outage; it makes no
+  requests, so it is safe to open on a live screen.
+- Known and unchanged: the admin page logs a minified React #418 hydration
+  warning, and a missing `DATABASE_URL` returns 500 rather than the documented
+  503 (the player survives both). Both remain on the §17.4 recommendation list.
