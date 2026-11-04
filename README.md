@@ -1,15 +1,15 @@
 # NovaSign — Professional Animated Signage
 
-Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 44 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 1 splash + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof + 6 EasyGates Direct + 6 Smart & Secure), a deterministic animation engine, playlists, schedules, seasonal themes, **multiple businesses** and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
+Signage player + CMS for shops and trade showrooms: electrical, smart home and gate automation. 51 art-directed templates (12 retail including 5 trade-counter / Screwfix-style boards + 7 value-store + 3 splash / welcome + 5 trade + 5 corporate + 1 fullscreen background + 1 social proof + 11 EasyGates Direct + 6 Smart & Secure), a deterministic animation engine, playlists, schedules, seasonal themes, **multiple businesses** and multi-display control. Runs on a PC and drives any number of TVs in kiosk mode.
 
 Seven demo campaigns, all loadable from `/admin`:
 
 - **NOVA MART · Winter Sale Event** — 8 retail scenes, covering the 7 original retail templates.
-- **APEX · Electrical, Smart Home & Gates** — 7 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out, welcome splash with logo and contact details) plus 5 pre-registered screens.
+- **APEX · Electrical, Smart Home & Gates** — 9 trade scenes (gate automation kit, service offer, trade price list, brand wall, smart panel spec sheet, 24/7 call-out and all three welcome splash layouts) plus 5 pre-registered screens.
 - **Value Store · Seasonal Savings** — 12 value-retail scenes covering all 7 big-box value templates, with 4 seasonal themes (Christmas, Easter, Halloween, Spring, Summer).
 - **RAPIDFIX · Trade Counter** — 5 trade-counter retail scenes: bulk-buy price ladder, six shelf-edge labels, a 48-hour flash sale, click & collect and a trade-account sign-up. Uses the bundled `public/counter/` packshots, so it also runs offline.
 - **Easygates · Head Office & Reception** — 7 corporate scenes, one per corporate / social-proof template (company values, team, milestone, news, testimonial, fullscreen background, Trustpilot review), using bundled images only so displays work offline.
-- **EasyGates Direct · Trade Counter** — 6 EasyGates Direct scenes: gate kit builder, gate safety compliance, trade account tiers, order cut-off & delivery, “which automation?” comparison and the technical support hub.
+- **EasyGates Direct · Trade Counter** — 11 EasyGates Direct scenes: gate kit builder, gate safety compliance, trade account tiers, order cut-off & delivery, “which automation?” comparison, the technical support hub, trade price board, shop-by-category wall, stock & availability, brands-we-stock and the four-step fitting guide.
 - **Smart & Secure · Showroom** — 6 Smart & Secure scenes: showroom zone guide, smart scenes, security packages, “works with…” brand wall, book-a-demo and product spotlight.
 
 ## Templates
@@ -25,7 +25,9 @@ Seven demo campaigns, all loadable from `/admin`:
 | Aisle Guide | Store wayfinding — department name, giant aisle circle, arrow, sub-categories |
 | Top Sellers | Bestseller charts — numbered top-5 list, rank numbers are the hero |
 | Store Services | Customer information — click & collect, returns, opening hours, services desk |
-| Splash / Welcome | Logo on a white plate, tagline and contact-detail cards — the logo follows Business settings |
+| Splash / Welcome | Logo on a plate (white, any colour or none), tagline and contact-detail cards |
+| Splash / Split Panel | Logo on a bold colour panel down the left, welcome line and stacked contact cards on the right |
+| Splash / Header Rail | Full-width brand rail across the top, centred welcome and a contact ledger underneath |
 | Retail Promotion | Hero deals & price drops (original) |
 | Food Menu Board | QSR / café menu boards (original) |
 | Product Showcase | Flagship launches (original) |
@@ -48,7 +50,7 @@ Charcoal steel, off-white catalogue paper, safety yellow and hard red, with mono
 
 ### EasyGates Direct (gate automation, access control & safety)
 
-Six industrial templates in EasyGates red `#ff3b43`, EasyGates blue `#2f9ade` and
+Eleven industrial templates in EasyGates red `#ff3b43`, EasyGates blue `#2f9ade` and
 safety amber `#ffc21f` on deep navy — hard edges, monospaced part numbers, hairline rules.
 
 | Template | Best for |
@@ -59,6 +61,11 @@ safety amber `#ffc21f` on deep navy — hard edges, monospaced part numbers, hai
 | Order Cut-Off & Delivery | Clock dial with the cut-off time beside the delivery services and prices |
 | Which Automation? | Up to four machines side by side with photos, from-prices and specifications |
 | Technical Support Hub | Oversized helpline, response promise and the channels customers can reach |
+| Trade Price Board | Dotted-leader price board — part numbers, pack sizes, was-price chips, VAT footnote |
+| Shop by Category | Icon tiles for the departments, each with its line count |
+| Stock & Availability | Product photo, part-number strip and stock lines with status chips |
+| Brands We Stock | Typographic manufacturer wall with the category under each name |
+| Fit in Four Steps | Numbered installation steps, each with a time chip |
 
 ### Smart & Secure (smart home, security & home cinema)
 
@@ -135,6 +142,11 @@ Sample imagery lives in `public/retail/`, `public/seasonal/`, `public/trade/`, `
 Saved under the `businesses` key in `settings`. On first run the old single-business row is migrated into the first profile, so existing installs keep their details. Nothing is lost if you never add a second business.
 
 Colours come straight off the supplied logos: EasyGates Direct is silver `#d1d1d1` + red `#e62d34` (with the EasyGates blue `#1a7bbf` and a safety amber), Smart & Secure is teal `#74c0cd`, coral `#d07374` and cream `#ecea91` on charcoal. Both are nudged until text on them clears WCAG AA (`tests/businesses.test.mjs`).
+
+The three splash templates add two per-slide settings of their own (Scenes → a splash slide):
+
+- **Logo background** — *Business setting* (follows “Put the logo on a white badge”), *No plate*, or any custom colour.
+- **Accent bar** — the colour of the divider / rail on the slide, and of the ticker and progress strip at the bottom of the screen. “Match accent” clears it back to the slide’s accent colour.
 
 ## Quick start (Local PostgreSQL or Supabase)
 

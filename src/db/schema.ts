@@ -55,6 +55,10 @@ export const scenes = pgTable("scenes", {
   cardColor: text("card_color").default("#141b33"),
   // Second colour of the value-store templates (the "sale yellow"); empty = template default
   highlightColor: text("highlight_color"),
+  // Splash family: plate behind the logo ("" = follow Business, "none", or a hex)
+  logoPlateColor: text("logo_plate_color"),
+  // Splash family: accent bar / rail colour ("" = the slide accent)
+  barColor: text("bar_color"),
   // Motion
   animationPreset: text("animation_preset").default("launch"),
   durationSec: integer("duration_sec").default(10),

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Stage from "@/components/Stage";
 import SceneRenderer from "@/components/SceneRenderer";
-import { templateIsMediaOnly } from "@/lib/templateFields";
+import { templateIsMediaOnly, templateIsSplash } from "@/lib/templateFields";
 import { BrandBar, ProgressBar, Ticker } from "@/components/PlayerChrome";
 import { brandScene, tickerFor, type BrandSettings } from "@/lib/brand";
 import type { Scene } from "@/lib/signage";
@@ -35,14 +35,18 @@ export default function ScreenView({
   // "Background image / video" is an ambient slide: the picture is the whole
   // screen, so no logo, business name, clock or ticker is drawn over it.
   const mediaOnly = templateIsMediaOnly(shown.template);
+  // The splash family draws its own large logo, so the corner logo would duplicate it.
+  const splash = templateIsSplash(shown.template);
+  // A slide can override the accent used by the frame (ticker + progress strip).
+  const frameColor = shown.barColor || shown.accentColor;
   return (
     <Stage className={className}>
       <div key={animKey} className={`absolute inset-0 ${sceneClassName}`}>
         <SceneRenderer scene={shown} reducedMotion={reducedMotion} animKey={animKey} mini={preview} />
       </div>
-      {!mediaOnly && <BrandBar brand={brand} hideLogo={shown.template === "splash"} theme={shown.theme} />}
-      {!mediaOnly && <Ticker text={ticker} color={shown.accentColor} theme={shown.theme} size={brand.tickerSize} />}
-      {progressKey !== undefined && <ProgressBar durationSec={shown.durationSec} animKey={progressKey} color={shown.accentColor} theme={shown.theme} />}
+      {!mediaOnly && <BrandBar brand={brand} hideLogo={splash} theme={shown.theme} />}
+      {!mediaOnly && <Ticker text={ticker} color={frameColor} theme={shown.theme} size={brand.tickerSize} />}
+      {progressKey !== undefined && <ProgressBar durationSec={shown.durationSec} animKey={progressKey} color={frameColor} theme={shown.theme} />}
     </Stage>
   );
 }
