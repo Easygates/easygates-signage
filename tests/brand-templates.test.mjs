@@ -1,4 +1,4 @@
-// The twelve branded templates (six EasyGates Direct, six Smart & Secure) and
+// The branded templates (eleven EasyGates Direct, six Smart & Secure) and
 // their two demo campaigns. They must be catalogued, field-declared, demo-covered,
 // wired into the renderer and the admin, and the pure kit must keep every pairing
 // readable on both a dark industrial palette and a light showroom one.
@@ -42,7 +42,19 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 
-const EASYGATES = ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-delivery-cutoff", "eg-compare", "eg-support-hub"];
+const EASYGATES = [
+  "eg-kit-builder",
+  "eg-safety-check",
+  "eg-trade-tiers",
+  "eg-delivery-cutoff",
+  "eg-compare",
+  "eg-support-hub",
+  "eg-price-board",
+  "eg-category-wall",
+  "eg-stock-status",
+  "eg-brand-partners",
+  "eg-fit-guide",
+];
 const SMARTSECURE = ["ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo", "ss-product-spotlight"];
 const FILES = {
   "eg-kit-builder": "EgKitBuilder",
@@ -51,6 +63,11 @@ const FILES = {
   "eg-delivery-cutoff": "EgDeliveryCutoff",
   "eg-compare": "EgCompare",
   "eg-support-hub": "EgSupportHub",
+  "eg-price-board": "EgPriceBoard",
+  "eg-category-wall": "EgCategoryWall",
+  "eg-stock-status": "EgStockStatus",
+  "eg-brand-partners": "EgBrandPartners",
+  "eg-fit-guide": "EgFitGuide",
   "ss-zone-guide": "SsZoneGuide",
   "ss-scene-cards": "SsSceneCards",
   "ss-package-cards": "SsPackageCards",
@@ -62,9 +79,9 @@ const FILES = {
 const ALL = [...EASYGATES, ...SMARTSECURE];
 
 describe("branded templates are in the catalogue", () => {
-  it("all twelve are catalogued with unique ids and copy", () => {
-    assert.deepEqual(BRANDED_TEMPLATES, ALL, "BRANDED_TEMPLATES must list all twelve, in catalogue order");
-    assert.equal(new Set(ALL).size, 12, "ids must be unique");
+  it("all seventeen are catalogued with unique ids and copy", () => {
+    assert.deepEqual(BRANDED_TEMPLATES, ALL, "BRANDED_TEMPLATES must list all seventeen, in catalogue order");
+    assert.equal(new Set(ALL).size, 17, "ids must be unique");
     for (const id of ALL) {
       const t = TEMPLATES.find((x) => x.id === id);
       assert.ok(t, `${id} is missing from TEMPLATES`);
@@ -93,13 +110,13 @@ describe("branded templates are in the catalogue", () => {
   });
 
   it("declares exactly the fields its renderer draws", () => {
-    // EasyGates — hero photo on the two product boards and the support hub
-    for (const id of ["eg-kit-builder", "eg-delivery-cutoff", "eg-support-hub", "ss-book-demo", "ss-product-spotlight"]) {
+    // EasyGates — hero photo on the product boards, the support hub and the stock board
+    for (const id of ["eg-kit-builder", "eg-delivery-cutoff", "eg-support-hub", "eg-stock-status", "ss-book-demo", "ss-product-spotlight"]) {
       assert.equal(templateImageMode(id), "hero", `${id} should draw the slide image`);
       assert.equal(templateUses(id, "imageUrl"), true, `${id} should use imageUrl`);
     }
     // everything else is picture-per-row
-    for (const id of ["eg-safety-check", "eg-trade-tiers", "eg-compare", "ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with"]) {
+    for (const id of ["eg-safety-check", "eg-trade-tiers", "eg-compare", "eg-price-board", "eg-category-wall", "eg-brand-partners", "eg-fit-guide", "ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with"]) {
       assert.equal(templateImageMode(id), "none", `${id} should be image mode "none"`);
       assert.equal(templateUses(id, "imageUrl"), false, `${id} must not claim to use imageUrl`);
     }
@@ -109,14 +126,14 @@ describe("branded templates are in the catalogue", () => {
       assert.equal(templateUses(id, "promoPrice"), true, `${id} draws a slide-level price`);
       assert.equal(templateUses(id, "originalPrice"), true, `${id} draws a was-price`);
     }
-    for (const id of ["eg-safety-check", "eg-trade-tiers", "eg-compare", "eg-support-hub", "ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo"]) {
+    for (const id of ["eg-safety-check", "eg-trade-tiers", "eg-compare", "eg-support-hub", "eg-price-board", "eg-category-wall", "eg-stock-status", "eg-brand-partners", "eg-fit-guide", "ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo"]) {
       assert.equal(templateUses(id, "promoPrice"), false, `${id} has no slide-level price`);
     }
     // the second accent is only offered where it is drawn
-    for (const id of ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-compare", "ss-scene-cards", "ss-package-cards", "ss-product-spotlight"]) {
+    for (const id of ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-compare", "eg-price-board", "eg-fit-guide", "ss-scene-cards", "ss-package-cards", "ss-product-spotlight"]) {
       assert.equal(templateUses(id, "highlightColor"), true, `${id} draws the highlight colour`);
     }
-    for (const id of ["eg-delivery-cutoff", "eg-support-hub", "ss-zone-guide", "ss-works-with", "ss-book-demo"]) {
+    for (const id of ["eg-delivery-cutoff", "eg-support-hub", "eg-category-wall", "eg-stock-status", "eg-brand-partners", "ss-zone-guide", "ss-works-with", "ss-book-demo"]) {
       assert.equal(templateUses(id, "highlightColor"), false, `${id} does not draw the highlight colour`);
     }
     // the product spotlight has no subheadline of its own

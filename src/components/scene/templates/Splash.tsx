@@ -1,7 +1,8 @@
 import type { TemplateProps } from "../parts";
 import { hexToRgb } from "@/lib/color";
 import { A, CtaPill, Icon, palette } from "./storeBoardParts";
-import { cleanItems, fitText, serviceIcon } from "./storeBoardKit";
+import { fitText, serviceIcon } from "./storeBoardKit";
+import { accentBar, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
 
 /**
  * Template "splash" — a welcome / brand screen: the business logo on a white plate, the business
@@ -18,7 +19,10 @@ import { cleanItems, fitText, serviceIcon } from "./storeBoardKit";
  * - items[]      = contact details, up to 4 cards
  *   - items[].name = label, e.g. "Call us" (the icon is picked from the words, or from items[].tag)
  *   - items[].desc = the detail, e.g. "{phone}" or "Mon–Fri 8am–5pm"
- * - accentColor  = icon circles and divider; textColor / mutedColor / bgFrom / bgTo as on every slide
+ * - accentColor  = icon circles and the pill; textColor / mutedColor / bgFrom / bgTo as on every slide
+ * - logoPlateColor = plate behind the logo: "" = follow the Business logo setting,
+ *                    "none" = no plate at all, or a hex colour (e.g. "#07131f")
+ * - barColor     = the divider bar under the headline; empty = the slide accent
  * Not used: prices, productName, description, items[].price/image.
  */
 
@@ -68,17 +72,20 @@ function soft(hex: string, a: number): string {
 
 export default function SplashTemplate({ scene, d }: TemplateProps) {
   const pal = palette(scene);
-  const logo = (scene.imageUrl || scene.brandLogoUrl || (scene.brandName ? "" : FALLBACK_LOGO)).trim();
   const name = (scene.brandName || "").trim();
+  const logo = logoSource(scene) || (name ? "" : FALLBACK_LOGO);
+  const plate = plateColor(scene);
+  const bar = accentBar(scene, pal.accent);
   const eyebrow = (scene.eyebrow || "").trim();
   const head = (scene.headline || "").trim();
   const sub = (scene.subheadline || "").trim();
   const cta = (scene.ctaText || "").trim();
-  const items = cleanItems(scene.items).filter((it) => it.name || it.desc).slice(0, 4);
+  const items = splashDetails(scene, 4);
   const n = items.length;
 
   const text = scene.textColor || "#ffffff";
   const muted = scene.mutedColor || soft(text, 0.7);
+  const wordInk = plateInk(plate, text);
 
   // one line if it fits at a good size, otherwise two smaller lines (keeps the block inside its zone)
   const oneLine = fitText({ text: head, boxW: 1560, maxPx: 100, minPx: 64, maxLines: 1, lineHeight: 1.02, ls: -0.02 });
@@ -95,7 +102,7 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
       {/* soft glow behind the logo */}
       <div
         aria-hidden="true"
-        style={{ position: "absolute", left: 460, top: n ? 0 : 120, width: 1000, height: 640, background: `radial-gradient(closest-side, ${soft(pal.accent, 0.35)}, transparent)`, filter: "blur(10px)" }}
+        style={{ position: "absolute", left: 460, top: n ? 0 : 120, width: 1000, height: 640, background: `radial-gradient(closest-side, ${soft(bar, 0.35)}, transparent)`, filter: "blur(10px)" }}
       />
 
       <div style={{ position: "absolute", left: 0, right: 0, top: n ? 34 : 110, height: n ? 762 : 860, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, textAlign: "center" }}>
@@ -106,12 +113,26 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
         )}
 
         <A d={d} i={1} cls="sg-scale-in" slow>
-          <div style={{ background: "#ffffff", borderRadius: 40, padding: "30px 64px", minWidth: 560, maxWidth: 1000, minHeight: 220, display: "grid", placeItems: "center", boxShadow: "0 18px 0 rgba(0,0,0,0.18), 0 40px 80px rgba(0,0,0,0.35)" }}>
+          <div
+            style={{
+              background: plate ?? "transparent",
+              borderRadius: 40,
+              padding: plate ? "30px 64px" : "18px 40px",
+              minWidth: plate ? 560 : undefined,
+              maxWidth: 1000,
+              minHeight: 220,
+              display: "grid",
+              placeItems: "center",
+              boxShadow: plate
+                ? "0 18px 0 rgba(0,0,0,0.18), 0 40px 80px rgba(0,0,0,0.35)"
+                : "0 30px 70px rgba(0,0,0,0.45)",
+            }}
+          >
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt={name || "Logo"} style={{ display: "block", maxWidth: 860, maxHeight: 200, width: "auto", height: "auto", objectFit: "contain" }} />
+              <img src={logo} alt={name || "Logo"} style={{ display: "block", maxWidth: 860, maxHeight: 200, width: "auto", height: "auto", objectFit: "contain", filter: plate ? undefined : "drop-shadow(0 12px 26px rgba(0,0,0,0.5))" }} />
             ) : (
-              <div style={{ color: "#0f172a", fontSize: wordFit.px, fontWeight: 900, lineHeight: 0.95, letterSpacing: "-0.02em", textTransform: "uppercase", maxWidth: 800 }}>{name || "Welcome"}</div>
+              <div style={{ color: wordInk, fontSize: wordFit.px, fontWeight: 900, lineHeight: 0.95, letterSpacing: "-0.02em", textTransform: "uppercase", maxWidth: 800, textShadow: plate ? undefined : "0 8px 24px rgba(0,0,0,0.45)" }}>{name || "Welcome"}</div>
             )}
           </div>
         </A>
@@ -123,7 +144,7 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
         )}
 
         <A d={d} i={3} cls="sg-scale-in">
-          <div style={{ width: 170, height: 10, borderRadius: 6, background: pal.accent }} />
+          <div style={{ width: 170, height: 10, borderRadius: 6, background: bar }} />
         </A>
 
         {sub && (

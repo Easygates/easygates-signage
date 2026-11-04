@@ -12,6 +12,8 @@ import AisleGuideTemplate from "./scene/templates/AisleGuide";
 import TopSellersTemplate from "./scene/templates/TopSellers";
 import StoreServicesTemplate from "./scene/templates/StoreServices";
 import SplashTemplate from "./scene/templates/Splash";
+import SplashSplitTemplate from "./scene/templates/SplashSplit";
+import SplashRailTemplate from "./scene/templates/SplashRail";
 import BulkBuyTemplate from "./scene/templates/BulkBuy";
 import ShelfEdgeTemplate from "./scene/templates/ShelfEdge";
 import FlashSaleTemplate from "./scene/templates/FlashSale";
@@ -23,6 +25,11 @@ import EgTradeTiersTemplate from "./scene/templates/EgTradeTiers";
 import EgDeliveryCutoffTemplate from "./scene/templates/EgDeliveryCutoff";
 import EgCompareTemplate from "./scene/templates/EgCompare";
 import EgSupportHubTemplate from "./scene/templates/EgSupportHub";
+import EgPriceBoardTemplate from "./scene/templates/EgPriceBoard";
+import EgCategoryWallTemplate from "./scene/templates/EgCategoryWall";
+import EgStockStatusTemplate from "./scene/templates/EgStockStatus";
+import EgBrandPartnersTemplate from "./scene/templates/EgBrandPartners";
+import EgFitGuideTemplate from "./scene/templates/EgFitGuide";
 import SsZoneGuideTemplate from "./scene/templates/SsZoneGuide";
 import SsSceneCardsTemplate from "./scene/templates/SsSceneCards";
 import SsPackageCardsTemplate from "./scene/templates/SsPackageCards";
@@ -589,6 +596,12 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {/* 20 · SPLASH / WELCOME (logo + contact details) → src/components/scene/templates/Splash.tsx */}
       {t === "splash" && <SplashTemplate scene={scene} d={d} />}
 
+      {/* 20b · SPLASH / SPLIT PANEL → src/components/scene/templates/SplashSplit.tsx */}
+      {t === "splash-split" && <SplashSplitTemplate scene={scene} d={d} />}
+
+      {/* 20c · SPLASH / HEADER RAIL → src/components/scene/templates/SplashRail.tsx */}
+      {t === "splash-rail" && <SplashRailTemplate scene={scene} d={d} />}
+
       {/* 21 · COMPANY VALUES (corporate) */}
       {t === "company-values" && (
         <div className="relative z-10 mx-auto grid h-full max-w-[1600px] grid-cols-[1fr_1fr] items-center gap-10 px-[6%] py-[4%]">
@@ -890,15 +903,20 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {/* 32 · TRADE ACCOUNT (trade-counter retail) → src/components/scene/templates/TradeAccount.tsx */}
       {t === "trade-account" && <TradeAccountTemplate scene={scene} d={d} />}
 
-      {/* 33–38 · EASYGATES DIRECT (gate automation, access control & safety) */}
+      {/* 33–43 · EASYGATES DIRECT (gate automation, access control & safety) */}
       {t === "eg-kit-builder" && <EgKitBuilderTemplate scene={scene} d={d} />}
       {t === "eg-safety-check" && <EgSafetyCheckTemplate scene={scene} d={d} />}
       {t === "eg-trade-tiers" && <EgTradeTiersTemplate scene={scene} d={d} />}
       {t === "eg-delivery-cutoff" && <EgDeliveryCutoffTemplate scene={scene} d={d} />}
       {t === "eg-compare" && <EgCompareTemplate scene={scene} d={d} />}
       {t === "eg-support-hub" && <EgSupportHubTemplate scene={scene} d={d} />}
+      {t === "eg-price-board" && <EgPriceBoardTemplate scene={scene} d={d} />}
+      {t === "eg-category-wall" && <EgCategoryWallTemplate scene={scene} d={d} />}
+      {t === "eg-stock-status" && <EgStockStatusTemplate scene={scene} d={d} />}
+      {t === "eg-brand-partners" && <EgBrandPartnersTemplate scene={scene} d={d} />}
+      {t === "eg-fit-guide" && <EgFitGuideTemplate scene={scene} d={d} />}
 
-      {/* 39–44 · SMART & SECURE (smart home, security & home cinema) */}
+      {/* 44–49 · SMART & SECURE (smart home, security & home cinema) */}
       {t === "ss-zone-guide" && <SsZoneGuideTemplate scene={scene} d={d} />}
       {t === "ss-scene-cards" && <SsSceneCardsTemplate scene={scene} d={d} />}
       {t === "ss-package-cards" && <SsPackageCardsTemplate scene={scene} d={d} />}

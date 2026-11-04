@@ -19,8 +19,9 @@ import {
   type BrandSettings,
   type BusinessCollection,
 } from "@/lib/brand";
-import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
+import { SCENE_TEXT_FIELDS, templateImageMode, templateIsMediaOnly, templateIsSplash, templateRows, templateUses, type SceneTextField } from "@/lib/templateFields";
 import { THEMES, themeDef } from "@/lib/themes";
+import { readPlate } from "@/components/scene/templates/splashKit";
 
 /** Demo packs loadable from the admin header. */
 type DemoCampaign = "retail" | "trade" | "value" | "corporate" | "counter" | "easygates" | "smartsecure";
@@ -56,6 +57,7 @@ const emptyScene = (): Scene => ({
   imageUrl: DEMO_SCENES[0].imageUrl, imageFit: "cover", imagePosition: "center",
   bgFrom: "#0b1020", bgTo: "#2a3a8c", bgAngle: 135,
   accentColor: "#ff3b30", textColor: "#ffffff", mutedColor: "#c7cede", cardColor: "#141b33",
+  logoPlateColor: "", barColor: "",
   animationPreset: "launch", durationSec: 10, transition: "fade", staggerMs: 120,
   kenBurns: "zoom-in", overlayOpacity: 40, layoutVariant: "A", items: null, theme: "none",
 });
@@ -76,7 +78,43 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
         { name: "Find us", desc: "Add your address" },
       ],
     },
-    flash: "Welcome starter loaded — the logo comes from the Business tab; edit the cards below",
+    flash: "Welcome starter loaded — the logo comes from the Business tab; set the logo background and bar colour below",
+  },
+  "splash-split": {
+    fields: {
+      imageUrl: "",
+      eyebrow: "WELCOME",
+      headline: "{business}",
+      subheadline: "Tell visitors what you do in one line.",
+      ctaText: "GET IN TOUCH",
+      barColor: "#0f5f8a",
+      logoPlateColor: "",
+      items: [
+        { name: "Call us", desc: "{phone}" },
+        { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
+        { name: "Find us", desc: "Add your address" },
+        { name: "Email", desc: "hello@example.co.uk" },
+      ],
+    },
+    flash: "Split-panel welcome loaded — the left panel takes the Accent bar colour; the logo plate follows the Business tab",
+  },
+  "splash-rail": {
+    fields: {
+      imageUrl: "",
+      eyebrow: "WELCOME",
+      headline: "OPENING HOURS",
+      subheadline: "Mon–Fri 8am–5pm · Saturday 9am–1pm · Closed Sunday",
+      ctaText: "CALL THE TEAM",
+      barColor: "",
+      logoPlateColor: "",
+      items: [
+        { name: "Call us", desc: "{phone}" },
+        { name: "Find us", desc: "Add your address" },
+        { name: "Parts desk", desc: "Mon–Fri 8am–4.30pm" },
+        { name: "Trade counter", desc: "Mon–Fri 7.30am–5pm" },
+      ],
+    },
+    flash: "Header-rail welcome loaded — the rail takes the Accent bar colour; contact details read as one ledger",
   },
   "company-values": {
     fields: {
@@ -378,6 +416,96 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
       ],
     },
     flash: "Support hub sample loaded \u2014 the phone number is the Headline, the promise is the Product name",
+  },
+  "eg-price-board": {
+    fields: {
+      eyebrow: "{business} \u00b7 TRADE PRICES",
+      headline: "THIS WEEK AT THE COUNTER",
+      subheadline: "Held on the shelf \u2014 collect today or we ship it tonight.",
+      description: "Prices exclude VAT \u00b7 trade accounts get a further 5\u201315% \u00b7 while stocks last",
+      ctaText: "CALL THE TRADE COUNTER",
+      imageUrl: "",
+      items: [
+        { name: "230V sliding gate kit \u00b7 600kg", price: "\u00a3569.00", desc: "KIT-SL-600 \u00b7 1 kit", tag: "WAS \u00a3689" },
+        { name: "Steel rack rail \u00b7 1m", price: "\u00a318.90", desc: "RACK-1M \u00b7 each", tag: "WAS \u00a322.50" },
+        { name: "Photocell safety beam pair", price: "\u00a334.00", desc: "PHO-PAIR \u00b7 1 pair", tag: "" },
+        { name: "4-channel rolling-code fob", price: "\u00a311.40", desc: "FOB-4RC \u00b7 each", tag: "" },
+      ],
+    },
+    flash: "Price board sample loaded \u2014 one row per product (detail = part number / pack, tag = was-price)",
+  },
+  "eg-category-wall": {
+    fields: {
+      eyebrow: "{business} \u00b7 SHOP BY CATEGORY",
+      headline: "EVERYTHING FOR THE GATE",
+      subheadline: "Over 12,000 lines on the shelf \u2014 find your department.",
+      ctaText: "ASK AT THE COUNTER",
+      imageUrl: "",
+      items: [
+        { name: "Gate automation", desc: "Motors, kits, rack, control panels", tag: "1,200 LINES" },
+        { name: "Access control", desc: "Keypads, readers, fobs, locks", tag: "900 LINES" },
+        { name: "Safety edges", desc: "ASO edges, light curtains, relays", tag: "400 LINES" },
+        { name: "Barriers & bollards", desc: "Car park, traffic and rising bollards", tag: "250 LINES" },
+      ],
+    },
+    flash: "Category wall sample loaded \u2014 the icon is picked from each category name; tag = the line count",
+  },
+  "eg-stock-status": {
+    fields: {
+      eyebrow: "{business} \u00b7 STOCK",
+      headline: "IN STOCK NOW",
+      subheadline: "Checked at 7am today \u2014 what is on the shelf and what lands tomorrow.",
+      productName: "KIT-SL-600",
+      description: "Stock checked daily at 7am \u00b7 reserve by phone and collect from the trade counter",
+      ctaText: "CALL TO RESERVE",
+      imageUrl: "/easygates/sliding-gate-motor.jpg",
+      items: [
+        { name: "230V sliding gate kit \u00b7 600kg", desc: "3 on the shelf \u00b7 12 in the warehouse", tag: "IN STOCK" },
+        { name: "Photocell safety beam pair", desc: "46 pairs picked and ready", tag: "IN STOCK" },
+        { name: "4-channel rolling-code fobs", desc: "Ordered today, with you tomorrow", tag: "NEXT DAY" },
+        { name: "Safety edge \u00b7 1.8m", desc: "Due back in on Friday morning", tag: "2\u20133 DAYS" },
+      ],
+    },
+    flash: "Stock board sample loaded \u2014 the tag (IN STOCK / NEXT DAY) sets the status chip colour",
+  },
+  "eg-brand-partners": {
+    fields: {
+      eyebrow: "{business} \u00b7 BRANDS",
+      headline: "THE MAKES WE HOLD",
+      subheadline: "Genuine stock from the manufacturers the trade asks for by name.",
+      ctaText: "ASK FOR A TRADE PRICE",
+      imageUrl: "",
+      items: [
+        { name: "CAME", desc: "Gate operators & control panels" },
+        { name: "BFT", desc: "Sliding and swing automation" },
+        { name: "FAAC", desc: "Barriers & bollards" },
+        { name: "NICE", desc: "Domestic gate kits" },
+        { name: "H\u00f6rmann", desc: "Garage & industrial doors" },
+        { name: "ASO", desc: "Safety edges & light curtains" },
+        { name: "CDVI", desc: "Access control & keypads" },
+        { name: "Prastel", desc: "Door entry & GSM" },
+        { name: "LiftMaster", desc: "Barriers & operators" },
+        { name: "Intratone", desc: "Digital notice boards" },
+      ],
+    },
+    flash: "Brand wall sample loaded \u2014 name = the brand, detail = what you stock of theirs",
+  },
+  "eg-fit-guide": {
+    fields: {
+      eyebrow: "{business} \u00b7 FITTING",
+      headline: "FROM BOX TO WORKING GATE",
+      subheadline: "How a two-engineer crew commissions a standard sliding kit in half a day.",
+      description: "Two engineers, half a day \u2014 commissioning, force testing and the paperwork are included",
+      ctaText: "BOOK A FITTER",
+      imageUrl: "",
+      items: [
+        { name: "Mount the motor", desc: "Fix the base plate \u00b7 level the rack \u00b7 tension the chain", tag: "45 MIN" },
+        { name: "Wire the panel", desc: "Mains in \u00b7 photocells \u00b7 safety edge \u00b7 receiver paired", tag: "40 MIN" },
+        { name: "Set the limits", desc: "Run the gate fully open and closed \u00b7 set slow-down zones", tag: "20 MIN" },
+        { name: "Force test & hand over", desc: "Measure closing force \u00b7 log every device \u00b7 sign the record", tag: "25 MIN" },
+      ],
+    },
+    flash: "Fit guide sample loaded \u2014 the step number is automatic; tag = the time it takes",
   },
   "ss-zone-guide": {
     fields: {
@@ -1076,6 +1204,63 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                   <p className="mb-1 text-[11px] text-white/40">The second colour on strips, price flags and stickers.</p>
                 </div>
               )}
+              {templateIsSplash(draft.template) && (
+                <div className="space-y-4 rounded-2xl bg-black/30 p-4 ring-1 ring-white/10">
+                  <div>
+                    <div className="mb-1 flex items-end justify-between gap-3">
+                      <label className="lbl mb-0">Logo background</label>
+                      <span className="mb-1 text-[11px] text-white/40">the plate behind the big logo</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { v: "", name: "Business setting", hint: "white badge or none, as set on the Business tab" },
+                        { v: "none", name: "No plate", hint: "the logo floats straight on the background" },
+                        { v: "custom", name: "Custom colour", hint: "pick any plate colour" },
+                      ] as const).map((o) => {
+                        const plateMode = readPlate(draft.logoPlateColor).mode;
+                        const active = o.v === "custom" ? plateMode === "custom" : o.v === "" ? plateMode === "auto" : plateMode === "none";
+                        return (
+                          <button
+                            key={o.name}
+                            onClick={() => set("logoPlateColor", (o.v === "custom" ? readPlate(draft.logoPlateColor).color || "#ffffff" : o.v) as never)}
+                            aria-pressed={active}
+                            title={o.hint}
+                            className={`rounded-xl px-2 py-2 text-xs font-bold ring-1 ${active ? "bg-white text-black ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                          >
+                            {o.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {readPlate(draft.logoPlateColor).mode === "custom" && (
+                      <div className="mt-3 w-1/2 min-w-[140px]">
+                        <Color label="Plate colour" v={readPlate(draft.logoPlateColor).color} onChange={(v) => set("logoPlateColor", v as never)} />
+                      </div>
+                    )}
+                    <p className="mt-1 text-[11px] text-white/40">
+                      Leave it on “Business setting” and the splash follows the logo badge on the Business tab. Choose “No plate” for silver or white marks.
+                    </p>
+                  </div>
+                  <div className="border-t border-white/10 pt-3">
+                    <div className="flex items-end gap-3">
+                      <div className="w-1/3 min-w-[130px]">
+                        <Color label="Accent bar" v={draft.barColor || draft.accentColor} onChange={(v) => set("barColor", v as never)} />
+                      </div>
+                      <button
+                        onClick={() => set("barColor", "" as never)}
+                        disabled={!draft.barColor}
+                        className="mb-1 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold ring-1 ring-white/15 disabled:opacity-40"
+                      >
+                        Match accent
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[11px] text-white/40">
+                      The bar / rail colour on this slide — and the ticker + progress strip at the bottom of the screen. “Match accent” uses the Accent colour above.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="lbl">Animation feel</label>
@@ -1827,6 +2012,11 @@ const ITEM_HINTS: Partial<Record<TemplateId, string>> = {
   "eg-delivery-cutoff": "Up to 5 delivery services — name / detail (when to order) / tag (the price)",
   "eg-compare": "Up to 4 machines — name / price (from-price) / detail (spec, one per line) / tag + optional photo",
   "eg-support-hub": "Up to 5 channels — name / detail / tag (when it is open). The phone number is the slide Headline",
+  "eg-price-board": "Up to 8 price lines — name / price / detail (part number and pack) / tag (was-price or badge). The VAT note goes in the slide Description",
+  "eg-category-wall": "Up to 8 categories — name / detail (what is in it) / tag (line count). The icon is picked from the category name",
+  "eg-stock-status": "Up to 6 stock lines — name / detail (where the stock is) / tag (IN STOCK, NEXT DAY, 2–3 DAYS — it sets the chip colour). Part number goes in Product name",
+  "eg-brand-partners": "Up to 10 manufacturers — name / detail (what you stock of theirs)",
+  "eg-fit-guide": "Up to 4 steps — name / detail (one point per line or separated by ·) / tag (the time it takes). Step numbers are automatic",
   "ss-zone-guide": "Up to 6 displays in this zone — name + optional detail. The zone number goes in Product name",
   "ss-scene-cards": "Up to 6 scenes — name / detail (triggers, separated by commas) / tag (when) + optional photo",
   "ss-package-cards": "Up to 4 packages — name / price / detail (what is included, one per line) / tag + optional photo. Name the package to highlight in Discount badge",

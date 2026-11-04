@@ -18,6 +18,8 @@ export type TemplateId =
   | "store-services"
   // ── brand ──
   | "splash"
+  | "splash-split"
+  | "splash-rail"
   // ── trade templates (electrical / smart home / gate automation) ──
   | "service-offer"
   | "price-list"
@@ -47,6 +49,11 @@ export type TemplateId =
   | "eg-delivery-cutoff"
   | "eg-compare"
   | "eg-support-hub"
+  | "eg-price-board"
+  | "eg-category-wall"
+  | "eg-stock-status"
+  | "eg-brand-partners"
+  | "eg-fit-guide"
   // ── Smart & Secure (smart home, security & home cinema) ──
   | "ss-zone-guide"
   | "ss-scene-cards"
@@ -75,9 +82,11 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "team-intro",
   "testimonial-quote",
   "trustpilot-review",
-  // splash draws its contact cards from items[] — it was missing here, so the
-  // editor never offered the rows and the cards could not be changed in the CMS.
+  // the splash family draws its contact cards from items[] — it was missing here
+  // for the original splash, so the editor never offered the rows.
   "splash",
+  "splash-split",
+  "splash-rail",
   // trade-counter retail templates
   "bulk-buy",
   "shelf-edge",
@@ -91,6 +100,11 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "eg-delivery-cutoff",
   "eg-compare",
   "eg-support-hub",
+  "eg-price-board",
+  "eg-category-wall",
+  "eg-stock-status",
+  "eg-brand-partners",
+  "eg-fit-guide",
   // Smart & Secure templates
   "ss-zone-guide",
   "ss-scene-cards",
@@ -100,7 +114,7 @@ export const ITEM_TEMPLATES: TemplateId[] = [
   "ss-product-spotlight",
 ];
 
-/** The twelve branded templates, in catalogue order. */
+/** The branded templates, in catalogue order. */
 export const BRANDED_TEMPLATES: TemplateId[] = [
   "eg-kit-builder",
   "eg-safety-check",
@@ -108,6 +122,11 @@ export const BRANDED_TEMPLATES: TemplateId[] = [
   "eg-delivery-cutoff",
   "eg-compare",
   "eg-support-hub",
+  "eg-price-board",
+  "eg-category-wall",
+  "eg-stock-status",
+  "eg-brand-partners",
+  "eg-fit-guide",
   "ss-zone-guide",
   "ss-scene-cards",
   "ss-package-cards",
@@ -167,6 +186,15 @@ export interface Scene {
   /** Render-time only: the business logo and name from Business settings (used by the splash template). Never persisted. */
   brandLogoUrl?: string;
   brandName?: string;
+  /** Render-time only: the business's "logo on a white badge" setting. Never persisted. */
+  brandLogoOnWhite?: boolean;
+  /**
+   * Splash-style slides: the plate behind the logo.
+   * "" / "auto" = follow the business logo setting, "none" = no plate, or a hex colour.
+   */
+  logoPlateColor?: string;
+  /** Splash-style slides: the accent bar / rail colour. Empty = the slide's accent colour. */
+  barColor?: string;
   bgFrom: string;
   bgTo: string;
   bgAngle: number;
@@ -215,7 +243,9 @@ export const TEMPLATES: {
   { id: "top-sellers", name: "Top Sellers", blurb: "Numbered top-5 list with thumbnails and prices; rank numbers are the hero", bestFor: "Bestseller charts" },
   { id: "store-services", name: "Store Services", blurb: "Click & collect, returns, opening hours table, customer services with icons", bestFor: "Customer information boards" },
   // ── brand ──
-  { id: "splash", name: "Splash / Welcome", blurb: "Logo on a white plate, tagline and a row of contact details (phone, hours, address)", bestFor: "Welcome screens & contact info" },
+  { id: "splash", name: "Splash / Welcome", blurb: "Logo on a plate (white, any colour or none), tagline and a row of contact details", bestFor: "Welcome screens & contact info" },
+  { id: "splash-split", name: "Splash / Split Panel", blurb: "Logo on a bold colour panel down the left, headline and stacked contact cards on the right", bestFor: "Entrances & reception — landscape" },
+  { id: "splash-rail", name: "Splash / Header Rail", blurb: "Full-width brand rail across the top, centred welcome and a contact ledger underneath", bestFor: "Brand-led welcomes & opening hours" },
   // ── trade ──
   { id: "service-offer", name: "Service & Installation", blurb: "What you fit, ticked list, from-price, call to action", bestFor: "Gate automation & electrical services" },
   { id: "price-list", name: "Trade Price List", blurb: "Two-column rate card, dotted leaders, VAT footnote", bestFor: "Upfront job pricing" },
@@ -239,6 +269,11 @@ export const TEMPLATES: {
   { id: "eg-delivery-cutoff", name: "Order Cut-Off & Delivery", blurb: "Clock dial with the cut-off time beside the delivery services and their prices", bestFor: "Dispatch & next-day promises" },
   { id: "eg-compare", name: "Which Automation?", blurb: "Up to four machines side by side with photos, from-prices and specifications", bestFor: "Motor & operator comparisons" },
   { id: "eg-support-hub", name: "Technical Support Hub", blurb: "Oversized helpline, response promise and the channels customers can reach", bestFor: "Help desks & workshops" },
+  { id: "eg-price-board", name: "Trade Price Board", blurb: "Dotted-leader price board: part numbers, pack sizes, was-prices and a VAT footnote", bestFor: "Weekly trade prices & counter offers" },
+  { id: "eg-category-wall", name: "Shop by Category", blurb: "Icon tiles for the departments — gate automation, access control, safety, barriers", bestFor: "Store navigation & range signposting" },
+  { id: "eg-stock-status", name: "Stock & Availability", blurb: "Product photo with a part-number strip and live-looking stock lines with status chips", bestFor: "Stock notices & next-day promises" },
+  { id: "eg-brand-partners", name: "Brands We Stock", blurb: "Typographic wall of the manufacturers held on the shelf, with the category under each", bestFor: "Manufacturer walls & trade counters" },
+  { id: "eg-fit-guide", name: "Fit in Four Steps", blurb: "Numbered installation and commissioning steps, each with a time tag", bestFor: "Fitting guides & commissioning walk-throughs" },
   // ── Smart & Secure ──
   { id: "ss-zone-guide", name: "Showroom Zone Guide", blurb: "Giant glowing zone circle, zone name and the displays to try in it", bestFor: "Showroom wayfinding" },
   { id: "ss-scene-cards", name: "Smart Scenes", blurb: "Grid of up to six scenes with photos and the triggers that fire them", bestFor: "Smart-home demonstrations" },
@@ -253,11 +288,11 @@ export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: Templat
   { id: "retail", name: "Retail & promo", templates: ["retail-promo", "food-menu", "product-showcase", "product-grid", "announcement", "fullscreen-campaign", "split-promo", "bulk-buy", "shelf-edge", "flash-sale", "click-collect", "trade-account"] },
   { id: "value", name: "Value store · deals", templates: ["price-drop", "deals-grid", "multibuy", "clearance", "top-sellers"] },
   { id: "store-info", name: "Value store · in-store info", templates: ["aisle-guide", "store-services"] },
-  { id: "brand", name: "Brand & welcome", templates: ["splash"] },
+  { id: "brand", name: "Brand & welcome", templates: ["splash", "splash-split", "splash-rail"] },
   { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
   { id: "corporate", name: "Corporate", templates: ["company-values", "team-intro", "corporate-milestone", "corporate-news", "testimonial-quote", "fullscreen-bg"] },
   { id: "social-proof", name: "Social proof", templates: ["trustpilot-review"] },
-  { id: "easygates", name: "EasyGates Direct", templates: ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-delivery-cutoff", "eg-compare", "eg-support-hub"] },
+  { id: "easygates", name: "EasyGates Direct", templates: ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-delivery-cutoff", "eg-compare", "eg-support-hub", "eg-price-board", "eg-category-wall", "eg-stock-status", "eg-brand-partners", "eg-fit-guide"] },
   { id: "smartsecure", name: "Smart & Secure", templates: ["ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo", "ss-product-spotlight"] },
 ];
 
@@ -899,13 +934,75 @@ export const TRADE_DEMO_SCENES: Scene[] = [
     overlayOpacity: 0,
     layoutVariant: "A",
   },
+  {
+    id: "trade-8",
+    name: "08 · Welcome — Split Panel",
+    template: "splash-split",
+    eyebrow: "WELCOME",
+    headline: "Gates · Automation · Electrical",
+    subheadline: "Supply, fit and repair — all makes, all sizes",
+    ctaText: "FREE SITE SURVEY",
+    items: [
+      { name: "Call us", desc: "{phone}" },
+      { name: "Opening hours", desc: "Mon–Fri 8am–5pm" },
+      { name: "Find us", desc: "Add your address in the editor" },
+      { name: "Email", desc: "hello@example.co.uk" },
+    ],
+    bgFrom: "#061019",
+    bgTo: "#123250",
+    bgAngle: 135,
+    accentColor: "#f5a623",
+    textColor: "#ffffff",
+    mutedColor: "#c2d2e6",
+    cardColor: "#0e1f34",
+    barColor: "#0f5f8a",
+    logoPlateColor: "",
+    animationPreset: "smooth",
+    durationSec: 11,
+    transition: "fade",
+    staggerMs: 110,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+  },
+  {
+    id: "trade-9",
+    name: "09 · Welcome — Header Rail",
+    template: "splash-rail",
+    eyebrow: "WELCOME",
+    headline: "OPENING HOURS",
+    subheadline: "Mon–Fri 8am–5pm · Saturday 9am–1pm · Closed Sunday",
+    ctaText: "CALL THE TEAM",
+    items: [
+      { name: "Call us", desc: "{phone}" },
+      { name: "Find us", desc: "Unit 4 · Add your address" },
+      { name: "Parts desk", desc: "Mon–Fri 8am–4.30pm" },
+      { name: "Trade counter", desc: "Mon–Fri 7.30am–5pm" },
+    ],
+    bgFrom: "#061019",
+    bgTo: "#123250",
+    bgAngle: 135,
+    accentColor: "#f5a623",
+    textColor: "#ffffff",
+    mutedColor: "#c2d2e6",
+    cardColor: "#0e1f34",
+    barColor: "#8a2a12",
+    logoPlateColor: "none",
+    animationPreset: "elegant",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 110,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+  },
 ];
 
 export function tradeDemoPlaylist() {
   return {
     id: "trade-demo-playlist",
     name: "APEX · Electrical, Smart Home & Gates (Demo)",
-    description: "6-scene trade campaign: gate automation, smart home, electrical rates",
+    description: "9-scene trade campaign: gate automation, smart home, electrical rates and three welcome screens",
     scenes: TRADE_DEMO_SCENES,
   };
 }
@@ -1952,13 +2049,191 @@ export const EASYGATES_DEMO_SCENES: Scene[] = [
       { name: "Workshop & warranty", desc: "Faulty units tested and turned round fast", tag: "HALESOWEN" },
     ],
   },
+  {
+    id: "eg-7",
+    name: "07 · Trade Price Board",
+    template: "eg-price-board",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · TRADE PRICES",
+    headline: "THIS WEEK AT THE COUNTER",
+    subheadline: "Held on the shelf at Halesowen — collect today or we ship it tonight.",
+    description: "Prices exclude VAT · trade accounts get a further 5–15% · while stocks last",
+    ctaText: "CALL THE TRADE COUNTER",
+    tickerText: "THIS WEEK'S TRADE PRICES — ORDER BY 3PM FOR NEXT DAY DELIVERY — CALL {phone} —",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#ff3b43",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "snap",
+    durationSec: 13,
+    transition: "slide-left",
+    staggerMs: 80,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "230V sliding gate kit · 600kg", price: "£569.00", desc: "KIT-SL-600 · 1 kit", tag: "WAS £689" },
+      { name: "Steel rack rail · 1m", price: "£18.90", desc: "RACK-1M · each", tag: "WAS £22.50" },
+      { name: "Photocell safety beam pair", price: "£34.00", desc: "PHO-PAIR · 1 pair" },
+      { name: "4-channel rolling-code fob", price: "£11.40", desc: "FOB-4RC · each", tag: "WAS £14.00" },
+      { name: "Safety edge · 1.8m", price: "£72.00", desc: "EDGE-18 · each" },
+      { name: "Control panel · pre-wired", price: "£148.00", desc: "PANEL-230 · each", tag: "BEST SELLER" },
+    ],
+  },
+  {
+    id: "eg-8",
+    name: "08 · Shop by Category",
+    template: "eg-category-wall",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · SHOP BY CATEGORY",
+    headline: "EVERYTHING FOR THE GATE",
+    subheadline: "Over 12,000 lines on the shelf — find your department.",
+    ctaText: "ASK AT THE COUNTER",
+    tickerText: "12,000+ LINES IN STOCK — GATE AUTOMATION · ACCESS CONTROL · SAFETY — CALL {phone} —",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#2f9ade",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "smooth",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 70,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Gate automation", desc: "Motors, kits, rack, control panels", tag: "1,200 LINES" },
+      { name: "Access control", desc: "Keypads, readers, fobs, locks", tag: "900 LINES" },
+      { name: "Safety edges", desc: "ASO edges, light curtains, relays", tag: "400 LINES" },
+      { name: "Barriers & bollards", desc: "Car park, traffic and rising bollards", tag: "250 LINES" },
+      { name: "Door entry", desc: "Intercoms, GSM diallers, video kits", tag: "600 LINES" },
+      { name: "CCTV & alarms", desc: "Cameras, recorders, intruder kits", tag: "800 LINES" },
+      { name: "Power & control", desc: "Batteries, transformers, timers", tag: "500 LINES" },
+      { name: "Spares & fixings", desc: "Brackets, chains, keys, fixings", tag: "2,000 LINES" },
+    ],
+  },
+  {
+    id: "eg-9",
+    name: "09 · Stock & Availability",
+    template: "eg-stock-status",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · STOCK",
+    headline: "IN STOCK NOW",
+    subheadline: "Checked at 7am today — what is on the shelf and what lands tomorrow.",
+    productName: "KIT-SL-600",
+    description: "Stock checked daily at 7am · reserve by phone and collect from the trade counter",
+    ctaText: "CALL TO RESERVE",
+    tickerText: "IN STOCK NOW — RESERVE BY PHONE AND COLLECT TODAY — CALL {phone} —",
+    imageUrl: EG_IMG.kit,
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#ff3b43",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "smooth",
+    durationSec: 13,
+    transition: "fade",
+    staggerMs: 90,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "230V sliding gate kit · 600kg", desc: "3 on the shelf · 12 in the warehouse", tag: "IN STOCK" },
+      { name: "Photocell safety beam pair", desc: "46 pairs picked and ready", tag: "IN STOCK" },
+      { name: "4-channel rolling-code fobs", desc: "Ordered today, with you tomorrow", tag: "NEXT DAY" },
+      { name: "Safety edge · 1.8m", desc: "Due back in on Friday morning", tag: "2–3 DAYS" },
+      { name: "240V control panel · pre-wired", desc: "Built to order in our workshop", tag: "BUILT TO ORDER" },
+    ],
+  },
+  {
+    id: "eg-10",
+    name: "10 · Brands We Stock",
+    template: "eg-brand-partners",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · BRANDS",
+    headline: "THE MAKES WE HOLD",
+    subheadline: "Genuine stock from the manufacturers the trade asks for by name.",
+    ctaText: "ASK FOR A TRADE PRICE",
+    tickerText: "AUTHORISED STOCKIST — CAME · BFT · FAAC · NICE · HÖRMANN · ASO — CALL {phone} —",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#2f9ade",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "snap",
+    durationSec: 12,
+    transition: "fade",
+    staggerMs: 60,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "CAME", desc: "Gate operators & control panels" },
+      { name: "BFT", desc: "Sliding and swing automation" },
+      { name: "FAAC", desc: "Barriers & bollards" },
+      { name: "NICE", desc: "Domestic gate kits" },
+      { name: "Hörmann", desc: "Garage & industrial doors" },
+      { name: "ASO", desc: "Safety edges & light curtains" },
+      { name: "CDVI", desc: "Access control & keypads" },
+      { name: "Prastel", desc: "Door entry & GSM" },
+      { name: "LiftMaster", desc: "Barriers & operators" },
+      { name: "Intratone", desc: "Digital notice boards" },
+    ],
+  },
+  {
+    id: "eg-11",
+    name: "11 · Fit in Four Steps",
+    template: "eg-fit-guide",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · FITTING",
+    headline: "FROM BOX TO WORKING GATE",
+    subheadline: "How a two-engineer crew commissions a standard sliding kit in half a day.",
+    description: "Two engineers, half a day — commissioning, force testing and the paperwork are included",
+    ctaText: "BOOK A FITTER",
+    tickerText: "FITTING & COMMISSIONING — FORCE TESTED AND SIGNED OFF ON THE DAY — CALL {phone} —",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#ff3b43",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "launch",
+    durationSec: 13,
+    transition: "slide-right",
+    staggerMs: 100,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "A",
+    items: [
+      { name: "Mount the motor", desc: "Fix the base plate · level the rack · tension the chain", tag: "45 MIN" },
+      { name: "Wire the panel", desc: "Mains in · photocells · safety edge · receiver paired", tag: "40 MIN" },
+      { name: "Set the limits", desc: "Run the gate fully open and closed · set slow-down zones", tag: "20 MIN" },
+      { name: "Force test & hand over", desc: "Measure closing force · log every device · sign the record", tag: "25 MIN" },
+    ],
+  },
 ];
 
 export function easygatesDemoPlaylist() {
   return {
     id: "easygates-demo-playlist",
     name: "EasyGates Direct · Trade Counter (Demo)",
-    description: "6-scene EasyGates Direct campaign: gate kits, safety compliance, trade tiers, delivery, product choice and support",
+    description: "11-scene EasyGates Direct campaign: gate kits, safety compliance, trade tiers, delivery, product choice, support, price board, categories, stock, brands and fitting",
     scenes: EASYGATES_DEMO_SCENES,
   };
 }

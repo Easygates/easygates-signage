@@ -149,6 +149,16 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     ["name", "desc", "tag"],
     "logo",
   ),
+  "splash-split": t(
+    ["eyebrow", "subheadline", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "logo",
+  ),
+  "splash-rail": t(
+    ["eyebrow", "subheadline", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "logo",
+  ),
 
   // ── Trade ───────────────────────────────────────────────────────────────────
   "service-offer": t(
@@ -234,6 +244,31 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     ["name", "desc", "tag"],
     "hero",
   ),
+  "eg-price-board": t(
+    ["eyebrow", "subheadline", "description", "ctaText", "highlightColor"],
+    ["name", "price", "desc", "tag"],
+    "none",
+  ),
+  "eg-category-wall": t(
+    ["eyebrow", "subheadline", "ctaText"],
+    ["name", "desc", "tag"],
+    "none",
+  ),
+  "eg-stock-status": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "imageUrl"],
+    ["name", "desc", "tag"],
+    "hero",
+  ),
+  "eg-brand-partners": t(
+    ["eyebrow", "subheadline", "ctaText"],
+    ["name", "desc"],
+    "none",
+  ),
+  "eg-fit-guide": t(
+    ["eyebrow", "subheadline", "description", "ctaText", "highlightColor"],
+    ["name", "desc", "tag"],
+    "none",
+  ),
 
   // ── Smart & Secure ──────────────────────────────────────────────────────────
   "ss-zone-guide": t(
@@ -267,6 +302,18 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
     "hero",
   ),
 };
+
+/**
+ * The splash / welcome family: the slide draws its own large logo, so the player
+ * hides the small corner logo, and the three templates share the logo-plate and
+ * accent-bar settings in the editor.
+ */
+export const SPLASH_TEMPLATES: TemplateId[] = ["splash", "splash-split", "splash-rail"];
+
+/** true when the slide is a splash / welcome screen (draws its own big logo). */
+export function templateIsSplash(template: TemplateId): boolean {
+  return SPLASH_TEMPLATES.includes(template);
+}
 
 /**
  * Templates that draw nothing but their media. The player hides the brand bar

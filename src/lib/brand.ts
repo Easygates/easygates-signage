@@ -314,6 +314,9 @@ export function brandScene(scene: Scene, brand: BrandSettings): Scene {
   const out: Scene = { ...scene };
   out.brandLogoUrl = brand.logoUrl || undefined;
   out.brandName = brand.businessName || undefined;
+  // The splash templates default their logo plate to the business setting, so the
+  // renderer needs it alongside the logo itself.
+  out.brandLogoOnWhite = brand.logoOnWhite;
   if (!out.bgImageUrl && brand.defaultBgImageUrl) out.bgImageUrl = brand.defaultBgImageUrl;
   for (const k of TEXT_FIELDS) out[k] = fillText(scene[k], brand);
   if (scene.items) {
