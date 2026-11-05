@@ -1105,3 +1105,47 @@ Local reproduction of the same failure modes, without a Windows box:
 **Operational note:** `next.config.ts` is read once at start-up — the dev server
 has to be restarted before the pinned root takes effect, and before changed
 `allowedDevOrigins` entries apply.
+
+## 22. Same error re-reported from the shop PC — machine running pre-#16 code (2026-11-05)
+
+§21's error came back verbatim from `C:\Users\TV-Serve\Documents\easygates-signage`,
+which at first read like a regression. It is not — the report itself dates it:
+the paste still contains the `enhanced-resolve` (webpack) stack and the
+`allowedDevOrigins` notice for `tv-serv`, neither of which current `main` can
+produce:
+
+- `npm run dev` on next@16.2.6 starts **Turbopack** (banner verified); webpack's
+  `enhanced-resolve` never enters a normal dev compile.
+- `src/lib/devOrigins.ts` hardcodes `tv-serv` in `DEFAULT_DEV_ORIGINS`, so the
+  "add it to allowedDevOrigins" notice cannot fire.
+
+Both symptoms are exactly the pre-fix behaviour, so the box is running a
+checkout from before PR #16 (or a dev server started before the pull — config
+is read once at start-up).
+
+### 22.1 Re-verification of `main`
+
+| Check | Result |
+|---|---|
+| `node --test tests/setup-guards.test.mjs tests/dev-origins.test.mjs` | pass |
+| `next dev` (Turbopack), `GET /admin` with `Host: tv-serv:3000` + `Origin: http://tv-serv:3000` | 200, **no** allowedDevOrigins notice in the log |
+| Tailwind CSS chunk for that request | 200, 20 KB, 68 `--tw-` custom properties |
+| same request with an orphaned `package-lock.json` planted one level above the project (the shop PC situation) | still 200; no "inferred your workspace root" warning, no tailwind error; doctor reports the stray lockfile by name |
+
+### 22.2 Hardening the update path
+
+The remaining failure mode is operational: a PC that pulls new code but keeps
+old `node_modules`, an old Node.js, or a stale `.next`. New checks:
+
+| File | Change |
+|---|---|
+| `scripts/doctor-checks.mjs` | New pure helpers (`parseSemver`, `compareSemver`, `isExactPin`) so the version logic is unit-testable. |
+| `scripts/doctor.mjs` | Warns when an installed dependency no longer matches the exact pin in `package.json` ("run npm install — after a git pull…"); fails fast when Node.js is older than the 20.9 required by Next.js 16 (old runtimes crash inside Next with unrelated-looking errors). |
+| `README.md` | New **"Updating the CMS on the shop PC"** troubleshooting entry: stop the server, `git pull`, `npm install`, delete `.next`, restart — the operational fix for this exact report. |
+| `tests/setup-guards.test.mjs` | Unit tests for the semver helpers plus an end-to-end drift simulation (doctor copy in a temp dir, stale `node_modules/next`, pinned `package.json`) asserting the warning fires without blocking; healthy checkout asserted drift-free. |
+
+### 22.3 Verification
+
+- `node --test "tests/*.mjs"` — all pass (new suite: 3 tests).
+- `npm run typecheck`, `npm run lint`, `npm run build` — clean.
+

@@ -14,12 +14,20 @@
  * failure cannot come back — but the stray files are still worth cleaning up,
  * and this script reports where they are.
  *
+ * It also catches the two ways a machine ends up running yesterday's code
+ * after a `git pull`: a Node.js older than Next.js 16 supports, and
+ * node_modules still holding the dependency versions from the last install
+ * instead of the ones package.json now pins.
+ *
  * Exits 1 only for problems that certainly break the dev server; everything
  * else is a warning, so a working setup is never blocked.
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { compareSemver, isExactPin } from "./doctor-checks.mjs";
+
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -52,6 +60,19 @@ function mtime(file) {
   }
 }
 
+// ── 0. Node.js version ────────────────────────────────────────────────────
+// next@16 declares engines ">=20.9.0". An older Node (18.x is the common one
+// on a shop PC installed years ago) crashes somewhere inside Next with errors
+// that look like anything but an old runtime, so name it here instead.
+// (compareSemver returns null for unparseable input, which compares false —
+// the doctor never blocks on something it cannot read.)
+if (compareSemver(process.version, "20.9.0") < 0) {
+  problems.push(
+    `Node ${process.version} is too old for Next.js 16 (needs 20.9.0 or newer). ` +
+      "Install the current LTS from https://nodejs.org, reopen the terminal, then run this check again.",
+  );
+}
+
 // ── 1. Dependencies ────────────────────────────────────────────────────────
 const required = ["next", "react", "react-dom"];
 const buildOnly = ["tailwindcss", "@tailwindcss/postcss"];
@@ -70,6 +91,23 @@ if (!existsSync(path.join(projectRoot, "node_modules"))) {
       `missing ${missingBuild.join(", ")} — Tailwind is a devDependency, so it is ` +
         "skipped by `npm install --omit=dev` / `npm ci --production`. Run  npm install  " +
         "(without --omit=dev) on this machine.",
+    );
+  }
+
+  // 1b. Installed versions match package.json. `git pull` can change
+  // package.json without touching node_modules, and the dev server then runs
+  // a mix of old and new code that fails in ways that look like anything but
+  // a stale install. Exact pins only — ranges are npm's business.
+  const rootPkg = readJson(path.join(projectRoot, "package.json")) ?? {};
+  const pinned = { ...(rootPkg.dependencies ?? {}), ...(rootPkg.devDependencies ?? {}) };
+  const drifted = Object.entries(pinned)
+    .filter(([, wanted]) => isExactPin(wanted))
+    .map(([pkg, wanted]) => [pkg, wanted, installedVersion(pkg)])
+    .filter(([, wanted, installed]) => installed !== null && compareSemver(installed, wanted) !== 0);
+  if (drifted.length) {
+    warnings.push(
+      `node_modules is out of date: ${drifted.map(([p, w, i]) => `${p} ${i} (package.json pins ${w})`).join(", ")}. ` +
+        "Run  npm install  — after a git pull the dev server still loads the versions from the last install.",
     );
   }
 }

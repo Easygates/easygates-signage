@@ -316,6 +316,26 @@ Also turn off sleep on the PC while screens depend on it. The Displays tab fills
 any stray lockfiles in parent folders, so most setup problems are reported by
 name instead of as a compiler error.
 
+### Updating the CMS on the shop PC
+
+When a fix is merged on GitHub but the shop PC still shows the old error, the
+PC is still running the old code — the fixes below only exist in the files on
+that machine. Stop the dev server (close its window / Ctrl+C), then on the PC:
+
+```bat
+cd C:\Users\TV-Serve\Documents\easygates-signage   &rem the folder with package.json
+git pull                                           &rem fetch the merged fixes
+npm install                                        &rem apply any dependency changes
+rmdir /s /q .next                                  &rem discard the cache the old code wrote
+start-cms.cmd                                      &rem or: npm run dev
+```
+
+`next.config.ts` and `allowedDevOrigins` are read once at start-up, so the
+restart is not optional. The pre-flight check also warns when the installed
+`next` / `tailwindcss` versions no longer match the ones `package.json` pins
+(the sign of a `git pull` without `npm install`) and when Node.js is older than
+the 20.9 that Next.js 16 requires.
+
 ### `Error: Can't resolve 'tailwindcss' in 'C:\Users\TV-Serve\Documents'`
 
 The folder in that message is the one *above* the project. Next.js picks a
