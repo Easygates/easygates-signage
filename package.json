@@ -2,6 +2,8 @@
   "name": "nextjs-postgresql-template",
   "private": true,
   "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "predev": "node scripts/doctor.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
