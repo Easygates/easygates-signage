@@ -87,8 +87,10 @@ describe("SceneRenderer renders the new templates", () => {
     }
   });
 
-  it("star-breakdown bars are data-driven (no hardcoded 70% width)", () => {
-    assert.ok(!src.includes('style={{ width: "70%" }}'), "trustpilot bars still hardcoded");
-    assert.ok(src.includes("match(/★/g)"), "expected star-count parsing of item tags");
+  it("trustpilot stars are data-driven (no hardcoded 70% width)", () => {
+    // the template lives in its own file now: the stars come from the rating and each review's tag
+    const trustpilot = readFileSync(join(root, "src/components/scene/templates/TrustpilotReview.tsx"), "utf8");
+    assert.ok(!trustpilot.includes('width: "70%"'), "trustpilot bars still hardcoded");
+    assert.ok(trustpilot.includes("match(/★/g)"), "expected star-count parsing of item tags");
   });
 });

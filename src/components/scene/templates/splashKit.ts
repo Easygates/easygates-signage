@@ -16,6 +16,7 @@
 
 import type { Scene } from "../../../lib/signage.ts";
 import { contrast, hexToRgb, rgbToHex } from "../../../lib/color.ts";
+import { fitText, textWidth } from "./storeBoardKit.ts";
 
 /** The plate colour the splash has always used when the business wants one. */
 export const DEFAULT_PLATE = "#ffffff";
@@ -80,4 +81,54 @@ export function splashDetails(scene: Scene, max = 4): { name: string; desc?: str
     if (out.length >= max) break;
   }
   return out;
+}
+
+/**
+ * Split a headline in two at its separator (" · ", " | ", " – ", " — "), at the one nearest the
+ * middle, dropping the separator at the break. "Gates · Automation · Electrical" becomes
+ * "Gates · Automation" / "Electrical" instead of wrapping with a stray "·" at the end of line one.
+ */
+export function splitAtSeparator(text: string): [string, string] | null {
+  const t = (text || "").trim();
+  const seps = [...t.matchAll(/\s[·|•–—]\s/g)];
+  if (!seps.length) return null;
+  const mid = t.length / 2;
+  let best = seps[0];
+  for (const m of seps) if (Math.abs((m.index ?? 0) + 1 - mid) < Math.abs((best.index ?? 0) + 1 - mid)) best = m;
+  const at = best.index ?? 0;
+  const left = t.slice(0, at).trim();
+  const right = t.slice(at + best[0].length).trim();
+  return left && right ? [left, right] : null;
+}
+
+/**
+ * How to set a splash headline: on one line if it fits at a good size; otherwise on two lines broken at
+ * a separator when it has one, otherwise wrapped by width. Returns the font size and the lines.
+ */
+export function headlinePlan(
+  text: string,
+  boxW: number,
+  o: { oneMax: number; oneMin: number; twoMax: number; twoMin: number; ls?: number }
+): { px: number; lines: string[] } {
+  const t = (text || "").trim();
+  if (!t) return { px: o.oneMax, lines: [] };
+  const ls = o.ls ?? -0.02;
+  const one = fitText({ text: t, boxW, maxPx: o.oneMax, minPx: o.oneMin, maxLines: 1, ls });
+  if (one.fits) return { px: one.px, lines: [t] };
+  const cut = splitAtSeparator(t);
+  if (cut) {
+    const widest = textWidth(cut[0], 100, { ls }) >= textWidth(cut[1], 100, { ls }) ? cut[0] : cut[1];
+    const f = fitText({ text: widest, boxW, maxPx: o.twoMax, minPx: o.twoMin, maxLines: 1, ls });
+    if (f.fits) return { px: f.px, lines: cut };
+  }
+  const two = fitText({ text: t, boxW, maxPx: o.twoMax, minPx: o.twoMin, maxLines: 2, ls });
+  return { px: two.px, lines: [t] };
+}
+
+/**
+ * Keep a time or number range together: "Mon–Fri 8am–4.30pm" may wrap between words, but never
+ * between "8am–" and "4.30pm" (a word joiner stops the line breaking after the dash).
+ */
+export function glueRanges(text: string): string {
+  return (text || "").replace(/([0-9a-z])([–—])(?=[0-9a-z])/gi, "$1$2\u2060");
 }

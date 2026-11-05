@@ -261,7 +261,7 @@ export const TEMPLATES: {
   // ── background only ──
   { id: "fullscreen-bg", name: "Background Image / Video", blurb: "Full-screen image or video only — no text, logo or ticker", bestFor: "Ambient & mood screens" },
   // ── social proof ──
-  { id: "trustpilot-review", name: "Trustpilot Review", blurb: "Trustpilot rating, star breakdown and top reviews — social proof for reception screens", bestFor: "Customer trust & reputation" },
+  { id: "trustpilot-review", name: "Trustpilot Review", blurb: "Trustpilot rating with green star squares and the top three reviews — social proof for reception screens", bestFor: "Customer trust & reputation" },
   // ── EasyGates Direct ──
   { id: "eg-kit-builder", name: "Gate Kit Builder", blurb: "Framed kit photo, contents as a specification list, part-number strip and price plate", bestFor: "Gate & operator kits" },
   { id: "eg-safety-check", name: "Gate Safety Compliance", blurb: "Ticked checklist beside a compliance stamp — force testing, UKCA, BS EN 12453", bestFor: "Safety & compliance notices" },
@@ -987,7 +987,7 @@ export const TRADE_DEMO_SCENES: Scene[] = [
     mutedColor: "#c2d2e6",
     cardColor: "#0e1f34",
     barColor: "#8a2a12",
-    logoPlateColor: "none",
+    logoPlateColor: "",
     animationPreset: "elegant",
     durationSec: 12,
     transition: "fade",

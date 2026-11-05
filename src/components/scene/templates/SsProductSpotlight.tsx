@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, CtaBar, Frame, Head, MARGIN, Stars, TOP, fitPx } from "./brandParts";
+import { BOTTOM, BrandIcon, CtaBar, FitColumn, Frame, Head, MARGIN, Stars, TOP, fitPx } from "./brandParts";
 import { alpha, kit, rows, type Kit } from "./brandKit";
 
 /**
@@ -68,7 +68,7 @@ export default function SsProductSpotlightTemplate({ scene, d }: TemplateProps) 
         </div>
 
         {/* ── the sell ── */}
-        <div style={{ flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
+        <FitColumn style={{ flex: "1 1 auto", minWidth: 0 }} innerStyle={{ gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {scene.productName ? (
               <span className="sg-anim sg-fade-down" style={{ fontSize: 24, fontWeight: 900, letterSpacing: "0.2em", textTransform: "uppercase", color: k.accent, animationDelay: `${150 + d.s * 2}ms` }}>
@@ -109,8 +109,7 @@ export default function SsProductSpotlightTemplate({ scene, d }: TemplateProps) 
             <div
               className="sg-anim sg-fade-up"
               style={{
-                flex: "1 1 auto",
-                minHeight: 0,
+                flex: "1 0 auto",
                 display: "flex",
                 alignItems: "center",
                 gap: 18,
@@ -133,7 +132,7 @@ export default function SsProductSpotlightTemplate({ scene, d }: TemplateProps) 
           <div style={{ flex: "none", display: "flex", justifyContent: "flex-end" }}>
             <CtaBar scene={scene} d={d} k={k} i={7 + items.length} width={rightW} />
           </div>
-        </div>
+        </FitColumn>
       </div>
     </div>
   );

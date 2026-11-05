@@ -2,7 +2,7 @@ import type { TemplateProps } from "../parts";
 import { hexToRgb } from "@/lib/color";
 import { A, CtaPill, Icon, palette } from "./storeBoardParts";
 import { fitText, serviceIcon } from "./storeBoardKit";
-import { accentBar, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
+import { accentBar, glueRanges, headlinePlan, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
 
 /**
  * Template "splash" — a welcome / brand screen: the business logo on a white plate, the business
@@ -88,8 +88,7 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
   const wordInk = plateInk(plate, text);
 
   // one line if it fits at a good size, otherwise two smaller lines (keeps the block inside its zone)
-  const oneLine = fitText({ text: head, boxW: 1560, maxPx: 100, minPx: 64, maxLines: 1, lineHeight: 1.02, ls: -0.02 });
-  const headFit = oneLine.fits ? oneLine : fitText({ text: head, boxW: 1560, maxPx: 84, minPx: 44, maxLines: 2, lineHeight: 1.02, ls: -0.02 });
+  const headFit = headlinePlan(head, 1560, { oneMax: 100, oneMin: 64, twoMax: 84, twoMin: 44 });
   const subFit = fitText({ text: sub, boxW: 1400, maxPx: 42, minPx: 28, maxLines: 2, lineHeight: 1.2 });
   const wordFit = fitText({ text: name, boxW: 700, maxPx: 120, minPx: 52, maxLines: 2, upper: true, lineHeight: 0.95, ls: -0.02 });
 
@@ -139,7 +138,11 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
 
         {head && (
           <A d={d} i={2} cls="sg-fade-up" style={{ maxWidth: 1560 }}>
-            <div style={{ color: text, fontSize: headFit.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>{head}</div>
+            <div style={{ color: text, fontSize: headFit.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>
+              {headFit.lines.map((l, i) => (
+                <div key={i}>{l}</div>
+              ))}
+            </div>
           </A>
         )}
 
@@ -177,7 +180,7 @@ export default function SplashTemplate({ scene, d }: TemplateProps) {
                   </span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     {label && <div style={{ color: muted, fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1.1, marginBottom: 6 }}>{label}</div>}
-                    <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.08, overflowWrap: "break-word" }}>{breakable(value)}</div>
+                    <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.08, overflowWrap: "break-word" }}>{breakable(glueRanges(value))}</div>
                   </div>
                 </div>
               </A>

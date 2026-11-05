@@ -3,7 +3,7 @@ import { hexToRgb, mixHex } from "@/lib/color";
 import { inkOn } from "./brandKit";
 import { A, Icon, palette } from "./storeBoardParts";
 import { fitText, serviceIcon } from "./storeBoardKit";
-import { accentBar, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
+import { accentBar, glueRanges, headlinePlan, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
 
 /**
  * Template "splash-rail" — EasyGates Direct / any business · Header-rail welcome.
@@ -83,7 +83,7 @@ export default function SplashRailTemplate({ scene, d }: TemplateProps) {
   const muted = scene.mutedColor || soft(text, 0.72);
   const wordInk = plateInk(plate, railInk);
 
-  const headFit = fitText({ text: scene.headline || "", boxW: 1500, maxPx: 102, minPx: 46, maxLines: 2, lineHeight: 1.02, ls: -0.02 });
+  const headPlan = headlinePlan(scene.headline || "", 1500, { oneMax: 102, oneMin: 64, twoMax: 96, twoMin: 46 });
   const subFit = fitText({ text: sub, boxW: 1360, maxPx: 38, minPx: 26, maxLines: 2, lineHeight: 1.2 });
   const wordFit = fitText({ text: name, boxW: 620, maxPx: 60, minPx: 28, maxLines: 1, upper: true, lineHeight: 1, ls: 0 });
   const colW = items.length ? Math.floor((1620 - (items.length - 1) * 2) / items.length) : 0;
@@ -135,19 +135,17 @@ export default function SplashRailTemplate({ scene, d }: TemplateProps) {
             {eyebrow ? <div style={{ color: soft(railInk, 0.8), fontSize: 22, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", marginBottom: 8 }}>{eyebrow}</div> : null}
             {name ? <div style={{ color: railInk, fontSize: 44, fontWeight: 900, letterSpacing: "0.04em", lineHeight: 1.05, textTransform: "uppercase" }}>{name}</div> : null}
           </div>
-
-          <div style={{ flex: "none", display: "flex", gap: 12 }}>
-            <span style={{ width: 16, height: 16, borderRadius: 99, background: railInk, opacity: 0.85 }} />
-            <span style={{ width: 16, height: 16, borderRadius: 99, background: railInk, opacity: 0.55 }} />
-            <span style={{ width: 16, height: 16, borderRadius: 99, background: railInk, opacity: 0.3 }} />
-          </div>
         </A>
       </div>
 
       {/* ── welcome body ── */}
       <div style={{ position: "absolute", left: 100, right: 100, top: RAIL_H + 42, bottom: 74, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 18 }}>
         <A d={d} i={2} cls="sg-fade-up" style={{ maxWidth: 1560 }}>
-          <div style={{ color: text, fontSize: headFit.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>{scene.headline || ""}</div>
+          <div style={{ color: text, fontSize: headPlan.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>
+            {headPlan.lines.map((l, i) => (
+              <div key={i}>{l}</div>
+            ))}
+          </div>
         </A>
 
         <A d={d} i={3} cls="sg-scale-in">
@@ -187,7 +185,7 @@ export default function SplashRailTemplate({ scene, d }: TemplateProps) {
                     </span>
                     <div style={{ minWidth: 0, textAlign: "left" }}>
                       {label ? <div style={{ color: muted, fontSize: 18, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1.1, marginBottom: 4 }}>{label}</div> : null}
-                      <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.1, overflowWrap: "break-word" }}>{value}</div>
+                      <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.1, overflowWrap: "break-word" }}>{glueRanges(value)}</div>
                     </div>
                   </div>
                 );

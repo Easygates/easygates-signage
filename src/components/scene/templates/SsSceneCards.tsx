@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, CtaBar, Frame, Head, MARGIN, TOP, fitPx } from "./brandParts";
+import { AREA_H, BOTTOM, BrandIcon, CtaBar, Frame, Head, MARGIN, TOP, fitPx, headHeight } from "./brandParts";
 import { alpha, chips, columnCount, columnWidth, kit, radiusFor, rows, type Kit } from "./brandKit";
 
 /**
@@ -33,6 +33,7 @@ function Card({
   w,
   h,
   cols,
+  rowsOfCards,
 }: {
   k: Kit;
   d: TemplateProps["d"];
@@ -41,9 +42,10 @@ function Card({
   w: number;
   h: number | string;
   cols: number;
+  rowsOfCards: number;
 }) {
   const triggers = chips(item.desc, 3);
-  const photoH = Math.round((typeof h === "number" ? h : 380) * 0.46);
+  const photoH = Math.round((typeof h === "number" ? h : 380) * (rowsOfCards > 1 ? 0.44 : 0.5));
   const namePx = fitPx(item.name, w - 40, cols > 3 ? 34 : 42, 22);
   const radius = radiusFor(w);
 
@@ -104,15 +106,19 @@ export default function SsSceneCardsTemplate({ scene, d }: TemplateProps) {
   const w = columnWidth(totalW, cols, GAP);
   // two rows when there are more cards than columns
   const rowCount = Math.ceil((items.length || cols) / cols);
-  const cardH = rowCount > 1 ? "calc((100% - 22px) / 2)" : "100%";
+  // the card height is worked out from what is really above and below the grid, so the title and
+  // trigger chips under each photo are never cut off by the card's bottom edge
+  const ctaH = scene.ctaText ? 24 + 80 : 0;
+  const gridH = AREA_H - headHeight(scene, totalW, 78, 34) - 24 - ctaH - (ctaH ? 24 : 0);
+  const cardH = rowCount > 1 ? Math.floor((gridH - GAP) / 2) : gridH;
 
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: TOP, bottom: BOTTOM, padding: `0 ${MARGIN}px`, display: "flex", flexDirection: "column", gap: 24 }}>
       <Head scene={scene} d={d} k={k} width={totalW} max={78} min={34} />
 
-      <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexWrap: "wrap", gap: GAP, alignContent: "stretch" }}>
+      <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexWrap: "wrap", gap: GAP, alignContent: "flex-start" }}>
         {items.length ? (
-          items.map((it, i) => <Card key={i} k={k} d={d} i={i} item={it} w={w} h={cardH} cols={cols} />)
+          items.map((it, i) => <Card key={i} k={k} d={d} i={i} item={it} w={w} h={cardH} cols={cols} rowsOfCards={rowCount} />)
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 28, color: k.muted }}>
             <BrandIcon id="bulb" size={34} color={k.muted} />

@@ -39,7 +39,8 @@ export default function ClickCollectTemplate({ scene, d }: TemplateProps) {
 
   const head = fitText({ text: headline, boxW: 1180, maxPx: 92, minPx: 50, maxLines: 2, lineHeight: 0.96, ls: -0.03 });
   const subFit = fitText({ text: sub, boxW: 1180, maxPx: 28, minPx: 21, maxLines: 1 });
-  const dialFit = fitText({ text: dial, boxW: 250, maxPx: 74, minPx: 30, maxLines: 2, lineHeight: 0.95, ls: -0.03 });
+  // the promise ("1 MINUTE") sits under the stopwatch, not on its face where it hid the hands
+  const dialFit = fitText({ text: dial, boxW: 380, maxPx: 70, minPx: 30, maxLines: 1, ls: -0.03, upper: true });
   const ctaFit = fitText({ text: cta, boxW: 1500, maxPx: 30, minPx: 19, maxLines: 1, ls: 0.08 });
 
   return (
@@ -78,12 +79,10 @@ export default function ClickCollectTemplate({ scene, d }: TemplateProps) {
             >
               <Stencil color={p.accentInk} size={16} style={{ opacity: 0.8 }}>COLLECT IN</Stencil>
               <div className="relative mt-2 flex items-center justify-center">
-                <Stopwatch size={286} face="#ffffff" ink={INK} accent={p.accent} />
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="sg-display text-center" style={{ width: 190, color: INK, fontSize: dialFit.px, lineHeight: 0.95, letterSpacing: "-0.03em" }}>
-                    {dial}
-                  </div>
-                </div>
+                <Stopwatch size={250} face="#ffffff" ink={INK} accent={p.accent} />
+              </div>
+              <div className="sg-display mt-2 text-center uppercase" style={{ color: p.accentInk, fontSize: dialFit.px, lineHeight: 1, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
+                {dial}
               </div>
               {description && (
                 <p style={{ color: p.accentInk, opacity: 0.92, fontSize: 18, lineHeight: 1.35, textAlign: "center", margin: "10px 0 0", ...clamp(3) }}>

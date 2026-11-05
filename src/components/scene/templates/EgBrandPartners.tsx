@@ -1,13 +1,14 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, CtaBar, Frame, Head, MARGIN, TOP, fitPx } from "./brandParts";
+import { BOTTOM, CtaBar, Frame, Head, MARGIN, TOP, fitPx, longestWord } from "./brandParts";
 import { alpha, kit, rows, type Kit } from "./brandKit";
 
 /**
  * Template "eg-brand-partners" — EasyGates Direct · Brands We Stock.
  *
- * A typographic manufacturer wall: the brands held on the shelf, set large in
- * three alternating inks so the wall has rhythm without logos. The category sits
- * underneath each name. Ten across two rows, or five in one.
+ * A manufacturer wall: the brands held on the shelf, each on a white logo plate. Add the
+ * manufacturer's logo as the row's image and it fills the plate; without one the brand
+ * name is set in the plate instead. The category sits underneath. Ten across two rows,
+ * or five in one.
  *
  * FIELDS:
  * - eyebrow     = small label, e.g. "EASYGATES DIRECT · BRANDS"
@@ -17,16 +18,22 @@ import { alpha, kit, rows, type Kit } from "./brandKit";
  * - items[]     = the manufacturers, up to ten:
  *   - name = the brand, e.g. "CAME"
  *   - desc = what we stock of theirs, e.g. "Gate operators & control panels"
- *   - image = optional manufacturer logo
+ *   - image = the manufacturer's logo (a transparent PNG or SVG on white works best)
  * Not used: imageUrl, productName, description, prices, highlightColor.
  */
 
 const COLS = 5;
 
 function BrandTile({ k, i, name, desc, image, w, h }: { k: Kit; i: number; name: string; desc?: string; image?: string; w: number; h: number | string }) {
-  // three-in-a-row rhythm: body text, accent, second accent
+  // three-in-a-row rhythm for the accent bar and the name when it has to stand in for a logo
   const tone = i % 3 === 0 ? k.text : i % 3 === 1 ? k.accent : k.accent2;
-  const namePx = fitPx(name, w - 44, 56, 26, 2, 0.02);
+  // every tile reserves a white logo plate (manufacturer logos are drawn for white). With no logo
+  // uploaded the brand name is set in the plate instead, so the wall looks finished either way.
+  // Names are drawn in capitals, so they are measured in capitals, and sized for the longest word so
+  // no brand ever breaks in the middle ("HÖRMAN / N").
+  const plateInner = w - 46 - 28;
+  const plateNamePx = Math.min(fitPx(name, plateInner, 52, 20, 2, 0.02, true), fitPx(longestWord(name), plateInner, 52, 20, 1, 0.02, true));
+  const captionPx = fitPx(name, w - 46, 28, 18, 1, 0.04, true);
   return (
     <div
       className="sg-anim sg-fade-up"
@@ -36,9 +43,8 @@ function BrandTile({ k, i, name, desc, image, w, h }: { k: Kit; i: number; name:
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
-        gap: 10,
-        padding: "22px 20px",
+        gap: 12,
+        padding: "20px 20px 18px",
         borderRadius: 16,
         background: alpha(k.text, k.dark ? 0.04 : 0.03),
         border: `1px solid ${k.line}`,
@@ -47,10 +53,27 @@ function BrandTile({ k, i, name, desc, image, w, h }: { k: Kit; i: number; name:
       }}
     >
       <span style={{ display: "block", width: 44, height: 6, borderRadius: 99, background: tone, flex: "none" }} />
-      <span style={{ flex: "1 1 auto", display: "flex", alignItems: "center", minHeight: 0 }}>
-        {image ? <Frame src={image} alt={name} w="100%" h={100} k={k} radius={10} fit="contain" /> : <span style={{ display: "block", fontSize: namePx, fontWeight: 900, lineHeight: 1.02, letterSpacing: "0.02em", textTransform: "uppercase", color: tone, overflowWrap: "anywhere" }}>{name}</span>}
+      <span
+        style={{
+          flex: "1 1 auto",
+          minHeight: 0,
+          display: "grid",
+          placeItems: "center",
+          padding: 10,
+          borderRadius: 12,
+          background: "#ffffff",
+          boxShadow: k.dark ? "inset 0 0 0 1px rgba(15,23,42,0.08)" : `inset 0 0 0 1px ${k.line}`,
+          overflow: "hidden",
+        }}
+      >
+        {image ? <Frame src={image} alt={name} w="100%" h="100%" k={k} radius={8} fit="contain" /> : (
+          <span style={{ display: "block", fontSize: plateNamePx, fontWeight: 900, lineHeight: 1.02, letterSpacing: "0.02em", textAlign: "center", textTransform: "uppercase", color: "#0b1620" }}>{name}</span>
+        )}
       </span>
-      {desc ? <span style={{ display: "block", fontSize: 20, fontWeight: 600, lineHeight: 1.2, color: k.muted, overflowWrap: "anywhere" }}>{desc}</span> : null}
+      {image ? (
+        <span style={{ display: "block", flex: "none", fontSize: captionPx, fontWeight: 900, letterSpacing: "0.04em", textTransform: "uppercase", color: tone, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+      ) : null}
+      {desc ? <span style={{ display: "block", flex: "none", fontSize: 20, fontWeight: 600, lineHeight: 1.2, color: k.muted, overflowWrap: "anywhere" }}>{desc}</span> : null}
     </div>
   );
 }

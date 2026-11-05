@@ -3,7 +3,7 @@ import { hexToRgb, mixHex } from "@/lib/color";
 import { inkOn } from "./brandKit";
 import { A, Icon, palette } from "./storeBoardParts";
 import { fitText, serviceIcon } from "./storeBoardKit";
-import { accentBar, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
+import { accentBar, glueRanges, headlinePlan, logoSource, plateColor, plateInk, splashDetails } from "./splashKit";
 
 /**
  * Template "splash-split" — EasyGates Direct / any business · Split-panel welcome.
@@ -83,7 +83,7 @@ export default function SplashSplitTemplate({ scene, d }: TemplateProps) {
   const muted = scene.mutedColor || soft(text, 0.72);
   const wordInk = plateInk(plate, barInk);
 
-  const headFit = fitText({ text: scene.headline || "", boxW: 980, maxPx: 88, minPx: 42, maxLines: 2, lineHeight: 1.02, ls: -0.02 });
+  const headPlan = headlinePlan(scene.headline || "", 980, { oneMax: 84, oneMin: 58, twoMax: 88, twoMin: 42 });
   const subFit = fitText({ text: sub, boxW: 960, maxPx: 40, minPx: 26, maxLines: 2, lineHeight: 1.2 });
   const wordFit = fitText({ text: name, boxW: PANEL_W - 150, maxPx: 64, minPx: 30, maxLines: 2, upper: true, lineHeight: 0.98, ls: -0.01 });
   const rowH = items.length >= 4 ? 100 : items.length === 3 ? 118 : 140;
@@ -174,7 +174,11 @@ export default function SplashSplitTemplate({ scene, d }: TemplateProps) {
       {/* ── information side ── */}
       <div style={{ position: "absolute", left: PANEL_W + 70, right: 76, top: 116, bottom: 78, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
         <A d={d} i={2} cls="sg-fade-up" style={{ maxWidth: 990 }}>
-          <div style={{ color: text, fontSize: headFit.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>{scene.headline || ""}</div>
+          <div style={{ color: text, fontSize: headPlan.px, fontWeight: 900, lineHeight: 1.02, letterSpacing: "-0.02em", overflowWrap: "anywhere" }}>
+            {headPlan.lines.map((l, i) => (
+              <div key={i}>{l}</div>
+            ))}
+          </div>
         </A>
 
         <A d={d} i={3} cls="sg-scale-in">
@@ -201,7 +205,7 @@ export default function SplashSplitTemplate({ scene, d }: TemplateProps) {
                     </span>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       {label ? <div style={{ color: muted, fontSize: 20, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1.1, marginBottom: 4 }}>{label}</div> : null}
-                      <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.08, overflowWrap: "break-word" }}>{value}</div>
+                      <div style={{ color: text, fontSize: vf.px, fontWeight: 900, lineHeight: 1.08, overflowWrap: "break-word" }}>{glueRanges(value)}</div>
                     </div>
                   </div>
                 </A>

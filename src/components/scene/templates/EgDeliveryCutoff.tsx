@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, CtaBar, Head, MARGIN, Panel, TOP, fitPx } from "./brandParts";
+import { BOTTOM, BrandIcon, CtaBar, FitColumn, Head, MARGIN, Panel, TOP, fitPx } from "./brandParts";
 import { clockHand, handAngle, kit, rows, type Kit } from "./brandKit";
 
 /**
@@ -68,9 +68,9 @@ export default function EgDeliveryCutoffTemplate({ scene, d }: TemplateProps) {
     <div style={{ position: "absolute", left: 0, right: 0, top: TOP, bottom: BOTTOM, padding: `0 ${MARGIN}px`, display: "flex", flexDirection: "column", gap: 26 }}>
       <Head scene={scene} d={d} k={k} width={1920 - MARGIN * 2} max={80} min={36} />
 
-      <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", gap: 44, alignItems: "center" }}>
+      <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", gap: 44, alignItems: "stretch" }}>
         {/* ── the clock dial ── */}
-        <div style={{ flex: "none", width: DIAL, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+        <div style={{ flex: "none", width: DIAL, alignSelf: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
           <div
             className="sg-anim sg-scale-in"
             style={{
@@ -155,8 +155,8 @@ export default function EgDeliveryCutoffTemplate({ scene, d }: TemplateProps) {
         </div>
 
         {/* ── options ── */}
-        <div style={{ flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-          <Panel k={k} pad={24} style={{ display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
+        <FitColumn style={{ flex: "1 1 auto", minWidth: 0 }} innerStyle={{ gap: 16, justifyContent: "center" }}>
+          <Panel k={k} pad={24} style={{ flex: "none", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
             {items.length ? (
               items.map((it, i) => <Option key={i} k={k} i={2 + i} name={it.name} desc={it.desc} tag={it.tag} px={px} />)
             ) : (
@@ -171,7 +171,7 @@ export default function EgDeliveryCutoffTemplate({ scene, d }: TemplateProps) {
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <CtaBar scene={scene} d={d} k={k} i={4 + items.length} width={rightW} />
           </div>
-        </div>
+        </FitColumn>
       </div>
     </div>
   );

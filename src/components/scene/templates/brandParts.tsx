@@ -1,9 +1,9 @@
 /* eslint-disable @next/next/no-img-element -- signage renders arbitrary user/remote URLs that can't be pre-allowlisted for next/image */
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import type { Scene } from "@/lib/signage";
 import type { Delays } from "../parts";
 import { HeadlineLines } from "../parts";
-import { fitText, textWidth } from "./storeBoardKit";
+import { countLines, fitText, textWidth } from "./storeBoardKit";
 import { A, clamp } from "./storeBoardParts";
 import { alpha, stars, stepLabel, type Kit } from "./brandKit";
 
@@ -277,7 +277,7 @@ export function Head({
   /** false for templates that declare subheadline unused */
   sub?: boolean;
 }) {
-  const fit = fitText({ text: scene.headline || "", boxW: width, maxPx: max, minPx: min, maxLines: 2, lineHeight: 1.04, ls: -0.015 });
+  const fit = headFit(scene.headline || "", width, max, min);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: align === "center" ? "center" : "stretch" }}>
       {scene.eyebrow ? (
@@ -534,9 +534,119 @@ export function SpecRow({
   );
 }
 
-/** Measure text and give back a font size that fits — thin wrapper so templates stay short. */
-export function fitPx(text: string, boxW: number, maxPx: number, minPx: number, maxLines = 1, ls = -0.01): number {
-  return fitText({ text, boxW, maxPx, minPx, maxLines, lineHeight: 1.1, ls }).px;
+/**
+ * Measure text and give back a font size that fits — thin wrapper so templates stay short.
+ * Pass `upper` when the text is shown in capitals (CSS text-transform): capitals are wider, and
+ * measuring the lower-case string is what made long brand names break in the middle of a word.
+ */
+export function fitPx(text: string, boxW: number, maxPx: number, minPx: number, maxLines = 1, ls = -0.01, upper = false): number {
+  return fitText({ text, boxW, maxPx, minPx, maxLines, lineHeight: 1.1, ls, upper }).px;
+}
+
+/** The longest word of a text — the one that decides whether a name can avoid breaking mid-word. */
+export function longestWord(text: string): string {
+  return (text || "").split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), "");
+}
+
+/**
+ * Headline lines the way <Head> really draws them: a new line after every full stop that is
+ * followed by a space ("ONE TAP. THE WHOLE HOUSE." is two lines however short it is), and each of
+ * those wraps on its own if it is wider than the box.
+ */
+export function headlineLineCount(text: string, px: number, width: number): number {
+  const segments = (text || "").replace(/\.\s+/g, ".\n").split("\n").filter(Boolean);
+  let n = 0;
+  for (const seg of segments) n += Math.max(1, countLines(seg, px, width, { ls: -0.015 }));
+  return n;
+}
+
+/**
+ * The headline size <Head> uses: the biggest size at which the headline (with its forced line breaks)
+ * fits two lines. A headline with three or more sentences ("SMART LOCK. NO KEY. NO FUSS.") needs
+ * three lines whatever the size, so it is capped smaller to leave the slide its room.
+ */
+export function headFit(text: string, width: number, max: number, min: number): { px: number; lines: number } {
+  const segments = (text || "").replace(/\.\s+/g, ".\n").split("\n").filter(Boolean).length;
+  const allowed = Math.max(2, segments);
+  const top = segments > 2 ? Math.min(max, 64) : max;
+  for (let size = Math.max(top, min); size >= min; size -= 2) {
+    const lines = headlineLineCount(text, size, width);
+    if (lines <= allowed) return { px: size, lines };
+  }
+  return { px: min, lines: headlineLineCount(text, min, width) };
+}
+
+/**
+ * Height in px that <Head> takes (eyebrow, headline, subheadline), so a template can share the rest
+ * of the 906px content area out exactly instead of guessing. Keep in step with Head's markup.
+ */
+export function headHeight(scene: Scene, width: number, max = 96, min = 40, sub = true): number {
+  const text = scene.headline || "";
+  const fit = headFit(text, width, max, min);
+  const parts: number[] = [];
+  if (scene.eyebrow) parts.push(28);
+  if (text) parts.push(fit.lines * Math.round(fit.px * 1.02));
+  if (sub && scene.subheadline) parts.push(countLines(scene.subheadline, 28, width, { ls: 0 }) * 34);
+  return parts.reduce((a, b) => a + b, 0) + Math.max(0, parts.length - 1) * 14;
+}
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * A box that never lets its content spill out: if what is inside is taller than the box, the content
+ * is scaled down (never below `min`) until it fits. This is the safety net behind the size estimates
+ * — a wider font on the player or an unusually long row cannot push a button off the bottom of the
+ * screen or cut the first row in half. It measures before the browser paints, so nobody sees it.
+ *
+ * `style` goes on the outer box (give it a definite size, e.g. `flex: 1 1 0; min-height: 0`);
+ * `innerStyle` on the content column (display/flex/gap). Do not set width, min-height or transform on it.
+ */
+export function FitColumn({
+  children,
+  style,
+  innerStyle,
+  min = 0.66,
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  innerStyle?: CSSProperties;
+  min?: number;
+}) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  useIsoLayoutEffect(() => {
+    const o = outer.current;
+    const i = inner.current;
+    if (!o || !i) return;
+    const have = o.clientHeight;
+    if (!have) return;
+    // the content's layout height: the children's own heights plus the gaps between them. (Not
+    // scrollHeight, which also counts a rotated sticker's corners and would never settle.)
+    const naturalHeight = () => {
+      const cs = getComputedStyle(i);
+      const kids = Array.from(i.children).filter((c): c is HTMLElement => c instanceof HTMLElement && getComputedStyle(c).position !== "absolute");
+      let sum = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.rowGap) || 0) * Math.max(0, kids.length - 1);
+      for (const kid of kids) {
+        const ks = getComputedStyle(kid);
+        sum += kid.offsetHeight + (parseFloat(ks.marginTop) || 0) + (parseFloat(ks.marginBottom) || 0);
+      }
+      return sum;
+    };
+    for (const s of [1, 0.95, 0.9, 0.86, 0.82, 0.78, 0.74, 0.7, 0.66]) {
+      if (s < min) break;
+      i.style.width = `${100 / s}%`;
+      i.style.minHeight = `${have / s}px`;
+      i.style.transform = s === 1 ? "none" : `scale(${s})`;
+      if (naturalHeight() * s <= have + 2) break;
+    }
+  });
+  return (
+    <div ref={outer} style={{ position: "relative", overflow: "hidden", minHeight: 0, ...style }}>
+      <div ref={inner} style={{ display: "flex", flexDirection: "column", transformOrigin: "top left", ...innerStyle }}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export { A, clamp, textWidth, fitText, stepLabel };

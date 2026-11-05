@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, CtaBar, Frame, Head, MARGIN, Panel, TOP, fitPx } from "./brandParts";
+import { BOTTOM, BrandIcon, CtaBar, FitColumn, Frame, Head, MARGIN, Panel, TOP, fitPx } from "./brandParts";
 import { kit, rows, type Kit } from "./brandKit";
 
 /**
@@ -111,13 +111,13 @@ export default function EgKitBuilderTemplate({ scene, d }: TemplateProps) {
         </div>
 
         {/* ── contents + price ── */}
-        <div style={{ flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
-          <Panel k={k} pad={24} style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <FitColumn style={{ flex: "1 1 auto", minWidth: 0 }} innerStyle={{ gap: 18 }}>
+          <Panel k={k} pad={24} style={{ flex: "1 0 auto", display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: k.muted }}>What&apos;s in the box</span>
               {items.length > 0 && <span style={{ fontSize: 20, fontWeight: 800, color: k.muted }}>{items.length} items</span>}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: "1 1 0" }}>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flex: "1 0 auto" }}>
               {items.length ? (
                 items.map((it, i) => <SpecRow key={i} k={k} name={it.name} value={it.price || "INCLUDED"} tag={it.tag} i={2 + i} px={rowPx} />)
               ) : (
@@ -164,7 +164,7 @@ export default function EgKitBuilderTemplate({ scene, d }: TemplateProps) {
             <div style={{ flex: "1 1 auto" }} />
             <CtaBar scene={scene} d={d} k={k} i={5 + items.length} width={rightW} />
           </div>
-        </div>
+        </FitColumn>
       </div>
     </div>
   );
