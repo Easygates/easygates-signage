@@ -12,6 +12,7 @@ import {
   VALUE_DEMO_SCENES,
 } from "@/lib/signage";
 import { sceneToRow } from "@/lib/server";
+import { nextScreenNumber } from "@/lib/screens";
 import type { Scene } from "@/lib/signage";
 
 export const dynamic = "force-dynamic";
@@ -157,18 +158,25 @@ export async function POST(req: Request) {
     }
 
     // ── displays (one per TV, idempotent by name) ──
-    const existingDisplays = await db.select({ name: displays.name }).from(displays);
+    const existingDisplays = await db.select({ name: displays.name, n: displays.screenNumber }).from(displays);
     const haveDisplay = new Set(existingDisplays.map((d) => d.name));
     const newDisplays = cfg.displays.filter((d) => !haveDisplay.has(d.name));
     if (newDisplays.length) {
+      // each new screen takes the next free screen number (?displayId=1, 2, 3 …)
+      const taken: number[] = existingDisplays.map((d) => d.n).filter((n): n is number => typeof n === "number");
       await db.insert(displays).values(
-        newDisplays.map((d) => ({
-          ...d,
-          playlistId,
-          resolution: "1920x1080",
-          orientation: "landscape",
-          status: "offline",
-        })) as never
+        newDisplays.map((d) => {
+          const screenNumber = nextScreenNumber(taken);
+          taken.push(screenNumber);
+          return {
+            ...d,
+            screenNumber,
+            playlistId,
+            resolution: "1920x1080",
+            orientation: "landscape",
+            status: "offline",
+          };
+        }) as never
       );
     }
 

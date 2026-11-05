@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { displays } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import { nextScreenNumber, parseScreenNumber } from "@/lib/screens";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +37,15 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    // a new screen gets the lowest free screen number unless one is asked for
+    const taken = await db.select({ n: displays.screenNumber }).from(displays);
+    const asked = body.screenNumber === undefined ? null : parseScreenNumber(body.screenNumber);
+    if (asked === undefined) return NextResponse.json({ error: "Screen number must be a whole number from 1 to 9999" }, { status: 400 });
+    if (asked !== null && taken.some((t) => t.n === asked)) return NextResponse.json({ error: `Screen number ${asked} is already used` }, { status: 409 });
+    const screenNumber = asked ?? nextScreenNumber(taken.map((t) => t.n));
     const rows = await db
       .insert(displays)
-      .values({ name: body.name || "New display", location: body.location || "", playlistId: body.playlistId || null, resolution: body.resolution || "1920x1080", orientation: body.orientation || "landscape", status: "offline", pairingCode: code(), settings: body.settings || null } as never)
+      .values({ screenNumber, name: body.name || "New display", location: body.location || "", playlistId: body.playlistId || null, resolution: body.resolution || "1920x1080", orientation: body.orientation || "landscape", status: "offline", pairingCode: code(), settings: body.settings || null } as never)
       .returning();
     return NextResponse.json({ display: rows[0] }, { status: 201 });
   } catch {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { displays } from "@/db/schema";
+import { findDisplay } from "@/lib/screenLookup";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,10 @@ export const dynamic = "force-dynamic";
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const rows = await db
-      .update(displays)
-      .set({ status: "online", lastSeen: new Date() } as never)
-      .where(eq(displays.id, id))
-      .returning({ id: displays.id });
-    if (!rows.length) return NextResponse.json({ error: "unknown display" }, { status: 404 });
+    // the screen calls this with whatever is in its ?displayId= (its number or its long id)
+    const screen = await findDisplay(id);
+    if (!screen) return NextResponse.json({ error: "unknown display" }, { status: 404 });
+    await db.update(displays).set({ status: "online", lastSeen: new Date() } as never).where(eq(displays.id, screen.id));
     return NextResponse.json({ ok: true });
   } catch {
     // an invalid id or a database hiccup must never break a screen

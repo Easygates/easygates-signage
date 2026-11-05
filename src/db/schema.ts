@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // Every table enables RLS with no policies: the app connects as the table owner
@@ -111,9 +112,13 @@ export const displays = pgTable("displays", {
   status: text("status").default("offline"),
   lastSeen: timestamp("last_seen", { withTimezone: true }),
   pairingCode: text("pairing_code"),
+  // Short, editable, unique label for ?displayId=2 (the long id keeps working); see src/lib/screens.ts
+  screenNumber: integer("screen_number"),
   settings: jsonb("settings").$type<Record<string, unknown> | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}).enableRLS();
+}, (t) => [
+  uniqueIndex("idx_displays_screen_number").on(t.screenNumber),
+]).enableRLS();
 
 export const schedules = pgTable("schedules", {
   id: uuid("id").defaultRandom().primaryKey(),

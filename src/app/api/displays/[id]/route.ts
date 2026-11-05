@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { displays } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { parseScreenNumber } from "@/lib/screens";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,21 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (body.heartbeat) {
       patch.status = "online";
       patch.lastSeen = new Date();
+    }
+
+    // Screen number (?displayId=2): whole number 1–9999, unique, or empty to clear it.
+    if (body.screenNumber !== undefined) {
+      const n = parseScreenNumber(body.screenNumber);
+      if (n === undefined) return NextResponse.json({ error: "Screen number must be a whole number from 1 to 9999, or empty" }, { status: 400 });
+      if (n !== null) {
+        const clash = await db
+          .select({ name: displays.name })
+          .from(displays)
+          .where(and(eq(displays.screenNumber, n), ne(displays.id, id)))
+          .limit(1);
+        if (clash[0]) return NextResponse.json({ error: `Screen number ${n} is already used by "${clash[0].name}"` }, { status: 409 });
+      }
+      patch.screenNumber = n;
     }
 
     // Merge player settings instead of replacing them, so the stored password survives

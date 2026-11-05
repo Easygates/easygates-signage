@@ -8,7 +8,8 @@ import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
-import { ScreenBasePanel, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
+import { ScreenBasePanel, ScreenNumberField, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
+import { screenRefFor } from "@/lib/screens";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import {
   DEFAULT_BRAND,
@@ -623,7 +624,7 @@ export default function AdminPage() {
   const [playlists, setPlaylists] = useState<PlaylistFull[]>([]);
   const [assets, setAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
   const [publicAssets, setPublicAssets] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
-  const [displays, setDisplays] = useState<{ id: string; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean; settings?: Record<string, unknown> | null }[]>([]);
+  const [displays, setDisplays] = useState<{ id: string; screenNumber?: number | null; name: string; location?: string; playlistId?: string | null; pairingCode?: string; status?: string; lastSeen?: string; fullyUrl?: string; hasFully?: boolean; settings?: Record<string, unknown> | null }[]>([]);
   const [schedules, setSchedules] = useState<{ id: string; name: string; playlistId: string; displayId?: string | null; days: string; startTime: string; endTime: string; priority: number; enabled: boolean }[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
   const [sceneQuery, setSceneQuery] = useState("");
@@ -1438,6 +1439,18 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                     </div>
                     <div className="mt-3 text-lg font-black">{x.name}</div>
                     <div className="text-sm text-white/50">{x.location || "—"}</div>
+                    <ScreenNumberField
+                      key={`${x.id}-${x.screenNumber ?? ""}`}
+                      value={x.screenNumber}
+                      onSave={async (text) => {
+                        const r = await fetch(`/api/displays/${x.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screenNumber: text === "" ? null : text }) });
+                        const j = await r.json().catch(() => ({} as { error?: string }));
+                        if (!r.ok) { flash(j.error || "Could not save the screen number"); return false; }
+                        load();
+                        flash(text ? `Screen number ${text} saved — the address now ends displayId=${text}` : "Screen number cleared — the address uses the long id again");
+                        return true;
+                      }}
+                    />
                     <div className="mt-3">
                       <label className="lbl">Playlist</label>
                       <select value={x.playlistId || ""} onChange={async (e) => { await fetch(`/api/displays/${x.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playlistId: e.target.value || null }) }); load(); flash("Display retargeted — applies on next poll"); }} className="inp bg-[#141b33]">
@@ -1461,9 +1474,9 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                       </select>
                       <p className="mt-1 text-[11px] text-white/40">Which business this screen belongs to. It decides the logo, phone number, colours and ticker.</p>
                     </div>
-                    <ScreenUrl url={`${screenBase.base}/display?displayId=${x.id}`} onCopied={() => flash("Screen URL copied")} />
+                    <ScreenUrl url={`${screenBase.base}/display?displayId=${screenRefFor(x)}`} onCopied={() => flash("Screen URL copied")} />
                     <div className="mt-3 flex gap-2 text-xs font-black">
-                      <Link href={`/display?displayId=${x.id}`} target="_blank" className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-center hover:bg-red-400">▶ OPEN SCREEN</Link>
+                      <Link href={`/display?displayId=${screenRefFor(x)}`} target="_blank" className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-center hover:bg-red-400">▶ OPEN SCREEN</Link>
                       <button onClick={async () => { if (!confirm("Remove display?")) return; await fetch(`/api/displays/${x.id}`, { method: "DELETE" }); load(); }} className="rounded-xl bg-white/10 px-4 py-2.5 text-red-300 ring-1 ring-white/20">✕</button>
                     </div>
                     <PlayerControls displayId={x.id} fullyUrl={x.fullyUrl} hasFully={x.hasFully} onSaved={load} flash={flash} />

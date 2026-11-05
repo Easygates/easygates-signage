@@ -5,6 +5,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { rowToScene } from "@/lib/server";
 import { DEMO_SCENES } from "@/lib/signage";
 import { loadBrand, loadBusinesses, loadFailsafe } from "@/lib/settings";
+import { findDisplay } from "@/lib/screenLookup";
 import { profileById, type BrandSettings } from "@/lib/brand";
 import type { FailsafeSettings } from "@/lib/failsafe";
 
@@ -33,10 +34,11 @@ export async function GET(req: Request) {
     let display = null;
 
     if (displayId) {
-      const d = await db.select().from(displays).where(eq(displays.id, displayId)).limit(1);
-      display = d[0] || null;
+      // ?displayId= is the screen's number (1, 2, 3 …) or its long id
+      display = await findDisplay(displayId);
       if (display) {
-        await db.update(displays).set({ status: "online", lastSeen: new Date() } as never).where(eq(displays.id, displayId));
+        const screenId = display.id;
+        await db.update(displays).set({ status: "online", lastSeen: new Date() } as never).where(eq(displays.id, screenId));
         playlistId = display.playlistId;
         // A screen tagged with a business plays that business's branding.
         const assigned = profileById(
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
         const { day, hhmm } = scheduleNow(brand.timezone);
         const all = await db.select().from(schedules).where(and(eq(schedules.enabled, true)));
         const cands = all.filter((s) => {
-          if (s.displayId && s.displayId !== displayId) return false;
+          if (s.displayId && s.displayId !== screenId) return false;
           if (s.days && !s.days.split(",").includes(day)) return false;
           if (s.startTime && hhmm < s.startTime) return false;
           if (s.endTime && hhmm > s.endTime) return false;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 const KEY = "sg_screen_base";
 const isLocalhost = (u: string) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(u);
@@ -71,6 +71,39 @@ export function ScreenUrl({ url, onCopied }: { url: string; onCopied: () => void
         onClick={async () => { try { await navigator.clipboard.writeText(url); onCopied(); } catch { /* clipboard blocked: the box is selectable */ } }}
         className="shrink-0 rounded-xl bg-white/10 px-3 text-xs font-black ring-1 ring-white/20 hover:bg-white/20"
       >COPY</button>
+    </div>
+  );
+}
+
+/**
+ * The screen's number — the short label in its address (…/display?displayId=2). Saved when you
+ * leave the box or press Enter; `onSave` returns false if it was refused (e.g. already used), and the
+ * box then goes back to the saved number. Give it a `key` that includes the saved number.
+ */
+export function ScreenNumberField({ value, onSave }: { value: number | null | undefined; onSave: (text: string) => Promise<boolean> }) {
+  const saved = typeof value === "number" ? String(value) : "";
+  const [text, setText] = useState(saved);
+  const inputId = useId();
+  const commit = async () => {
+    const t = text.trim();
+    if (t === saved) return;
+    if (!(await onSave(t))) setText(saved);
+  };
+  return (
+    <div className="mt-3">
+      <label className="lbl" htmlFor={inputId}>Screen number</label>
+      <input
+        id={inputId}
+        value={text}
+        inputMode="numeric"
+        maxLength={4}
+        onChange={(e) => setText(e.target.value.replace(/[^\d]/g, ""))}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        placeholder="e.g. 1"
+        className="inp w-28 font-mono"
+      />
+      <p className="mt-1 text-[11px] text-white/40">Used in this screen&apos;s address: <code>…/display?displayId={saved || "1"}</code>. Must be different on every screen.</p>
     </div>
   );
 }

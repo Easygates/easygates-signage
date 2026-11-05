@@ -233,7 +233,7 @@ Every slide is laid out on a fixed 1920×1080 canvas and scaled to fit the scree
 | Route | Purpose |
 |---|---|
 | `/` | Product overview |
-| `/display` | Fullscreen player (append `?playlistId=…` or `?displayId=…`, optional `&poll=10`, `&offline=1` to preview the failsafe) |
+| `/display` | Fullscreen player (append `?displayId=1` — a screen's short number, or its long id — or `?playlistId=…`; optional `&poll=10`, `&offline=1` to preview the failsafe) |
 | `/export?playlistId=…` | Record one playlist pass as a 1080p MP4 from the browser |
 | `/admin` | CMS — scenes, playlists, assets, displays, schedules, timeline, failsafe |
 | `/admin?tab=database` | Live DB diagnostics + interactive Supabase `.env` builder + backup / restore (JSON + SQL) |
@@ -299,6 +299,10 @@ npx next typegen && npm exec tsc -- --noEmit && npm run build
 ## Choosing player hardware
 
 See **[HARDWARE.md](HARDWARE.md)** for the 2026 recommendation (Raspberry Pi kiosk, Android box + Fully Kiosk, HDMI splitter for identical content), UK pricing, and a one-command Pi installer in [`deploy/pi-kiosk.sh`](deploy/pi-kiosk.sh).
+
+## Screen numbers
+
+Every screen has a short, editable **screen number** (Displays tab → the card's *Screen number* box), so a TV's start page can be `http://tv-serv:3000/display?displayId=1` instead of a long id. Numbers are unique (1–9999); new screens take the lowest free number, and the long id keeps working. After pulling this change, run `supabase/schema.sql` once (or `npx drizzle-kit push`) to add the column and number your existing screens, oldest first.
 
 ## Keeping the server address stable
 

@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS public.displays (
   status text DEFAULT 'offline',
   last_seen timestamptz,
   pairing_code text,
+  screen_number integer,
   settings jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -125,6 +126,17 @@ ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS theme text DEFAULT 'none';
 ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS highlight_color text;
 ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS logo_plate_color text;
 ALTER TABLE public.scenes ADD COLUMN IF NOT EXISTS bar_color text;
+
+-- Screen numbers (?displayId=1, 2, 3 …): existing screens are numbered once, oldest first, and the
+-- number must be unique. Safe to re-run: only screens without a number are touched.
+ALTER TABLE public.displays ADD COLUMN IF NOT EXISTS screen_number integer;
+WITH base AS (SELECT COALESCE(MAX(screen_number), 0) AS m FROM public.displays),
+     numbered AS (SELECT id, ROW_NUMBER() OVER (ORDER BY created_at, id) AS n FROM public.displays WHERE screen_number IS NULL)
+UPDATE public.displays d
+   SET screen_number = (SELECT m FROM base) + numbered.n
+  FROM numbered
+ WHERE d.id = numbered.id;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_displays_screen_number ON public.displays (screen_number);
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- Lock the tables away from Supabase's public Data API (REST / GraphQL).
