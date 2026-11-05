@@ -159,10 +159,25 @@ npm run build
 npm start                   # → http://localhost:3000
 ```
 
-On the Windows PC that runs the CMS, `start-cms.cmd` does the same thing by
-double-click (it changes into the project folder, installs dependencies on first
-run, then starts the dev server). Run `npm run doctor` if a dev build ever fails
-to compile — see [Troubleshooting](#troubleshooting).
+On the Windows PC that runs the CMS there are two double-click launchers:
+
+- **`start-server.cmd` — for the shop PC that serves the TVs.** Runs the fast production server, builds first when the code has changed (e.g. after `git pull`), and starts the server again by itself if it stops.
+- `start-cms.cmd` — the development server, for editing the code (slower; recompiles pages on first visit).
+
+Run `npm run doctor` if a dev build ever fails to compile — see [Troubleshooting](#troubleshooting).
+
+### Start the server by itself after a power cut (Windows)
+
+The aim: power returns → the PC switches on → signs in → the server starts → the TVs reconnect on their own. Do these once on the server PC:
+
+1. **Start it at sign-in.** Press `Win + R`, type `shell:startup`, press Enter. In the folder that opens, right-click → **New → Shortcut**, browse to `start-server.cmd` in the project folder, and finish. (Right-click the shortcut → Properties → Run: **Minimized** if you don't want the window in the way.)
+2. **Let the PC sign in by itself.** Press `Win + R`, type `netplwiz`, untick **Users must enter a user name and password**, press OK and type the password once. (On Windows 11 if that box is missing: Settings → Accounts → Sign-in options → turn off *For improved security, only allow Windows Hello sign-in*, then try again.)
+3. **Make the PC switch on when power returns.** In the PC's BIOS/UEFI settings (press Del or F2 while it starts), find **Restore on AC Power Loss** (or *After Power Failure*) and set it to **Power On**.
+4. **Stop it sleeping.** Settings → System → Power → set Screen and Sleep to **Never** while plugged in. Set Windows Update *Active hours* to cover the shop's opening times.
+5. **Let the TVs reach it.** The first time the server starts, Windows asks about the firewall: tick **Private networks** and allow. (If you missed it: Windows Security → Firewall → *Allow an app through firewall* → Node.js → Private.)
+6. **Test it.** Restart the PC and don't touch it: after a minute `http://tv-serv:3000/admin` should open from another device. Then switch the TVs off and on, and check they come back with the right playlists.
+
+The TVs come back by themselves when their player app starts on boot (Fully Kiosk: *Launch on Boot*) and their start page is the screen's address, e.g. `http://tv-serv:3000/display?displayId=1`. A screen keeps playing its last playlist while the server is down.
 
 ## Configuring `DATABASE_URL` in `.env` for Supabase
 

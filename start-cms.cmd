@@ -1,6 +1,9 @@
 @echo off
 rem ---------------------------------------------------------------------------
-rem Double-click launcher for the NovaSign CMS on Windows.
+rem Double-click launcher for the NovaSign CMS on Windows - DEVELOPMENT server.
+rem
+rem Running the screens in the shop? Use start-server.cmd instead: it runs the
+rem faster production server and restarts itself if it stops.
 rem
 rem Starting the dev server from the project folder matters: Next.js and
 rem Tailwind both resolve modules relative to the shell's working directory if

@@ -129,6 +129,20 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
           </>
         } />
 
+        <Doc title="5C · Starting the server by itself (Windows PC)" body={
+          <>
+            <p>Use <code>start-server.cmd</code> (not <code>start-cms.cmd</code>, which is the slower development server). It builds when the code has changed, runs the production server, and restarts it if it stops. To make the whole chain survive a power cut:</p>
+            <ol className="mt-3 list-decimal space-y-1.5 pl-5">
+              <li><b>Start at sign-in:</b> <code>Win + R</code> → <code>shell:startup</code> → add a shortcut to <code>start-server.cmd</code> (set it to run minimized).</li>
+              <li><b>Sign in automatically:</b> <code>Win + R</code> → <code>netplwiz</code> → untick &ldquo;Users must enter a user name and password&rdquo;.</li>
+              <li><b>Power back on by itself:</b> in the BIOS set <i>Restore on AC Power Loss</i> to <i>Power On</i>.</li>
+              <li><b>Never sleep:</b> Settings → System → Power → Never while plugged in; set Windows Update active hours to the shop&apos;s opening times.</li>
+              <li><b>Firewall:</b> allow Node.js on <b>Private networks</b> the first time Windows asks, or the TVs can&apos;t reach the server.</li>
+              <li><b>Test:</b> restart the PC and leave it; the admin should open from another device after a minute, and the TVs should come back on their own (Fully Kiosk → <i>Launch on Boot</i>).</li>
+            </ol>
+          </>
+        } />
+
         <Doc title="6 · Keeping the server address stable" body={
           <>
             <p>Every screen opens an address like <code>http://192.168.0.178:3000/display?displayId=…</code>. The number is your PC&apos;s <b>local IP address</b>, handed out by your router. Restarting the app does not change it, but the router can give the PC a different one later. If it changes, every screen&apos;s saved address stops working until you retype it. A screen that is already playing keeps showing its last playlist, but it cannot pick up edits.</p>
