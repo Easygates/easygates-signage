@@ -1,10 +1,10 @@
 // ─── Stateless session cookie for the CMS login ─────────────────────────────
 // One admin password (ADMIN_PASSWORD env var). The cookie value is
-// sha256(password); middleware re-hashes it and compares with
+// sha256(password); proxy.ts re-hashes it and compares with
 // sha256(sha256(password)). The password itself is never in the cookie, and the
 // cookie never equals the password. HTTP-only so client JS can't read it.
 //
-// Stateless validation means the middleware (Edge Runtime) and the /api/auth
+// Stateless validation means the proxy (Edge Runtime) and the /api/auth
 // handlers (Node) agree without any shared server state — no session store,
 // no database table. The cookie's Max-Age (24 h) is the session TTL.
 //

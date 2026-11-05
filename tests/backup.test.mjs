@@ -226,7 +226,7 @@ describe("SQL dump", () => {
 
 describe("backup wiring", () => {
   const route = read("src/app/api/backup/route.ts");
-  const middleware = read("src/middleware.ts");
+  const middleware = read("src/proxy.ts");
   const databasePanel = read("src/components/DatabasePanel.tsx");
   const admin = read("src/app/admin/page.tsx");
 
