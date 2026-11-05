@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, Chip, CtaBar, Head, MARGIN, TOP, fitPx, rowIcon } from "./brandParts";
+import { BOTTOM, BrandIcon, Chip, CtaBar, Frame, Head, MARGIN, TOP, fitPx, rowIcon } from "./brandParts";
 import { alpha, kit, rows, type Kit } from "./brandKit";
 
 /**
@@ -19,12 +19,13 @@ import { alpha, kit, rows, type Kit } from "./brandKit";
  *   - name = the category, e.g. "Gate automation"
  *   - desc = what is in it, e.g. "Motors, kits, rack, control panels"
  *   - tag  = optional chip, e.g. "1,200 LINES"
+ *   - image = optional category photo
  * Not used: imageUrl, productName, description, prices, highlightColor.
  */
 
 const COLS = 4;
 
-function Tile({ k, i, name, desc, tag, w, h, compact }: { k: Kit; i: number; name: string; desc?: string; tag?: string; w: number; h: number | string; compact: boolean }) {
+function Tile({ k, i, name, desc, tag, image, w, h, compact }: { k: Kit; i: number; name: string; desc?: string; tag?: string; image?: string; w: number; h: number | string; compact: boolean }) {
   const icon = rowIcon({ name, desc, tag }, i);
   const namePx = fitPx(name, w - 40, compact ? 30 : 40, 18, compact ? 2 : 2);
   const descPx = compact ? 19 : 23;
@@ -47,9 +48,9 @@ function Tile({ k, i, name, desc, tag, w, h, compact }: { k: Kit; i: number; nam
         animationDelay: `${150 + i * 70}ms`,
       }}
     >
-      <span style={{ flex: "none", display: "grid", placeItems: "center", width: compact ? 52 : 62, height: compact ? 52 : 62, borderRadius: 18, background: i % COLS === 1 ? k.solid2 : k.solid }}>
+      {image ? <Frame src={image} alt={name} w="100%" h={compact ? 105 : 240} k={k} radius={12} fit="cover" /> : <span style={{ flex: "none", display: "grid", placeItems: "center", width: compact ? 52 : 62, height: compact ? 52 : 62, borderRadius: 18, background: i % COLS === 1 ? k.solid2 : k.solid }}>
         <BrandIcon id={icon} size={compact ? 30 : 36} color={i % COLS === 1 ? k.solid2Ink : k.solidInk} stroke={2.4} />
-      </span>
+      </span>}
       <span style={{ flex: "1 1 auto", minHeight: 0 }}>
         <span style={{ display: "block", fontSize: namePx, fontWeight: 900, lineHeight: 1.06, letterSpacing: "-0.01em", color: k.text, overflowWrap: "anywhere" }}>{name}</span>
         {desc ? (
@@ -81,7 +82,7 @@ export default function EgCategoryWallTemplate({ scene, d }: TemplateProps) {
           items.map((it, i) => {
             const twoRows = items.length > COLS;
             const h = twoRows ? "calc(50% - 10px)" : "100%";
-            return <Tile key={i} k={k} i={i} name={it.name} desc={it.desc} tag={it.tag} w={w} h={h} compact={twoRows} />;
+            return <Tile key={i} k={k} i={i} name={it.name} desc={it.desc} tag={it.tag} image={it.image} w={w} h={h} compact={twoRows} />;
           })
         ) : (
           <span style={{ fontSize: 28, color: k.muted }}>Add the categories in the editor — one row per department.</span>
