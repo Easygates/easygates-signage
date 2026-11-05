@@ -157,6 +157,11 @@ npm run build
 npm start                   # → http://localhost:3000
 ```
 
+On the Windows PC that runs the CMS, `start-cms.cmd` does the same thing by
+double-click (it changes into the project folder, installs dependencies on first
+run, then starts the dev server). Run `npm run doctor` if a dev build ever fails
+to compile — see [Troubleshooting](#troubleshooting).
+
 ## Configuring `DATABASE_URL` in `.env` for Supabase
 
 1. Open [Supabase Dashboard](https://supabase.com/dashboard) → select your project → click **Connect** (top bar) → **Connection String / ORMs**.
@@ -303,6 +308,62 @@ Each screen opens `http://<pc-ip>:3000/display?displayId=…`. The PC's local IP
 4. Using the PC's name (`http://MYPC:3000`) sometimes works, but many TV browsers and sticks can't resolve it.
 
 Also turn off sleep on the PC while screens depend on it. The Displays tab fills in the server address automatically and shows each screen's full URL. The same guidance is in `/docs` (section 6).
+
+## Troubleshooting
+
+`npm run dev` runs a quick pre-flight check first (it is also available as
+`npm run doctor`): it verifies the dependencies, the folder you started from and
+any stray lockfiles in parent folders, so most setup problems are reported by
+name instead of as a compiler error.
+
+### `Error: Can't resolve 'tailwindcss' in 'C:\Users\TV-Serve\Documents'`
+
+The folder in that message is the one *above* the project. Next.js picks a
+"workspace root" by looking for lockfiles above the project, and Tailwind
+resolves `@import "tailwindcss"` from that root — so an orphaned
+`package-lock.json` in `C:\Users\<you>` or `C:\Users\<you>\Documents` (the usual
+damage from running `npm install` in the wrong folder on Windows) sends both
+looking in Documents, where there is no `node_modules`.
+
+1. `next.config.ts` now pins the root (`turbopack: { root: __dirname }` plus
+   `outputFileTracingRoot`), so this project is no longer affected. Config is
+   read at start-up: **stop and restart the dev server** after pulling this
+   change.
+2. Delete the orphaned lockfile if `npm run doctor` reports one, otherwise other
+   Next projects on the same PC stay broken (upstream bug:
+   [vercel/next.js#92978](https://github.com/vercel/next.js/issues/92978)).
+
+If it still fails after a restart:
+
+```bash
+cd C:\Users\TV-Serve\Documents\easygates-signage   # the folder with package.json
+rmdir /s /q .next                                  # discard the stale cache
+npm install                                        # NOT --omit=dev (see below)
+npm run dev
+```
+
+Tailwind is a dev dependency: `npm install --omit=dev` or `npm ci --production`
+skips `tailwindcss` and `@tailwindcss/postcss`, and nothing can compile CSS
+afterwards. `npm run doctor` reports that as well.
+
+### `To allow this host in development, add it to "allowedDevOrigins"…`
+
+That warning appears when a screen or browser opens the dev server through a
+hostname Next does not know. `next.config.ts` already allows the machine's own
+name, its LAN addresses, `tv-serv`, `*.local` and anything listed in
+`ALLOWED_DEV_ORIGINS` (see [`.env.example`](.env.example)) — so add odd names to
+that variable instead of editing the config. **Restart the dev server** after
+changing it: the list is read once at start-up, which is the usual reason an
+allowed host still gets the warning.
+
+### Something else
+
+- **Port 3000 already in use** — `npm run dev -- -p 3001`. The Displays tab
+  guesses port 3000 unless you type the URL it shows.
+- **Blank or unstyled admin page** — stop the server, delete `.next`, start
+  again; a cache written by a different Node/Next version cannot be reused.
+- **`/api/*` returns 500 with a database message** — check `DATABASE_URL` in
+  `.env`, then `npx drizzle-kit push` to create the tables.
 
 ## How it fits together
 

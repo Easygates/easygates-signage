@@ -1046,3 +1046,62 @@ across 47 suites, `next build` clean. Diff against the base: 33 files, +3,885 / 
 - Known and unchanged: the admin page logs a minified React #418 hydration
   warning, and a missing `DATABASE_URL` returns 500 rather than the documented
   503 (the player survives both). Both remain on the §17.4 recommendation list.
+
+## 21. `Can't resolve 'tailwindcss' in 'C:\Users\TV-Serve\Documents'` (2026-11-05)
+
+Reported as a dev-server crash while compiling `/admin` on the Windows shop PC,
+together with a “add `tv-serv` to `allowedDevOrigins`” notice. The project lives
+in `C:\Users\TV-Serve\Documents\easygates-signage`, yet the failing resolution
+looked for `node_modules` in **Documents** — never in the project.
+
+### 21.1 Root cause
+
+Tailwind v4 resolves `@import "tailwindcss"` in `@tailwindcss/postcss` from
+`dirname(path.resolve(from))`, and Next resolves modules from its *workspace
+root*. Both were pointing one folder too high:
+
+- Next derives the workspace root by walking **up** from the project looking for
+  lockfiles. An orphaned `package-lock.json` in `C:\Users\TV-Serve\Documents`
+  (the usual damage from running `npm install` in the default shell folder on
+  Windows) is picked as the root, so Turbopack/PostCSS resolve from Documents.
+  Reproduced upstream as [vercel/next.js#92978][issue]; the error text, the
+  `enhanced-resolve` stack and the "`Documents\node_modules` doesn't exist" walk
+  all match exactly.
+- `@tailwindcss/postcss`'s `base` option — the directory it scans and prefers
+  when resolving — defaults to `process.cwd()`.
+
+[issue]: https://github.com/vercel/next.js/issues/92978
+
+Local reproduction of the same failure modes, without a Windows box:
+
+| Scenario | Result |
+|---|---|
+| `postcss([tailwind()]).process('@import "tailwindcss"')` with no `from`, cwd = project | `Can't resolve 'tailwindcss' in '<parent of project>'` — identical message and stack |
+| same with `from` = the project *folder* | same failure |
+| stray `package-lock.json` one level above the project | `⚠ Next.js inferred your workspace root… selected <parent>` |
+| `next dev <folder>` launched from the parent | `Failed to load next.config.ts` |
+
+### 21.2 Fixes
+
+| File | Change |
+|---|---|
+| `next.config.ts` | `turbopack: { root: __dirname }` + `outputFileTracingRoot` pin the workspace root to the project, so no parent lockfile can redirect resolution. `__dirname` is used because Next compiles the config to CommonJS, with a `process.cwd()` fallback for the ESM test runner. |
+| `postcss.config.mjs` | `@tailwindcss/postcss` gets `base` = this file's folder, so class scanning never depends on the shell's working directory. |
+| `scripts/doctor.mjs` | New pre-flight check (`npm run doctor`, also `predev`): reports missing/incomplete `node_modules`, a dev-dependency-less install (`--omit=dev`), a start from the wrong folder, orphaned lockfiles in parent folders, and a `.next` cache older than the installed dependencies. Warnings never block; only real breakage exits non-zero. |
+| `start-cms.cmd` | Double-click Windows launcher that `cd /d "%~dp0"` first, installs dependencies on first run, then starts the dev server — the working-directory class of bug cannot happen. |
+| `README.md` | New **Troubleshooting** section for this error, the `allowedDevOrigins` notice (restart required; use `ALLOWED_DEV_ORIGINS` in `.env`) and stale-cache/port/database issues. |
+| `tests/setup-guards.test.mjs` | 6 tests: the root pins are absolute and not the parent folder, `base` is the project, `tailwindcss` resolves from the project's `node_modules`, `globals.css` compiles through the configured plugins, the doctor exits clean, and the Windows launcher stays in its own folder. |
+
+### 21.3 Verification
+
+- `node --test "tests/*.mjs"` — **337 tests pass**, 68 suites.
+- `npx tsc --noEmit` and `npx eslint .` — clean.
+- `npm run build` — clean.
+- `next dev` (Turbopack) with an orphaned `package-lock.json` one level above the
+  project: the “inferred workspace root” warning is gone, `/admin` 200, the CSS
+  chunk is 20 KB with 68 `--tw-` properties.
+- `next dev --webpack`: `/admin` 200, layout CSS 100 KB.
+
+**Operational note:** `next.config.ts` is read once at start-up — the dev server
+has to be restarted before the pinned root takes effect, and before changed
+`allowedDevOrigins` entries apply.
