@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, BrandIcon, Chip, CtaBar, Head, MARGIN, TOP, fitPx } from "./brandParts";
+import { BOTTOM, BrandIcon, Chip, CtaBar, Frame, Head, MARGIN, TOP, fitPx } from "./brandParts";
 import { alpha, kit, rows, stepLabel, type Kit } from "./brandKit";
 
 /**
@@ -20,10 +20,11 @@ import { alpha, kit, rows, stepLabel, type Kit } from "./brandKit";
  *   - name = the step, e.g. "Mount the motor"
  *   - desc = how to do it, one point per line or separated by " · "
  *   - tag  = the time chip, e.g. "45 MIN"
+ *   - image = optional photo illustrating the step
  * Not used: imageUrl, productName, prices.
  */
 
-function StepCard({ k, d, i, name, desc, tag, w, px }: { k: Kit; d: TemplateProps["d"]; i: number; name: string; desc?: string; tag?: string; w: number; px: number }) {
+function StepCard({ k, d, i, name, desc, tag, image, w, px }: { k: Kit; d: TemplateProps["d"]; i: number; name: string; desc?: string; tag?: string; image?: string; w: number; px: number }) {
   const namePx = fitPx(name, w - 56, 42, 24, 2);
   const points = (desc || "").split(/\s*[\r\n]+|\s+[·•|]\s+/).map((p) => p.replace(/^[-–—]\s*/, "").trim()).filter(Boolean).slice(0, 3);
 
@@ -50,6 +51,7 @@ function StepCard({ k, d, i, name, desc, tag, w, px }: { k: Kit; d: TemplateProp
         <span style={{ fontSize: 64, fontWeight: 900, lineHeight: 0.9, letterSpacing: "-0.04em", color: k.accent2 }}>{stepLabel(i)}</span>
         {tag ? <Chip k={k} text={tag} fill={k.solid2} ink={k.solid2Ink} px={17} /> : null}
       </div>
+      {image ? <Frame src={image} alt={name} w="100%" h={150} k={k} radius={12} fit="cover" /> : null}
       <span style={{ display: "block", fontSize: namePx, fontWeight: 900, lineHeight: 1.08, color: k.text, overflowWrap: "anywhere" }}>{name}</span>
       <span style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 7 }}>
         {points.map((p, j) => (
@@ -82,7 +84,7 @@ export default function EgFitGuideTemplate({ scene, d }: TemplateProps) {
         {/* connector line behind the step numbers */}
         <span aria-hidden="true" style={{ position: "absolute", left: 40, right: 40, top: 92, height: 6, borderRadius: 99, background: alpha(k.accent2, 0.5) }} />
         {items.length ? (
-          items.map((it, i) => <StepCard key={i} k={k} d={d} i={i} name={it.name} desc={it.desc} tag={it.tag} w={w} px={px} />)
+          items.map((it, i) => <StepCard key={i} k={k} d={d} i={i} name={it.name} desc={it.desc} tag={it.tag} image={it.image} w={w} px={px} />)
         ) : (
           <span style={{ fontSize: 28, color: k.muted }}>Add the fitting steps in the editor — one row per step.</span>
         )}

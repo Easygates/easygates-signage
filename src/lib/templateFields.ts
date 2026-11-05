@@ -251,7 +251,7 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
   ),
   "eg-category-wall": t(
     ["eyebrow", "subheadline", "ctaText"],
-    ["name", "desc", "tag"],
+    ["name", "desc", "tag", "image"],
     "none",
   ),
   "eg-stock-status": t(
@@ -261,12 +261,12 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
   ),
   "eg-brand-partners": t(
     ["eyebrow", "subheadline", "ctaText"],
-    ["name", "desc"],
+    ["name", "desc", "image"],
     "none",
   ),
   "eg-fit-guide": t(
     ["eyebrow", "subheadline", "description", "ctaText", "highlightColor"],
-    ["name", "desc", "tag"],
+    ["name", "desc", "tag", "image"],
     "none",
   ),
 

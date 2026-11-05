@@ -1,5 +1,5 @@
 import type { TemplateProps } from "../parts";
-import { BOTTOM, CtaBar, Head, MARGIN, TOP, fitPx } from "./brandParts";
+import { BOTTOM, CtaBar, Frame, Head, MARGIN, TOP, fitPx } from "./brandParts";
 import { alpha, kit, rows, type Kit } from "./brandKit";
 
 /**
@@ -17,12 +17,13 @@ import { alpha, kit, rows, type Kit } from "./brandKit";
  * - items[]     = the manufacturers, up to ten:
  *   - name = the brand, e.g. "CAME"
  *   - desc = what we stock of theirs, e.g. "Gate operators & control panels"
+ *   - image = optional manufacturer logo
  * Not used: imageUrl, productName, description, prices, highlightColor.
  */
 
 const COLS = 5;
 
-function BrandTile({ k, i, name, desc, w, h }: { k: Kit; i: number; name: string; desc?: string; w: number; h: number | string }) {
+function BrandTile({ k, i, name, desc, image, w, h }: { k: Kit; i: number; name: string; desc?: string; image?: string; w: number; h: number | string }) {
   // three-in-a-row rhythm: body text, accent, second accent
   const tone = i % 3 === 0 ? k.text : i % 3 === 1 ? k.accent : k.accent2;
   const namePx = fitPx(name, w - 44, 56, 26, 2, 0.02);
@@ -47,7 +48,7 @@ function BrandTile({ k, i, name, desc, w, h }: { k: Kit; i: number; name: string
     >
       <span style={{ display: "block", width: 44, height: 6, borderRadius: 99, background: tone, flex: "none" }} />
       <span style={{ flex: "1 1 auto", display: "flex", alignItems: "center", minHeight: 0 }}>
-        <span style={{ display: "block", fontSize: namePx, fontWeight: 900, lineHeight: 1.02, letterSpacing: "0.02em", textTransform: "uppercase", color: tone, overflowWrap: "anywhere" }}>{name}</span>
+        {image ? <Frame src={image} alt={name} w="100%" h={100} k={k} radius={10} fit="contain" /> : <span style={{ display: "block", fontSize: namePx, fontWeight: 900, lineHeight: 1.02, letterSpacing: "0.02em", textTransform: "uppercase", color: tone, overflowWrap: "anywhere" }}>{name}</span>}
       </span>
       {desc ? <span style={{ display: "block", fontSize: 20, fontWeight: 600, lineHeight: 1.2, color: k.muted, overflowWrap: "anywhere" }}>{desc}</span> : null}
     </div>
@@ -68,7 +69,7 @@ export default function EgBrandPartnersTemplate({ scene, d }: TemplateProps) {
       <div style={{ flex: "1 1 0", minHeight: 0, display: "flex", flexWrap: "wrap", gap, alignContent: "stretch" }}>
         {items.length ? (
           items.map((it, i) => (
-            <BrandTile key={i} k={k} i={i} name={it.name} desc={it.desc} w={w} h={items.length > COLS ? "calc(50% - 8px)" : "100%"} />
+            <BrandTile key={i} k={k} i={i} name={it.name} desc={it.desc} image={it.image} w={w} h={items.length > COLS ? "calc(50% - 8px)" : "100%"} />
           ))
         ) : (
           <span style={{ fontSize: 28, color: k.muted }}>Add the manufacturers in the editor — one row per brand.</span>

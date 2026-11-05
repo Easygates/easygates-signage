@@ -62,10 +62,12 @@ safety amber `#ffc21f` on deep navy — hard edges, monospaced part numbers, hai
 | Which Automation? | Up to four machines side by side with photos, from-prices and specifications |
 | Technical Support Hub | Oversized helpline, response promise and the channels customers can reach |
 | Trade Price Board | Dotted-leader price board — part numbers, pack sizes, was-price chips, VAT footnote |
-| Shop by Category | Icon tiles for the departments, each with its line count |
+| Shop by Category | Department photo tiles with line counts; icons when no photo is supplied |
 | Stock & Availability | Product photo, part-number strip and stock lines with status chips |
-| Brands We Stock | Typographic manufacturer wall with the category under each name |
-| Fit in Four Steps | Numbered installation steps, each with a time chip |
+| Brands We Stock | Manufacturer wall with optional logos and a typographic fallback |
+| Fit in Four Steps | Numbered installation steps with optional photos and time chips |
+
+Category, manufacturer and fitting cards accept an optional image per item in the editor. The bundled demo uses local photos where appropriate; cards without images retain their icon or text treatment. Existing saved scenes keep their content and can be updated in the editor.
 
 ### Smart & Secure (smart home, security & home cinema)
 

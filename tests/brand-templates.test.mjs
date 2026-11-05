@@ -159,6 +159,27 @@ describe("branded templates are in the catalogue", () => {
   });
 });
 
+describe("EasyGates card images", () => {
+  it("exposes optional item images and renders a fallback for cards without them", () => {
+    for (const id of ["eg-category-wall", "eg-brand-partners", "eg-fit-guide"]) {
+      assert.ok(templateRows(id).includes("image"), `${id} must expose item images`);
+      const source = read(`src/components/scene/templates/${FILES[id]}.tsx`);
+      assert.match(source, /image=\{it\.image\}/);
+      assert.match(source, /image \? <Frame/);
+    }
+  });
+
+  it("ships local photos for the category and fitting examples", () => {
+    for (const id of ["eg-category-wall", "eg-fit-guide"]) {
+      const scene = EASYGATES_DEMO_SCENES.find((s) => s.template === id);
+      assert.ok(scene.items.some((item) => item.image), `${id} needs example photos`);
+      for (const item of scene.items.filter((item) => item.image)) {
+        assert.ok(item.image.startsWith("/") && existsSync(join(root, "public", item.image.slice(1))));
+      }
+    }
+  });
+});
+
 describe("branded demo campaigns", () => {
   it("have one sample page per template, in both campaigns", () => {
     const eg = new Set(EASYGATES_DEMO_SCENES.map((s) => s.template));
