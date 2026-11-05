@@ -15,7 +15,7 @@ import { validateSession, SESSION_COOKIE } from "@/lib/session";
 const HEARTBEAT = /^\/api\/displays\/[^/]+\/heartbeat$/;
 const BACKUP = /^\/api\/backup(?:\/|$)/;
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (!process.env.ADMIN_PASSWORD) return NextResponse.next();

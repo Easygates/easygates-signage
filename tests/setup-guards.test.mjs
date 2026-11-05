@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,6 +67,37 @@ describe("build setup guards", () => {
     assert.match(result.css, /\.sg-guard-probe/);
   });
 
+  /**
+   * Tailwind v4's automatic source detection walks up from globals.css, so in
+   * `next dev` it also read files inside .next — including the compiled copy
+   * of globals.css itself. Junk candidates found there were emitted as real
+   * rules (`.[key:\e !4ng] { key: !4ng; }`), the next scan read those back,
+   * and the stylesheet eventually stopped parsing:
+   *
+   *   ./src/app/globals.css:222:11  Parsing CSS source code failed
+   *   Unexpected token Delim('!')
+   *
+   * which 500s every route. Pinning the sources stops the feedback loop.
+   */
+  it("scans only hand-written sources, so the generated CSS cannot feed back in", async () => {
+    const css = readFileSync(path.join(projectRoot, "src", "app", "globals.css"), "utf8");
+    assert.match(css, /@import\s+"tailwindcss"\s+source\(none\)/, "auto source detection must be off");
+    assert.match(css, /@source\s+"\.\.\/\*\*\/\*\.\{ts,tsx\}"/, "explicit @source list must cover src/**/*.{ts,tsx}");
+    assert.doesNotMatch(css, /@source[^;]*\.next/, "never scan the build output");
+
+    const options = postcssConfig.plugins["@tailwindcss/postcss"];
+    const from = path.join(projectRoot, "src", "app", "globals.css");
+    const result = await postcss([tailwind(options)]).process(css, { from });
+
+    // No candidate may contain control characters or non-ASCII text: those are
+    // the fingerprints of a binary/generated file being scanned.
+    const escaped = result.css.match(/^[ \t]*\.\\\\\[[^\]]*\][^{]*\{/gm) ?? [];
+    for (const rule of escaped) {
+      assert.doesNotMatch(rule, /[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd]/, `junk candidate in ${rule}`);
+    }
+    assert.doesNotMatch(result.css, /key:\s*!4ng/, "the poisoned .[key:!4ng] rule must never be emitted");
+  });
+
   it("pre-flight check passes from a healthy checkout", () => {
     const output = execFileSync(process.execPath, [path.join(projectRoot, "scripts", "doctor.mjs")], {
       cwd: projectRoot,
@@ -80,6 +111,24 @@ describe("build setup guards", () => {
   it("Windows launcher starts from its own folder", () => {
     const launcher = readFileSync(path.join(projectRoot, "start-cms.cmd"), "utf8");
     assert.match(launcher, /cd \/d "%~dp0"/i);
+  });
+
+  /**
+   * Next.js 16 renamed the `middleware` file convention to `proxy` and prints
+   *   ⚠ The "middleware" file convention is deprecated.
+   * on every dev-server start. Keeping both files around is worse: Next warns
+   * that only one to the app root is used, and the auth checks would silently
+   * run from whichever copy it picked. This guard pins the new convention.
+   */
+  it("uses the Next.js 16 proxy convention, not the deprecated middleware one", () => {
+    const hasMiddlewareFile = ["middleware.ts", "middleware.js", "middleware.tsx", "middleware.jsx"].some(
+      (file) => existsSync(path.join(projectRoot, "src", file)) || existsSync(path.join(projectRoot, file)),
+    );
+    assert.equal(hasMiddlewareFile, false, "src/middleware.ts is deprecated in Next.js 16 — use src/proxy.ts");
+    assert.ok(existsSync(path.join(projectRoot, "src", "proxy.ts")), "src/proxy.ts must exist");
+
+    const proxy = readFileSync(path.join(projectRoot, "src", "proxy.ts"), "utf8");
+    assert.match(proxy, /export async function proxy\(/, "src/proxy.ts must export a function named `proxy`");
   });
 });
 

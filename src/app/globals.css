@@ -1,4 +1,16 @@
-@import "tailwindcss";
+/* Tailwind v4 scans the project for class candidates. Its automatic source
+   detection starts at this file and walks up the tree, which in `next dev`
+   means it also reads files inside .next — including the *compiled* version of
+   this very stylesheet. Garbage candidates picked up there (Next's own runtime
+   chunks contain strings like `metatype`, and escaped names come back out as
+   `.[key:\e !4ng]`) get emitted as real rules, and the next scan reads them
+   back: the stylesheet grows until it no longer parses and every route 500s
+   with "Parsing CSS source code failed / Unexpected token Delim('!')".
+
+   So: disable detection and name the sources explicitly. Only hand-written
+   source files can contribute classes. */
+@import "tailwindcss" source(none);
+@source "../**/*.{ts,tsx}";
 
 /* ── Signage animation engine ───────────────────────────── */
 :root {
