@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import { resolveAllowedDevOrigins } from "./src/lib/devOrigins.ts";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: resolveAllowedDevOrigins(),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.pexels.com" },
