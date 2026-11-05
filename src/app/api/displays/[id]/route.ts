@@ -26,6 +26,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     for (const k of ["name", "location", "playlistId", "resolution", "orientation", "status", "settings"]) {
       if (body[k] !== undefined) patch[k] = body[k];
     }
+    // Rename: a screen must keep a name; both are trimmed and kept to a sensible length.
+    if (body.name !== undefined) {
+      const name = String(body.name ?? "").trim().slice(0, 120);
+      if (!name) return NextResponse.json({ error: "A screen needs a name" }, { status: 400 });
+      patch.name = name;
+    }
+    if (body.location !== undefined) patch.location = String(body.location ?? "").trim().slice(0, 200);
     if (body.heartbeat) {
       patch.status = "online";
       patch.lastSeen = new Date();

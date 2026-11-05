@@ -88,4 +88,12 @@ describe("wiring", () => {
   it("the admin copies and opens the short address", () => {
     assert.match(read("src/app/admin/page.tsx"), /displayId=\$\{screenRefFor\(x\)\}/);
   });
+  it("a screen can be renamed in place, but never left without a name", () => {
+    const route = read("src/app/api/displays/[id]/route.ts");
+    assert.match(route, /A screen needs a name/);
+    assert.match(route, /body\.name !== undefined/);
+    const admin = read("src/app/admin/page.tsx");
+    assert.match(admin, /label="Screen name"/);
+    assert.match(admin, /label="Screen location"/);
+  });
 });

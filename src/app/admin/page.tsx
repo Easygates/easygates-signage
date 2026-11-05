@@ -8,7 +8,7 @@ import BusinessPanel from "@/components/BusinessPanel";
 import DatabasePanel from "@/components/DatabasePanel";
 import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
-import { ScreenBasePanel, ScreenNumberField, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
+import { InlineEdit, ScreenBasePanel, ScreenNumberField, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { screenRefFor } from "@/lib/screens";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import {
@@ -1437,8 +1437,38 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                       <span className={`rounded-full px-3 py-1 text-[11px] font-black tracking-widest ${online ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>{online ? "● ONLINE" : "○ OFFLINE"}</span>
                       <span className="font-mono text-xs text-white/40">{x.pairingCode}</span>
                     </div>
-                    <div className="mt-3 text-lg font-black">{x.name}</div>
-                    <div className="text-sm text-white/50">{x.location || "—"}</div>
+                    <div className="mt-3">
+                      <InlineEdit
+                        key={`name-${x.id}-${x.name}`}
+                        value={x.name}
+                        label="Screen name"
+                        required
+                        className="text-lg font-black"
+                        onSave={async (text) => {
+                          const r = await fetch(`/api/displays/${x.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: text }) });
+                          const j = await r.json().catch(() => ({} as { error?: string }));
+                          if (!r.ok) { flash(j.error || "Could not rename the screen"); return false; }
+                          load();
+                          flash(`Renamed to “${text}”`);
+                          return true;
+                        }}
+                      />
+                      <InlineEdit
+                        key={`loc-${x.id}-${x.location ?? ""}`}
+                        value={x.location ?? ""}
+                        label="Screen location"
+                        placeholder="Where is it? e.g. Trade counter"
+                        maxLength={200}
+                        className="text-sm text-white/60"
+                        onSave={async (text) => {
+                          const r = await fetch(`/api/displays/${x.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: text }) });
+                          if (!r.ok) { flash("Could not save the location"); return false; }
+                          load();
+                          flash("Location saved");
+                          return true;
+                        }}
+                      />
+                    </div>
                     <ScreenNumberField
                       key={`${x.id}-${x.screenNumber ?? ""}`}
                       value={x.screenNumber}

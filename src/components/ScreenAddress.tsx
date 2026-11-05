@@ -107,3 +107,50 @@ export function ScreenNumberField({ value, onSave }: { value: number | null | un
     </div>
   );
 }
+
+/**
+ * A piece of text that is edited in place: it looks like a heading until you click it. Saved when you
+ * leave the box or press Enter (Escape puts the old text back). `onSave` returns false if it was refused,
+ * and the box then goes back to the saved text. Give it a `key` that includes the saved text.
+ */
+export function InlineEdit({
+  value,
+  onSave,
+  label,
+  placeholder,
+  className = "",
+  maxLength = 120,
+  required = false,
+}: {
+  value: string;
+  onSave: (text: string) => Promise<boolean>;
+  label: string;
+  placeholder?: string;
+  className?: string;
+  maxLength?: number;
+  required?: boolean;
+}) {
+  const [text, setText] = useState(value);
+  const commit = async () => {
+    const t = text.trim();
+    if (t === value.trim()) { setText(value); return; }
+    if (required && !t) { setText(value); return; }
+    if (!(await onSave(t))) setText(value);
+  };
+  return (
+    <input
+      value={text}
+      aria-label={label}
+      title="Click to edit"
+      maxLength={maxLength}
+      placeholder={placeholder}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") { setText(value); e.currentTarget.blur(); }
+      }}
+      className={`block w-full rounded-lg border border-transparent bg-transparent px-2 py-1 -mx-2 outline-none placeholder:text-white/30 hover:border-white/15 hover:bg-white/5 focus:border-white/30 focus:bg-white/10 ${className}`}
+    />
+  );
+}
