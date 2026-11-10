@@ -54,6 +54,8 @@ export type TemplateId =
   | "eg-stock-status"
   | "eg-brand-partners"
   | "eg-fit-guide"
+  | "eg-video-full"
+  | "eg-video-window"
   // ── Smart & Secure (smart home, security & home cinema) ──
   | "ss-zone-guide"
   | "ss-scene-cards"
@@ -127,6 +129,8 @@ export const BRANDED_TEMPLATES: TemplateId[] = [
   "eg-stock-status",
   "eg-brand-partners",
   "eg-fit-guide",
+  "eg-video-full",
+  "eg-video-window",
   "ss-zone-guide",
   "ss-scene-cards",
   "ss-package-cards",
@@ -274,6 +278,8 @@ export const TEMPLATES: {
   { id: "eg-stock-status", name: "Stock & Availability", blurb: "Product photo with a part-number strip and live-looking stock lines with status chips", bestFor: "Stock notices & next-day promises" },
   { id: "eg-brand-partners", name: "Brands We Stock", blurb: "Typographic wall of the manufacturers held on the shelf, with the category under each", bestFor: "Manufacturer walls & trade counters" },
   { id: "eg-fit-guide", name: "Fit in Four Steps", blurb: "Numbered installation and commissioning steps, each with a time tag", bestFor: "Fitting guides & commissioning walk-throughs" },
+  { id: "eg-video-full", name: "Video · Full screen", blurb: "A looping video edge to edge, with an optional EasyGates Direct caption over a dark lower third", bestFor: "Showroom loops, product films & ambient screens" },
+  { id: "eg-video-window", name: "Video · Centre window", blurb: "The video cropped into a framed window in the middle of the screen — wide, cinema strip, square or portrait — under an EasyGates Direct headline", bestFor: "Product demos & fitting clips with a headline" },
   // ── Smart & Secure ──
   { id: "ss-zone-guide", name: "Showroom Zone Guide", blurb: "Giant glowing zone circle, zone name and the displays to try in it", bestFor: "Showroom wayfinding" },
   { id: "ss-scene-cards", name: "Smart Scenes", blurb: "Grid of up to six scenes with photos and the triggers that fire them", bestFor: "Smart-home demonstrations" },
@@ -292,7 +298,7 @@ export const TEMPLATE_CATEGORIES: { id: string; name: string; templates: Templat
   { id: "trade", name: "Trade & services", templates: ["service-offer", "price-list", "brand-wall", "product-spec", "callout-emergency"] },
   { id: "corporate", name: "Corporate", templates: ["company-values", "team-intro", "corporate-milestone", "corporate-news", "testimonial-quote", "fullscreen-bg"] },
   { id: "social-proof", name: "Social proof", templates: ["trustpilot-review"] },
-  { id: "easygates", name: "EasyGates Direct", templates: ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-delivery-cutoff", "eg-compare", "eg-support-hub", "eg-price-board", "eg-category-wall", "eg-stock-status", "eg-brand-partners", "eg-fit-guide"] },
+  { id: "easygates", name: "EasyGates Direct", templates: ["eg-kit-builder", "eg-safety-check", "eg-trade-tiers", "eg-delivery-cutoff", "eg-compare", "eg-support-hub", "eg-price-board", "eg-category-wall", "eg-stock-status", "eg-brand-partners", "eg-fit-guide", "eg-video-full", "eg-video-window"] },
   { id: "smartsecure", name: "Smart & Secure", templates: ["ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo", "ss-product-spotlight"] },
 ];
 
@@ -2227,13 +2233,69 @@ export const EASYGATES_DEMO_SCENES: Scene[] = [
       { name: "Force test & hand over", desc: "Measure closing force · log every device · sign the record", tag: "25 MIN", image: EG_IMG.safety },
     ],
   },
+  {
+    id: "eg-12",
+    name: "12 · Video — Full screen",
+    template: "eg-video-full",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · GATE AUTOMATION",
+    headline: "BUILT FOR THE TRADE. READY TO FIT.",
+    subheadline: "Kits, operators and safety gear on the shelf — collect today.",
+    ctaText: "ASK AT THE TRADE COUNTER",
+    videoUrl: "/api/videos/demo-easygates-loop.mp4",
+    tickerText: "",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#ff3b43",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "smooth",
+    durationSec: 10,
+    transition: "fade",
+    staggerMs: 120,
+    kenBurns: "static",
+    overlayOpacity: 40,
+    layoutVariant: "A",
+  },
+  {
+    id: "eg-13",
+    name: "13 · Video — Centre window",
+    template: "eg-video-window",
+    theme: "none",
+    eyebrow: "EASYGATES DIRECT · PRODUCT DEMO",
+    headline: "SEE IT RUNNING",
+    subheadline: "The footage here is a sample — pick your own clip from the videos folder.",
+    productName: "SLIDING GATE KIT · LIVE TEST",
+    description: "Cropped to a window in the middle of the screen — wide, cinema strip, square or portrait.",
+    ctaText: "ASK FOR A TRADE PRICE",
+    videoUrl: "/api/videos/demo-easygates-loop.mp4",
+    tickerText: "",
+    bgFrom: "#07131f",
+    bgTo: "#0c2130",
+    bgAngle: 135,
+    accentColor: "#ff3b43",
+    textColor: "#ffffff",
+    mutedColor: "#a9c2d8",
+    cardColor: "#0d1c2b",
+    highlightColor: "#ffc21f",
+    animationPreset: "launch",
+    durationSec: 10,
+    transition: "fade",
+    staggerMs: 100,
+    kenBurns: "static",
+    overlayOpacity: 0,
+    layoutVariant: "wide",
+  },
 ];
 
 export function easygatesDemoPlaylist() {
   return {
     id: "easygates-demo-playlist",
     name: "EasyGates Direct · Trade Counter (Demo)",
-    description: "11-scene EasyGates Direct campaign: gate kits, safety compliance, trade tiers, delivery, product choice, support, price board, categories, stock, brands and fitting",
+    description: "13-scene EasyGates Direct campaign: gate kits, safety compliance, trade tiers, delivery, product choice, support, price board, categories, stock, brands, fitting and two video slides",
     scenes: EASYGATES_DEMO_SCENES,
   };
 }

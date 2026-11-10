@@ -36,6 +36,8 @@ import EgCategoryWallTemplate from "./scene/templates/EgCategoryWall";
 import EgStockStatusTemplate from "./scene/templates/EgStockStatus";
 import EgBrandPartnersTemplate from "./scene/templates/EgBrandPartners";
 import EgFitGuideTemplate from "./scene/templates/EgFitGuide";
+import EgVideoFullTemplate from "./scene/templates/EgVideoFull";
+import EgVideoWindowTemplate from "./scene/templates/EgVideoWindow";
 import SsZoneGuideTemplate from "./scene/templates/SsZoneGuide";
 import SsSceneCardsTemplate from "./scene/templates/SsSceneCards";
 import SsPackageCardsTemplate from "./scene/templates/SsPackageCards";
@@ -678,6 +680,8 @@ export default function SceneRenderer({ scene, reducedMotion, animKey, mini }: P
       {t === "eg-stock-status" && <EgStockStatusTemplate scene={scene} d={d} />}
       {t === "eg-brand-partners" && <EgBrandPartnersTemplate scene={scene} d={d} />}
       {t === "eg-fit-guide" && <EgFitGuideTemplate scene={scene} d={d} />}
+      {t === "eg-video-full" && <EgVideoFullTemplate scene={scene} d={d} />}
+      {t === "eg-video-window" && <EgVideoWindowTemplate scene={scene} d={d} />}
 
       {/* 44–49 · SMART & SECURE (smart home, security & home cinema) */}
       {t === "ss-zone-guide" && <SsZoneGuideTemplate scene={scene} d={d} />}

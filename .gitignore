@@ -27,3 +27,8 @@ npm-debug.log*
 
 # local scratch (screenshots, browser harnesses)
 .cache/
+
+# videos kept on the server PC (see public/videos/README.txt); only the readme and the demo clip are tracked
+/public/videos/*
+!/public/videos/README.txt
+!/public/videos/demo-*.mp4

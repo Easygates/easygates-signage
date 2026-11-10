@@ -132,6 +132,17 @@ The value campaign uses fictional products, a fictional store name ("Value Store
 
 Sample imagery lives in `public/retail/`, `public/seasonal/`, `public/trade/`, `public/ambient/`, `public/counter/`, `public/easygates/` and `public/smartsecure/`; business logos live in `public/brands/`. See the `CREDITS.md` in each folder for sources and attribution. All images are ≤ 1920 px wide and ≤ 300 KB.
 
+## Videos
+
+Two EasyGates Direct templates play video: **Video · Full screen** (edge to edge, with an optional caption) and **Video · Centre window** (the video cropped into a framed window in the middle, in a wide, cinema-strip, square or portrait shape). The older **Background Image / Video** template still plays a video with nothing else on screen.
+
+Videos are kept **on the server PC**, in `public/videos` (or any folder named by `VIDEOS_DIR` in `.env`, e.g. `VIDEOS_DIR="D:\Videos"`). Copy `.mp4` (H.264) or `.webm` files in; in the scene editor click **Library** beside the *Video* field and the **Videos folder** list shows them straight away — no rebuild or restart. Use **Set slide length to …** to make the slide as long as the clip.
+
+- Videos are served by `/api/videos/<file>` straight from disk with HTTP Range support, so TVs start playing at once and loop smoothly. Only video files inside the folder can be fetched.
+- They play muted and loop. 1920×1080 or smaller at about 4–8 Mbit/s is plenty; keep files to a few hundred MB.
+- The folder's contents are not committed to Git (only its readme and the small demo clip), so your videos stay on the PC. Back them up yourself.
+- A screen needs to reach the server to play them: they are not cached for offline use.
+
 ## Multiple businesses
 
 `/admin?tab=business` holds a **list** of businesses, not just one. Each business keeps its own logo, phone number, colours, ticker, website and screen-corner settings, so one NovaSign install can run EasyGates Direct and Smart & Secure side by side.

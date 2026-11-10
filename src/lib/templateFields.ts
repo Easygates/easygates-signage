@@ -271,6 +271,16 @@ export const TEMPLATE_FIELDS: Record<TemplateId, TemplateFieldSpec> = {
   ),
 
   // ── Smart & Secure ──────────────────────────────────────────────────────────
+  "eg-video-full": t(
+    ["eyebrow", "subheadline", "ctaText", "videoUrl"],
+    [],
+    "none",
+  ),
+  "eg-video-window": t(
+    ["eyebrow", "subheadline", "productName", "description", "ctaText", "videoUrl", "highlightColor"],
+    [],
+    "none",
+  ),
   "ss-zone-guide": t(
     ["eyebrow", "subheadline", "productName", "ctaText"],
     ["name", "desc"],

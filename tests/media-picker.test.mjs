@@ -61,7 +61,7 @@ describe("scene editor: image URL fields", () => {
     assert.equal((admin.match(/<MediaField/g) || []).length, 3, "slide image, background image and video need MediaField");
     assert.ok(admin.includes("Browse the media library"), "the field needs a visible library button");
     assert.ok(admin.includes("Can&apos;t load this"), "a mistyped address should say why nothing shows");
-    assert.ok(admin.includes('label="Video URL (muted, looping hero background)"'), "video field label changed");
+    assert.ok(admin.includes('label="Video (muted, looping)"'), "video field label changed");
     assert.ok(admin.includes('media="video"'), "video field must filter the library to videos");
   });
 

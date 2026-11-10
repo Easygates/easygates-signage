@@ -649,4 +649,4 @@ export function FitColumn({
   );
 }
 
-export { A, clamp, textWidth, fitText, stepLabel };
+export { A, clamp, countLines, textWidth, fitText, stepLabel };

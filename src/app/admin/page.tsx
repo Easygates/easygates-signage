@@ -10,6 +10,8 @@ import FailsafePanel from "@/components/FailsafePanel";
 import PlayerControls from "@/components/PlayerControls";
 import { InlineEdit, ScreenBasePanel, ScreenNumberField, ScreenUrl, useScreenBase } from "@/components/ScreenAddress";
 import { screenRefFor } from "@/lib/screens";
+import { prettySize } from "@/lib/videoFiles";
+import { WINDOW_SHAPES, windowShape } from "@/components/scene/templates/videoKit";
 import { ANIMATION_PRESETS, DEMO_SCENES, ITEM_TEMPLATES, TEMPLATES, TEMPLATE_CATEGORIES, TRANSITIONS, templateCategory, buildTimeline, valueDemoPlaylist, type Scene, type TemplateId } from "@/lib/signage";
 import {
   DEFAULT_BRAND,
@@ -507,6 +509,31 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
       ],
     },
     flash: "Fit guide sample loaded \u2014 the step number is automatic; tag = the time it takes",
+  },
+  "eg-video-full": {
+    fields: {
+      eyebrow: "{business} \u00b7 GATE AUTOMATION",
+      headline: "BUILT FOR THE TRADE. READY TO FIT.",
+      subheadline: "Kits, operators and safety gear on the shelf \u2014 collect today.",
+      ctaText: "ASK AT THE TRADE COUNTER",
+      videoUrl: "/api/videos/demo-easygates-loop.mp4",
+      imageUrl: "",
+    },
+    flash: "Full-screen video sample loaded \u2014 pick your own clip from the Videos folder; clear the text fields for video only",
+  },
+  "eg-video-window": {
+    fields: {
+      eyebrow: "{business} \u00b7 PRODUCT DEMO",
+      headline: "SEE IT RUNNING",
+      subheadline: "A short line about what the footage shows.",
+      productName: "SLIDING GATE KIT \u00b7 LIVE TEST",
+      description: "One line under the window.",
+      ctaText: "ASK FOR A TRADE PRICE",
+      videoUrl: "/api/videos/demo-easygates-loop.mp4",
+      layoutVariant: "wide",
+      imageUrl: "",
+    },
+    flash: "Video window sample loaded \u2014 pick your own clip from the Videos folder and choose the window shape",
   },
   "ss-zone-guide": {
     fields: {
@@ -1131,14 +1158,17 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
               {fieldVisible("videoUrl") && (
                 <div className={tplUses("videoUrl") ? undefined : "opacity-60"}>
                   <MediaField
-                    label="Video URL (muted, looping hero background)"
+                    label="Video (muted, looping)"
                     value={draft.videoUrl || ""}
                     onChange={(v) => set("videoUrl", v as never)}
                     assets={allAssets}
                     onUpload={uploadToLibrary}
                     media="video"
-                    placeholder="https://…/clip.mp4"
+                    placeholder="/api/videos/clip.mp4 or https://…/clip.mp4"
                   />
+                  {draft.videoUrl ? (
+                    <VideoLengthButton key={draft.videoUrl} url={draft.videoUrl} current={draft.durationSec} onSet={(secs) => { set("durationSec", secs as never); flash(`Slide length set to ${secs}s`); }} />
+                  ) : null}
                 </div>
               )}
               <div>
@@ -1287,7 +1317,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label={`Duration · ${draft.durationSec}s`}><input type="range" min={6} max={20} value={draft.durationSec} onChange={(e) => set("durationSec", Number(e.target.value) as never)} className="w-full accent-red-500" /></Field>
+                    <Field label={`Duration · ${draft.durationSec}s`}><input type="range" min={6} max={draft.template === "eg-video-full" || draft.template === "eg-video-window" ? 120 : 20} value={draft.durationSec} onChange={(e) => set("durationSec", Number(e.target.value) as never)} className="w-full accent-red-500" /></Field>
                     <Field label={`Stagger · ${draft.staggerMs}ms`}><input type="range" min={40} max={300} step={10} value={draft.staggerMs} onChange={(e) => set("staggerMs", Number(e.target.value) as never)} className="w-full accent-red-500" /></Field>
                   </div>
                   <div>
@@ -1312,6 +1342,14 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                     <option value="right">Right</option>
                   </select>
                   <p className="mt-1 text-[11px] text-white/40">Put the aisle number in “Product name” and the department in “Headline”.</p>
+                </Field>
+              )}
+              {draft.template === "eg-video-window" && (
+                <Field label="Window shape">
+                  <select value={windowShape(draft.layoutVariant)} onChange={(e) => set("layoutVariant", e.target.value as never)} className="inp bg-[#141b33]">
+                    {WINDOW_SHAPES.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <p className="mt-1 text-[11px] text-white/40">The video is cropped to fill the window, never stretched. Use the focal point (Image position) to choose which part of the picture to keep.</p>
                 </Field>
               )}
               {ITEM_TEMPLATES.includes(draft.template) && (
@@ -1392,7 +1430,7 @@ const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
                           <div className="truncate text-sm font-black">{s.name}</div>
                           <div className="text-xs text-white/50">{s.template} · {s._durationOverride || s.durationSec}s · {s._transitionOverride || s.transition}</div>
                         </div>
-                        <input type="number" min={6} max={30} defaultValue={s._durationOverride || s.durationSec} title="Duration override"
+                        <input type="number" min={6} max={120} defaultValue={s._durationOverride || s.durationSec} title="Duration override"
                           onChange={(e) => saveDuration(s._itemId!, Number(e.target.value))}
                           onBlur={(e) => saveDuration(s._itemId!, Number(e.target.value), true)}
                           className="w-16 rounded-lg bg-black/40 px-2 py-1.5 text-center text-sm font-bold ring-1 ring-white/15" />
@@ -1719,6 +1757,18 @@ function LibraryPicker({
 }) {
   const [query, setQuery] = useState("");
   const [uploading, setUploading] = useState(false);
+  // videos kept on the server in its videos folder (public/videos) — listed live, no upload needed
+  const [folder, setFolder] = useState<{ videos: { name: string; path: string; url: string; size: number }[]; folder: string; missing: boolean } | null>(null);
+  const [folderFailed, setFolderFailed] = useState(false);
+  const loadFolder = useCallback(() => {
+    fetch("/api/videos", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => { setFolder(j); setFolderFailed(false); })
+      .catch(() => setFolderFailed(true));
+  }, []);
+  useEffect(() => {
+    if (media === "video") loadFolder();
+  }, [media, loadFolder]);
   const q = query.trim().toLowerCase();
   const all = assets.filter((a) => (media === "video" ? a.type === "video" : a.type !== "video"));
   const items = q ? all.filter((a) => a.name.toLowerCase().includes(q) || a.url.toLowerCase().includes(q)) : all;
@@ -1769,10 +1819,52 @@ function LibraryPicker({
           )}
         </div>
       )}
+      {media === "video" && (
+        <div className="mb-3 rounded-xl bg-black/25 p-2 ring-1 ring-white/10">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-black tracking-widest text-white/60">VIDEOS FOLDER · {folder?.folder || "public/videos"}</span>
+            <button type="button" onClick={loadFolder} className="rounded-lg bg-white/10 px-2 py-0.5 text-[11px] font-black text-white/80 ring-1 ring-white/15 hover:bg-white/20">↻ Refresh</button>
+          </div>
+          {folderFailed ? (
+            <p className="text-xs text-red-300">Couldn&apos;t read the videos folder — is the server running?</p>
+          ) : !folder ? (
+            <p className="text-xs text-white/50">Looking in the folder…</p>
+          ) : folder.missing ? (
+            <p className="text-xs text-amber-300/90">The videos folder doesn&apos;t exist yet. Create it on the server ({folder.folder}) and copy your .mp4 files into it.</p>
+          ) : folder.videos.length === 0 ? (
+            <p className="text-xs text-white/50">No videos in the folder yet. Copy .mp4 or .webm files into <code>{folder.folder}</code> on the server, then press Refresh — no restart needed.</p>
+          ) : (
+            <div className="max-h-48 space-y-1 overflow-y-auto overscroll-contain pr-1">
+              {folder.videos
+                .filter((v) => !q || v.path.toLowerCase().includes(q))
+                .map((v) => {
+                  const active = current === v.url;
+                  return (
+                    <button
+                      key={v.path}
+                      type="button"
+                      onClick={() => onPick(v.url)}
+                      aria-pressed={active}
+                      className={`flex w-full items-center gap-2 rounded-lg p-1 text-left ring-1 transition ${active ? "bg-white/15 ring-white" : "bg-white/5 ring-white/10 hover:bg-white/10"}`}
+                    >
+                      <video src={v.url} preload="metadata" muted playsInline className="h-9 w-16 shrink-0 rounded bg-black object-cover" />
+                      <span className="min-w-0 flex-1 truncate text-xs font-bold">{v.path}</span>
+                      <span className="shrink-0 font-mono text-[10px] text-white/45">{prettySize(v.size)}</span>
+                      {active && <span className="shrink-0 rounded bg-white px-1 text-[9px] font-black text-black">✓</span>}
+                    </button>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+      {media === "video" && all.length > 0 && <div className="mb-1 text-[11px] font-black tracking-widest text-white/50">UPLOADED TO THE MEDIA LIBRARY</div>}
       {all.length === 0 ? (
+        media === "video" ? null : (
         <p className="text-xs text-white/50">
           No {noun}s in the library yet — {onUpload ? "use “+ Upload” above" : "upload one in the Assets tab"} and it shows up here.
         </p>
+        )
       ) : items.length === 0 ? (
         <p className="text-xs text-white/50">Nothing matches “{query}”.</p>
       ) : (
@@ -1788,8 +1880,12 @@ function LibraryPicker({
                 aria-pressed={active}
                 className={`relative overflow-hidden rounded-lg transition ${active ? "ring-2 ring-white" : "ring-1 ring-white/20 hover:ring-2 hover:ring-white/70"}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.url} alt={a.name} loading="lazy" draggable={false} className={`aspect-[4/3] w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+                {media === "video" ? (
+                  <video src={a.url} preload="metadata" muted playsInline className="aspect-[4/3] w-full bg-black object-cover" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.url} alt={a.name} loading="lazy" draggable={false} className={`aspect-[4/3] w-full ${fit === "contain" ? "bg-white object-contain p-1" : "object-cover"}`} />
+                )}
                 <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/65 px-1 py-0.5 text-left text-[10px] font-bold text-white/90">{a.name}</span>
                 {active && <span className="pointer-events-none absolute right-1 top-1 rounded bg-white px-1 text-[9px] font-black text-black">✓</span>}
               </button>
@@ -2009,6 +2105,28 @@ function MediaField({
           onPick={(url) => { onChange(url); setOpen(false); }}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Reads a video's length and offers to set the slide's Duration to match it, so the clip plays right
+ * through before the slide changes. Give it a `key` of the video address so it starts again per video.
+ */
+function VideoLengthButton({ url, current, onSet }: { url: string; current: number; onSet: (secs: number) => void }) {
+  const [secs, setSecs] = useState<number | null>(null);
+  const want = secs !== null && Number.isFinite(secs) ? Math.min(120, Math.max(6, Math.ceil(secs))) : null;
+  return (
+    <div className="mt-1.5">
+      {/* only reads the length (metadata); nothing is shown or played */}
+      <video src={url} preload="metadata" muted className="hidden" onLoadedMetadata={(e) => setSecs(e.currentTarget.duration)} />
+      {want !== null && want !== current ? (
+        <button type="button" onClick={() => onSet(want)} className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold ring-1 ring-white/15 hover:bg-white/20">
+          ⏱ Set slide length to {want}s — this video is {Math.round((secs as number) * 10) / 10}s long
+        </button>
+      ) : want !== null ? (
+        <span className="text-[11px] text-emerald-300/90">✓ Slide length matches the video ({want}s)</span>
+      ) : null}
     </div>
   );
 }

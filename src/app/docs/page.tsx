@@ -143,6 +143,18 @@ DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[URL-ENCODED-PASSWORD]@aws-0-[RE
           </>
         } />
 
+        <Doc title="5D · Playing videos from the server" body={
+          <>
+            <p>The <b>Video · Full screen</b> and <b>Video · Centre window</b> templates (EasyGates Direct) play a muted, looping video. Keep the files on the server PC in <code>public/videos</code> (or the folder named by <code>VIDEOS_DIR</code> in <code>.env</code>).</p>
+            <ol className="mt-3 list-decimal space-y-1.5 pl-5">
+              <li>Copy <code>.mp4</code> (H.264) or <code>.webm</code> files into the folder. About 4–8 Mbit/s at 1920×1080 or smaller is plenty.</li>
+              <li>In the scene editor, open the video template and click <b>Library</b> beside the <i>Video</i> field. The <b>Videos folder</b> list shows the files at once (press Refresh after adding some) — no rebuild or restart.</li>
+              <li>Pick one, then click <b>Set slide length to …</b> so the slide lasts as long as the clip. For the window template, choose the <b>Window shape</b>.</li>
+            </ol>
+            <p className="mt-3 text-white/60">Videos are streamed from the server with range requests, so screens start quickly and loop smoothly. They are not saved on the TV for offline use.</p>
+          </>
+        } />
+
         <Doc title="6 · Keeping the server address stable" body={
           <>
             <p>Every screen opens an address like <code>http://192.168.0.178:3000/display?displayId=…</code>. The number is your PC&apos;s <b>local IP address</b>, handed out by your router. Restarting the app does not change it, but the router can give the PC a different one later. If it changes, every screen&apos;s saved address stops working until you retype it. A screen that is already playing keeps showing its last playlist, but it cannot pick up edits.</p>

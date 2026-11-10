@@ -54,7 +54,11 @@ const EASYGATES = [
   "eg-stock-status",
   "eg-brand-partners",
   "eg-fit-guide",
+  "eg-video-full",
+  "eg-video-window",
 ];
+// the two video templates have no rows: their content is the video
+const NO_ROWS = new Set(["eg-video-full", "eg-video-window"]);
 const SMARTSECURE = ["ss-zone-guide", "ss-scene-cards", "ss-package-cards", "ss-works-with", "ss-book-demo", "ss-product-spotlight"];
 const FILES = {
   "eg-kit-builder": "EgKitBuilder",
@@ -68,6 +72,8 @@ const FILES = {
   "eg-stock-status": "EgStockStatus",
   "eg-brand-partners": "EgBrandPartners",
   "eg-fit-guide": "EgFitGuide",
+  "eg-video-full": "EgVideoFull",
+  "eg-video-window": "EgVideoWindow",
   "ss-zone-guide": "SsZoneGuide",
   "ss-scene-cards": "SsSceneCards",
   "ss-package-cards": "SsPackageCards",
@@ -79,9 +85,9 @@ const FILES = {
 const ALL = [...EASYGATES, ...SMARTSECURE];
 
 describe("branded templates are in the catalogue", () => {
-  it("all seventeen are catalogued with unique ids and copy", () => {
-    assert.deepEqual(BRANDED_TEMPLATES, ALL, "BRANDED_TEMPLATES must list all seventeen, in catalogue order");
-    assert.equal(new Set(ALL).size, 17, "ids must be unique");
+  it("all nineteen are catalogued with unique ids and copy", () => {
+    assert.deepEqual(BRANDED_TEMPLATES, ALL, "BRANDED_TEMPLATES must list all nineteen, in catalogue order");
+    assert.equal(new Set(ALL).size, 19, "ids must be unique");
     for (const id of ALL) {
       const t = TEMPLATES.find((x) => x.id === id);
       assert.ok(t, `${id} is missing from TEMPLATES`);
@@ -103,9 +109,16 @@ describe("branded templates are in the catalogue", () => {
 
   it("every one edits rows, with the name first", () => {
     for (const id of ALL) {
+      assert.ok(Object.keys(TEMPLATE_FIELDS).includes(id), `${id} missing from TEMPLATE_FIELDS`);
+      if (NO_ROWS.has(id)) {
+        // the video templates are the exception: their content is the video, not a list
+        assert.ok(!ITEM_TEMPLATES.includes(id), `${id} has no rows, so it is not an item template`);
+        assert.equal(templateRows(id).length, 0, `${id} must not offer row fields`);
+        assert.equal(templateUses(id, "videoUrl"), true, `${id} draws the video`);
+        continue;
+      }
       assert.ok(ITEM_TEMPLATES.includes(id), `${id} must be an item template`);
       assert.equal(templateRows(id)[0], "name", `${id}: "name" must be the first row field`);
-      assert.ok(Object.keys(TEMPLATE_FIELDS).includes(id), `${id} missing from TEMPLATE_FIELDS`);
     }
   });
 
@@ -153,8 +166,9 @@ describe("branded templates are in the catalogue", () => {
       const source = read(`src/components/scene/templates/${file}.tsx`);
       assert.match(source, new RegExp(`Template "${id}"`), `${file}.tsx should name the template id`);
       assert.match(source, /Not used:/, `${file}.tsx should list the fields it does not draw`);
-      // and the FIELDS block must name the rows it reads
-      assert.match(source, /items\[\]/, `${file}.tsx should document its rows`);
+      // and the FIELDS block must name the rows it reads (or say it has none)
+      if (NO_ROWS.has(id)) assert.match(source, /Not used:[^*]*items/, `${file}.tsx should say it has no rows`);
+      else assert.match(source, /items\[\]/, `${file}.tsx should document its rows`);
     }
   });
 });
@@ -199,7 +213,7 @@ describe("branded demo campaigns", () => {
         assert.ok(TEMPLATES.some((t) => t.id === s.template), `${s.name}: unknown template`);
         assert.ok(s.durationSec >= 6 && s.durationSec <= 20, `${s.name}: duration outside 6–20s`);
         assert.ok(s.headline, `${s.name}: needs a headline`);
-        assert.ok((s.items || []).length > 0, `${s.name}: item template without rows`);
+        assert.ok(NO_ROWS.has(s.template) || (s.items || []).length > 0, `${s.name}: item template without rows`);
         assert.ok(s.ctaText, `${s.name}: needs a call to action`);
         const tl = buildTimeline(s);
         assert.ok(tl.every((v, i, a) => i === 0 || v.atMs >= a[i - 1].atMs), `${s.name}: timeline unordered`);
