@@ -279,7 +279,7 @@ const TEMPLATE_STARTERS: Partial<Record<TemplateId, { fields: Partial<Scene>; fl
         { name: "Category three", desc: "What is included", tag: "-20%" },
       ],
     },
-    flash: "Flash-sale sample loaded — the big number is Promo price, the word under it is the Discount badge",
+    flash: "Flash-sale sample loaded — the big number is Promo price, the word under it is the Discount badge. Start Promo price with a word (EXTRA 5%, SAVE 20%) to replace the UP TO above the number",
   },
   "click-collect": {
     fields: {

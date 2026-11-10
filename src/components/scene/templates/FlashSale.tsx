@@ -13,7 +13,8 @@ import { Arrow, HazardTape, INK, Plate, Starburst, Stencil, WorkbenchTexture, co
  * - headline     = the event title, e.g. "48-HOUR FLASH SALE"
  * - subheadline  = who it is for, e.g. "20% off power tools, fixings and workwear"
  * - description  = the small print under the subheadline
- * - promoPrice   = the big number in the starburst, e.g. "20%" or "UP TO 50%"
+ * - promoPrice   = the big number in the starburst, e.g. "20%". Start it with a word to change the small line
+ *                   above the number: "EXTRA 5%", "SAVE 20%", "FROM 10%" (without one it says "UP TO")
  * - discountBadge = the word under the big number, e.g. "OFF"
  * - ctaText      = the plate under the copy, e.g. "ENDS SUNDAY · IN STORE"
  * - items[]      = up to 4 categories included in the sale
@@ -30,7 +31,10 @@ export default function FlashSaleTemplate({ scene, d }: TemplateProps) {
   const headline = clean(scene.headline);
   const sub = clean(scene.subheadline);
   const description = clean(scene.description);
-  const big = clean(scene.promoPrice) || clean(scene.discountBadge) || "SALE";
+  // a leading word in the big number ("EXTRA 5%", "SAVE 20%") replaces the default "UP TO" line above it
+  const promoParts = /^(up to|extra|save|from|just|only)\s+(.+)$/i.exec(clean(scene.promoPrice));
+  const lead = promoParts ? promoParts[1].toUpperCase() : "UP TO";
+  const big = (promoParts ? promoParts[2] : clean(scene.promoPrice)) || clean(scene.discountBadge) || "SALE";
   const small = clean(scene.promoPrice) && clean(scene.discountBadge) ? clean(scene.discountBadge) : clean(scene.promoPrice) ? "OFF" : "";
   const cta = clean(scene.ctaText);
   const items = cleanItems(scene.items).slice(0, 4);
@@ -92,7 +96,7 @@ export default function FlashSaleTemplate({ scene, d }: TemplateProps) {
                 </div>
                 <div className="absolute inset-0 grid place-items-center">
                   <div className="text-center" style={{ color: p.accentInk }}>
-                    <div className="font-black uppercase" style={{ fontSize: 24, letterSpacing: "0.3em", lineHeight: 1 }}>UP TO</div>
+                    <div className="font-black uppercase" style={{ fontSize: 24, letterSpacing: "0.3em", lineHeight: 1 }}>{lead}</div>
                     <div className="sg-display" style={{ fontSize: bigFit.px, lineHeight: 0.9, letterSpacing: "-0.05em", marginTop: 6 }}>{big}</div>
                     {small && (
                       <div className="font-black uppercase" style={{ fontSize: 38, letterSpacing: "0.14em", lineHeight: 1, marginTop: 4 }}>{small}</div>
