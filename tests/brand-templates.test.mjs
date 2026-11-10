@@ -37,6 +37,7 @@ import {
   solidFill,
   stars,
   stepLabel,
+  wallColumns,
 } from "../src/components/scene/templates/brandKit.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -369,6 +370,45 @@ describe("brand kit (pure helpers)", () => {
       assert.ok(w * cols + 24 * (cols - 1) <= 1808, `${cols} columns must fit`);
       assert.ok(w * cols + 24 * (cols - 1) > 1808 - cols * 2, `${cols} columns should fill the row`);
     }
+  });
+
+  it("the category wall uses 3×2 for five or six tiles and keeps 4 across otherwise", () => {
+    assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8].map(wallColumns), [4, 4, 4, 4, 3, 3, 4, 4]);
+    for (const cols of [3, 4]) {
+      const w = columnWidth(1808, cols, 20);
+      assert.ok(w * cols + 20 * (cols - 1) <= 1808 && w * cols + 20 * (cols - 1) > 1808 - cols * 2, `${cols} wall columns fill the row`);
+    }
+    const wall = read("src/components/scene/templates/EgCategoryWall.tsx");
+    assert.match(wall, /wallColumns\(items\.length\)/, "the wall asks the kit how many columns to use");
+    assert.match(wall, /justifyContent: mode === "grid" \? "center"/, "a short last row in the grid is centred");
+  });
+
+  it("icons follow the words in a row, and the Open Day words get the right ones", () => {
+    const src = read("src/components/scene/templates/brandParts.tsx");
+    const union = [...src.slice(src.indexOf("export type BrandIconId"), src.indexOf("const PATHS")).matchAll(/"([a-z]+)"/g)].map((x) => x[1]);
+    const pathsBlock = src.slice(src.indexOf("const PATHS"), src.indexOf("export function BrandIcon"));
+    const keywordsSrc = src.slice(src.indexOf("const KEYWORDS"));
+    const literal = keywordsSrc.slice(keywordsSrc.indexOf("= [") + 2, keywordsSrc.indexOf("\n];") + 3);
+    const KEYWORDS = (0, eval)(literal);
+    for (const id of union) assert.match(pathsBlock, new RegExp(`\\n  ${id}: `), `${id} has a drawing`);
+    for (const [id] of KEYWORDS) assert.ok(union.includes(id), `${id} is a real icon`);
+    // the same rule as rowIcon(): the chip then the name, padded, first keyword that matches
+    const iconFor = (name, tag = "") => {
+      const hay = ` ${`${tag} ${name}`.toLowerCase().trim()} `;
+      for (const [id, words] of KEYWORDS) if (words.some((w) => hay.includes(w))) return id;
+      return null;
+    };
+    assert.equal(iconFor("Free food & drink", "FREE"), "cup");
+    assert.equal(iconFor("Trade-only offers", "TRADE ONLY"), "tag", "an offer is a price tag, not a spanner");
+    assert.equal(iconFor("Meet the suppliers", "16 BRANDS"), "headset");
+    assert.equal(iconFor("Free giveaways", "ALL DAY"), "gift");
+    assert.equal(iconFor("Charity raffle"), "trophy");
+    assert.equal(iconFor("Extra 5% off orders", "UP TO £5,000"), "pound");
+    // the gate-trade words still win where they did before
+    assert.equal(iconFor("Gate automation", "1,200 LINES"), "gate");
+    assert.equal(iconFor("Safety edges"), "shield");
+    assert.equal(iconFor("Installation & fitting"), "tools");
+    assert.equal(iconFor("Technical helpline"), "phone");
   });
 
   it("the delivery clock reads any cut-off format", () => {

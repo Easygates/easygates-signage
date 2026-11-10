@@ -242,6 +242,14 @@ export function columnWidth(width: number, cols: number, gap: number): number {
   return Math.floor((width - gap * (cols - 1)) / cols);
 }
 
+/**
+ * Columns on the category wall: up to four tiles share one row, five or six make a roomier
+ * 3×2 grid (bigger type, icon beside the words), seven or eight a compact 4×2 wall.
+ */
+export function wallColumns(n: number): number {
+  return n === 5 || n === 6 ? 3 : 4;
+}
+
 /** Rounded-corner radius that scales with card size, so small cards stay soft. */
 export function radiusFor(w: number): number {
   return Math.max(14, Math.min(34, Math.round(w * 0.035)));

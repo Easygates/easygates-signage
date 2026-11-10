@@ -1,13 +1,16 @@
 import type { TemplateProps } from "../parts";
 import { BOTTOM, BrandIcon, CtaBar, Head, MARGIN, TOP, fitPx } from "./brandParts";
-import { alpha, bullets, columnCount, columnWidth, kit, radiusFor, rows, type Kit } from "./brandKit";
+import { alpha, bullets, columnWidth, kit, radiusFor, rows, type Kit } from "./brandKit";
 
 /**
  * Template "eg-trade-tiers" — EasyGates Direct · Trade Account Tiers.
  *
  * A hard-edged rate card: up to four tiers side by side, each with a metal bar
  * across the top, the discount as the hero, and the benefits ticked underneath.
- * The tier named in `discountBadge` is lifted out as the recommended one.
+ * The tier named in `discountBadge` is lifted out as the recommended one. With one or
+ * two tiers the cards are wide, so the discount and the benefits are set larger; the
+ * benefit lists line up across cards. `price` can carry words ("UP TO £250") — "off"
+ * is always written after it.
  *
  * FIELDS:
  * - eyebrow        = small label, e.g. "EASYGATES DIRECT · TRADE ACCOUNT"
@@ -27,12 +30,20 @@ import { alpha, bullets, columnCount, columnWidth, kit, radiusFor, rows, type Ki
 
 const GAP = 26;
 
-function Tier({ k, d, i, tier, w, h, featured }: { k: Kit; d: TemplateProps["d"]; i: number; tier: { name: string; price?: string; desc?: string; tag?: string }; w: number; h: number | string; featured: boolean }) {
+/** Largest size of a tier's discount: shorter text and wider cards (one or two tiers) go bigger. */
+function heroMax(price: string, big: boolean): number {
+  return price.length > 5 ? (big ? 150 : 96) : big ? 220 : 132;
+}
+
+function Tier({ k, d, i, tier, w, h, featured, heroPx, heroRow }: { k: Kit; d: TemplateProps["d"]; i: number; tier: { name: string; price?: string; desc?: string; tag?: string }; w: number; h: number | string; featured: boolean; heroPx: number; heroRow: number }) {
   const points = bullets(tier.desc, 5);
   const bar = featured ? k.solid2 : k.solid;
   const barInk = featured ? k.solid2Ink : k.solidInk;
-  const pointPx = points.length > 4 ? 24 : 27;
-  const pricePx = fitPx(tier.price || "", w - 56, tier.price && tier.price.length > 5 ? 96 : 132, 54);
+  // one or two tiers make wide cards, so the type grows to fill them
+  const big = w > 700;
+  const pointPx = big ? (points.length > 4 ? 30 : 36) : points.length > 4 ? 24 : 27;
+  const pricePx = heroPx;
+  const padX = big ? 28 : 24;
 
   return (
     <div
@@ -52,29 +63,29 @@ function Tier({ k, d, i, tier, w, h, featured }: { k: Kit; d: TemplateProps["d"]
       }}
     >
       {/* metal bar */}
-      <div style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 22px", background: bar, color: barInk }}>
-        <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: big ? "18px 28px" : "14px 22px", background: bar, color: barInk }}>
+        <span style={{ fontSize: big ? 30 : 24, fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {tier.name}
         </span>
         {tier.tag ? (
-          <span style={{ flex: "none", fontSize: 16, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 6, background: barInk, color: bar }}>
+          <span style={{ flex: "none", fontSize: big ? 20 : 16, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: big ? "5px 13px" : "4px 10px", borderRadius: 6, background: barInk, color: bar }}>
             {tier.tag}
           </span>
         ) : null}
       </div>
 
-      {/* the discount */}
-      <div style={{ flex: "none", padding: "20px 24px 8px", display: "flex", alignItems: "flex-end", gap: 12 }}>
+      {/* the discount — every card's row is as tall as the biggest, so the benefits below line up across cards */}
+      <div style={{ flex: "none", boxSizing: "border-box", height: Math.round(heroRow * 0.94) + 28, padding: `20px ${padX}px 8px`, display: "flex", alignItems: "flex-end", gap: 12 }}>
         {tier.price ? (
-          <span className="sg-display" style={{ fontSize: pricePx, lineHeight: 0.94, color: featured ? k.accent2 : k.accent, letterSpacing: "-0.03em" }}>
+          <span className="sg-display" style={{ fontSize: pricePx, lineHeight: 0.94, color: featured ? k.accent2 : k.accent, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
             {tier.price}
           </span>
         ) : null}
-        <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: k.muted, paddingBottom: 8 }}>off</span>
+        <span style={{ fontSize: big ? 32 : 22, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: k.muted, paddingBottom: big ? 12 : 8 }}>off</span>
       </div>
 
       {/* benefits */}
-      <div style={{ flex: "1 1 0", minHeight: 0, padding: "8px 24px 22px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 12 }}>
+      <div style={{ flex: "1 1 0", minHeight: 0, padding: `8px ${padX}px ${big ? 28 : 22}px`, display: "flex", flexDirection: "column", justifyContent: big ? "flex-start" : "center", gap: big ? 20 : 12 }}>
         {points.map((p, j) => (
           <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
             <span style={{ flex: "none", marginTop: 3 }}>
@@ -91,9 +102,13 @@ function Tier({ k, d, i, tier, w, h, featured }: { k: Kit; d: TemplateProps["d"]
 export default function EgTradeTiersTemplate({ scene, d }: TemplateProps) {
   const k = kit(scene);
   const items = rows(scene, 4);
-  const cols = columnCount(items.length || 3);
+  // one column per tier, up to four side by side (columnCount() is for grids that wrap, not for this row)
+  const cols = Math.min(4, Math.max(1, items.length || 3));
   const totalW = 1920 - MARGIN * 2;
   const w = columnWidth(totalW, cols, GAP);
+  const big = w > 700;
+  const heroPxs = items.map((t) => fitPx(t.price || "", w - (big ? 28 : 24) * 2, heroMax(t.price || "", big), 54));
+  const heroRow = Math.max(0, ...heroPxs);
   const featuredName = (scene.discountBadge || "").trim().toLowerCase();
 
   return (
@@ -112,6 +127,8 @@ export default function EgTradeTiersTemplate({ scene, d }: TemplateProps) {
               w={w}
               h="100%"
               featured={Boolean(featuredName) && (tier.name || "").toLowerCase().includes(featuredName)}
+              heroPx={heroPxs[i]}
+              heroRow={heroRow}
             />
           ))
         ) : (

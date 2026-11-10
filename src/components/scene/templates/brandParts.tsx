@@ -45,7 +45,13 @@ export type BrandIconId =
   | "sensor"
   | "arrow"
   | "star"
-  | "pin";
+  | "pin"
+  | "cup"
+  | "gift"
+  | "tag"
+  | "headset"
+  | "trophy"
+  | "pound";
 
 const PATHS: Record<BrandIconId, ReactNode> = {
   gate: (
@@ -190,6 +196,48 @@ const PATHS: Record<BrandIconId, ReactNode> = {
       <circle cx="12" cy="10" r="2.6" />
     </>
   ),
+  // events & offers — food and drink, giveaways, price tags, expert advice, raffles, savings
+  cup: (
+    <>
+      <path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" />
+      <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+      <path d="M8 3v3M12 3v3" />
+    </>
+  ),
+  gift: (
+    <>
+      <rect x="3" y="9" width="18" height="4" rx="1" />
+      <path d="M5 13v7h14v-7M12 9v11" />
+      <path d="M12 9S9.2 9 8.2 7.6 9 4 10.5 5 12 9 12 9zM12 9s2.8 0 3.8-1.4S15 4 13.5 5 12 9 12 9z" />
+    </>
+  ),
+  tag: (
+    <>
+      <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" />
+      <circle cx="7.5" cy="7.5" r="1.4" />
+    </>
+  ),
+  headset: (
+    <>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <rect x="3" y="14" width="4" height="6" rx="1.5" />
+      <rect x="17" y="14" width="4" height="6" rx="1.5" />
+      <path d="M19 20c0 1.4-2 2-5 2" />
+    </>
+  ),
+  trophy: (
+    <>
+      <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+      <path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" />
+      <path d="M12 14v4M8 21h8M9 18h6" />
+    </>
+  ),
+  pound: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15 8.6a3.1 3.1 0 0 0-5.6 1.8V16M7.8 16h8.6M7.8 12.4h5.6" />
+    </>
+  ),
 };
 
 export function BrandIcon({ id, size = 48, color = "currentColor", stroke = 2.2 }: { id: BrandIconId; size?: number; color?: string; stroke?: number }) {
@@ -227,7 +275,14 @@ const KEYWORDS: [BrandIconId, string[]][] = [
   ["plug", ["plug", "socket", "power", "ev charger", "charging"]],
   ["phone", ["phone", "call", "support", " helpline", "tel"]],
   ["van", ["deliver", "courier", "van", "next day", "shipping", "collect"]],
+  // events & offers, checked before the trade words so "Trade-only offers" gets a price tag, not a spanner
+  ["pound", ["£", "pound", "% off", "saving"]],
+  ["cup", ["food", "drink", "coffee", "café", "cafe", "refreshment", "lunch", "breakfast", "catering"]],
+  ["gift", ["gift", "giveaway", "voucher", "freebie"]],
+  ["trophy", ["raffle", "prize", "trophy", "winner", "competition", "charity"]],
+  ["tag", [" offer", " sale", " deal", "discount"]],
   ["tools", ["install", "fitting", "engineer", "service", "maintenance", "trade"]],
+  ["headset", ["supplier", "brand", "expert", "advice", "adviser", "advisor"]],
   ["home", ["home", "house", "showroom", "room", "garden"]],
   ["screen", ["tv", "screen", "display", "projector", "monitor"]],
   ["sensor", ["sensor", "detector", "pir", "motion", "radar"]],
